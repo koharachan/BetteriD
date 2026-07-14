@@ -1,0 +1,8 @@
+ignoredBuiltDependencies:
+  - core-js
+  - esbuild
+
+onlyBuiltDependencies:
+  - '@actions/github-script'
+  - core-js
+  - esbuild
