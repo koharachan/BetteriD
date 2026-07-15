@@ -115,7 +115,24 @@ export function uiChangesetEditor(context) {
                         .attr('aria-disabled', 'true')
                         .property('disabled', true);
 
-                    var summary = utilChangesetSummary(context.history().changes());
+                    var difference = context.history().difference();
+                    var relevant = difference.summary();
+                    var graph = context.graph();
+                    var editExtent = null;
+
+                    relevant.forEach(function(item) {
+                        var extent = item.entity.extent(item.graph);
+                        editExtent = editExtent ? editExtent.extend(extent) : extent;
+                    });
+
+                    var nearby = editExtent ? context.history().intersects(editExtent) : [];
+                    var summary = utilChangesetSummary(context.history().changes(), {
+                        baseGraph: context.history().base(),
+                        entityChanges: difference.changes(),
+                        graph: graph,
+                        nearby: nearby,
+                        relevant: relevant
+                    });
 
                     fetch('/api/osm-ai/summarize', {
                         method: 'POST',
