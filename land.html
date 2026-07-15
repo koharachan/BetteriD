@@ -34,7 +34,6 @@
                 }
 
                 try {
-                    sessionStorage.removeItem(flowKey);
                     const flow = JSON.parse(storedFlow);
                     if (Date.now() - Number(flow.createdAt) > 10 * 60 * 1000) {
                         throw new Error('授权请求已过期，请返回后重新登录。');
@@ -49,21 +48,32 @@
                         throw new Error('OpenStreetMap 没有返回授权码。');
                     }
 
-                    const tokenURL = new URL('/oauth2/token', location.origin);
-                    tokenURL.searchParams.set('client_id', flow.clientId);
-                    tokenURL.searchParams.set('redirect_uri', flow.redirectUri);
-                    tokenURL.searchParams.set('grant_type', 'authorization_code');
-                    tokenURL.searchParams.set('code', params.get('code'));
-                    tokenURL.searchParams.set('code_verifier', flow.verifier);
-                    const response = await fetch(tokenURL, {
-                        method: 'POST',
-                        headers: { Accept: 'application/json' }
+                    const tokenRequest = new URLSearchParams({
+                        client_id: flow.clientId,
+                        redirect_uri: flow.redirectUri,
+                        grant_type: 'authorization_code',
+                        code: params.get('code'),
+                        code_verifier: flow.verifier
                     });
-                    if (!response.ok) throw new Error('令牌交换失败，请重新授权。');
+                    const response = await fetch('/oauth2/token', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                        },
+                        body: tokenRequest
+                    });
+                    const token = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        const reason = token.error_description || token.error;
+                        throw new Error(reason
+                            ? `令牌交换失败：${reason}`
+                            : `令牌交换失败（HTTP ${response.status}），请重新授权。`);
+                    }
 
-                    const token = await response.json();
                     if (!token.access_token) throw new Error('OpenStreetMap 没有返回访问令牌。');
                     localStorage.setItem(location.origin + 'oauth2_access_token', token.access_token);
+                    sessionStorage.removeItem(flowKey);
 
                     const returnTo = typeof flow.returnTo === 'string' && flow.returnTo.startsWith('/id/')
                         ? flow.returnTo
