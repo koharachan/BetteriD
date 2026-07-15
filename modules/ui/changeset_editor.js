@@ -3,11 +3,13 @@ import { select as d3_select } from 'd3-selection';
 
 import { presetManager } from '../presets';
 import { t } from '../core/localizer';
+import { utilAIStatus } from '../util/ai_status';
 import { utilChangesetSummary } from '../util/changeset_summary';
 import { svgIcon } from '../svg/icon';
 import { uiCombobox} from './combobox';
 import { uiField } from './field';
 import { uiFormFields } from './form_fields';
+import { uiTooltip } from './tooltip';
 import { utilArrayUniqBy, utilCleanOsmString, utilDetect, utilRebind, utilTriggerEvent, utilUnicodeCharsCount } from '../util';
 import { getIncompatibleSources } from '../validations/incompatible_source';
 
@@ -68,6 +70,10 @@ export function uiChangesetEditor(context) {
             }
 
             var aiSummaryWrap = selection.select('.form-field-comment .form-field-input-wrap');
+            var aiSummaryAvailable = false;
+            var aiSummaryTip = uiTooltip()
+                .placement('top')
+                .title(() => t.append(aiSummaryAvailable ? 'commit.ai_summary' : 'commit.ai_summary_unavailable'));
             var aiSummaryButton = aiSummaryWrap.selectAll('.ai-summary-button')
                 .data([0]);
 
@@ -76,13 +82,38 @@ export function uiChangesetEditor(context) {
                 .attr('type', 'button')
                 .attr('class', 'ai-summary-button form-field-button')
                 .attr('aria-label', t('commit.ai_summary'))
-                .call(svgIcon('#iD-icon-translate'))
+                .attr('aria-disabled', 'true')
+                .classed('disabled', true)
+                .text('AI')
+                .call(aiSummaryTip)
                 .merge(aiSummaryButton);
+
+            utilAIStatus().then(function(status) {
+                aiSummaryAvailable = status.ai;
+                aiSummaryButton
+                    .attr('aria-disabled', String(!aiSummaryAvailable))
+                    .classed('disabled', !aiSummaryAvailable)
+                    .call(aiSummaryTip.updateContent);
+            });
 
             aiSummaryButton
                 .on('click', function() {
                     var button = d3_select(this);
-                    button.classed('loading', true);
+                    if (button.classed('loading')) return;
+                    if (!aiSummaryAvailable) {
+                        context.ui().flash
+                            .duration(3000)
+                            .iconName('#iD-icon-alert')
+                            .iconClass('disabled')
+                            .label(t.append('commit.ai_summary_unavailable'))();
+                        return;
+                    }
+
+                    button
+                        .classed('loading', true)
+                        .attr('aria-busy', 'true')
+                        .attr('aria-disabled', 'true')
+                        .property('disabled', true);
 
                     var summary = utilChangesetSummary(context.history().changes());
 
@@ -91,21 +122,29 @@ export function uiChangesetEditor(context) {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ summary: summary })
                     })
-                    .then(function(response) {
-                        if (!response.ok) throw new Error('AI summary failed');
-                        return response.json();
+                    .then(async function(response) {
+                        var data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.error || 'AI summary failed');
+                        return data;
                     })
                     .then(function(data) {
                         if (data.summary) {
                             _tags.comment = data.summary;
-                            dispatch.call('change', this, undefined, { comment: data.summary });
+                            dispatch.call('change', button.node(), undefined, { comment: data.summary });
                         }
                     })
                     .catch(function() {
-                        // ignore errors
+                        context.ui().flash
+                            .duration(3000)
+                            .iconName('#iD-icon-alert')
+                            .label(t.append('commit.ai_summary_error'))();
                     })
                     .finally(function() {
-                        button.classed('loading', false);
+                        button
+                            .classed('loading', false)
+                            .attr('aria-busy', null)
+                            .attr('aria-disabled', String(!aiSummaryAvailable))
+                            .property('disabled', false);
                     });
                 });
 

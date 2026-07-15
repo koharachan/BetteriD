@@ -1548,6 +1548,15 @@ button.preset-reset .label.flash-bg {
     fill: var(--text-color);
     opacity: .5;
 }
+.ai-summary-button {
+    color: #7357c8;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: -.2px;
+}
+.ai-summary-button.disabled {
+    color: var(--muted-text-color);
+}
 .form-field-button.colour-preview {
     border-radius: 0 0 4px 0;
 }
@@ -2182,16 +2191,44 @@ input.date-selector {
 
 /* Field - Localized Name
 ------------------------------------------------------- */
+.form-field-input-localized {
+    position: relative;
+}
 .form-field-input-localized > input.localized-main {
-    border-radius: 0 0 0 4px;
+    width: 100%;
+    min-width: 100%;
+    padding-inline-end: 70px;
+    border-radius: 0 0 4px 4px;
 }
 .ideditor[dir='rtl'] .form-field-input-localized > input.localized-main {
-    border-radius: 0 0 4px 0;
+    border-radius: 0 0 4px 4px;
 }
 .form-field-input-localized > button.localized-add {
-    border-radius: 0 0 4px 0;
+    position: absolute;
+    top: 0;
+    right: 32px;
+    bottom: 0;
+    z-index: 1;
+    height: auto;
+    border-radius: 0;
 }
 .ideditor[dir='rtl'] .form-field-input-localized > button.localized-add {
+    right: auto;
+    left: 32px;
+    border-radius: 0;
+}
+.form-field-input-localized > button.localized-auto-translate {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    height: auto;
+    border-radius: 0 0 4px 0;
+}
+.ideditor[dir='rtl'] .form-field-input-localized > button.localized-auto-translate {
+    right: auto;
+    left: 0;
     border-radius: 0 0 0 4px;
 }
 
