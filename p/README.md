@@ -1,4 +1,4 @@
-# BetteriD Rust Proxy
+# map.osm.asia Rust Proxy
 
 This service proxies OpenStreetMap, serves the locally built BetteriD editor,
 and exposes same-origin translation and AI summary endpoints.

@@ -916,23 +916,23 @@ impl OsmProxy {
         let labels = if is_chinese {
             [
                 "选择登录方式",
-                "选择适合你的方式继续使用 OpenStreetMap。",
+                "选择适合你的方式登录 map.osm.asia。",
                 "账号密码登录",
                 "在当前站点输入 OpenStreetMap 账号和密码",
-                "使用 OSM 官网授权 BetteriD",
-                "前往 openstreetmap.org，授权编辑器访问你的账号",
-                "BetteriD 不会接触或保存你的密码",
+                "使用 OSM 官网授权登录",
+                "登录 map.osm.asia，并授权 BetteriD 编辑器访问你的账号",
+                "使用官网授权时，BetteriD 不会接触或保存你的密码",
                 "关闭登录窗口",
             ]
         } else {
             [
                 "Choose how to sign in",
-                "Select how you want to continue with OpenStreetMap.",
+                "Choose how you want to sign in to map.osm.asia.",
                 "Sign in with password",
                 "Enter your OpenStreetMap username and password on this site",
-                "Authorize BetteriD on OSM",
-                "Continue to openstreetmap.org and authorize the editor",
-                "BetteriD never sees or stores your password",
+                "Sign in with OSM authorization",
+                "Sign in to map.osm.asia and authorize the BetteriD editor",
+                "When using OSM authorization, BetteriD never sees or stores your password",
                 "Close sign-in dialog",
             ]
         };
@@ -1152,7 +1152,9 @@ mod tests {
         assert!(html.contains("src=\"/betterid/login-modal.js\""));
         assert!(html.contains("id=\"betterid-login-modal\""));
         assert!(html.contains("选择登录方式"));
-        assert!(html.contains("使用 OSM 官网授权 BetteriD"));
+        assert!(html.contains("登录 map.osm.asia"));
+        assert!(html.contains("使用 OSM 官网授权登录"));
+        assert!(html.contains("BetteriD 编辑器"));
         assert!(html.contains("href=\"/id/oauth/start\""));
     }
 
