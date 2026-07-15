@@ -734,7 +734,7 @@ impl OsmProxy {
     }
 
     fn apply_client_cache_policy(path: &str, response: &mut Response<HyperBody>) {
-        if path.starts_with("/api/0.6/") {
+        if path.starts_with("/api/0.6/") || path == "/query-features" {
             response.headers_mut().insert(
                 "cache-control",
                 HeaderValue::from_static("no-store, no-cache, must-revalidate"),
@@ -791,6 +791,8 @@ impl OsmProxy {
             )
         } else if path.starts_with("/gravatar/") {
             ("https://www.gravatar.com", &path["/gravatar".len()..])
+        } else if path == "/query-features" {
+            ("https://query.openstreetmap.org", path)
         } else {
             (self.upstream_url.as_str(), path)
         };
@@ -826,6 +828,9 @@ impl OsmProxy {
 
         let reqwest_method =
             reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET);
+        let forwards_private_headers = upstream_url
+            .as_str()
+            .starts_with(self.upstream_url.trim_end_matches('/'));
         let mut request_builder = self
             .client
             .request(reqwest_method, upstream_url.as_str())
@@ -836,7 +841,9 @@ impl OsmProxy {
             if matches!(
                 key_lower.as_str(),
                 "host" | "content-length" | "origin" | "referer"
-            ) {
+            ) || (!forwards_private_headers
+                && matches!(key_lower.as_str(), "cookie" | "authorization"))
+            {
                 continue;
             }
             request_builder = request_builder.header(key.as_str(), value.as_bytes());
@@ -927,6 +934,10 @@ impl OsmProxy {
                 "/avatar-s3/",
             )
             .replace("https://www.gravatar.com/avatar/", "/gravatar/")
+            .replace(
+                "https://query.openstreetmap.org/query-features",
+                "/query-features",
+            )
     }
 
     fn rewrite_urls(
@@ -962,7 +973,19 @@ impl OsmProxy {
                 "/avatar-s3/",
             )
             .replace("https://www.gravatar.com/avatar/", "/gravatar/")
+            .replace(
+                "https://query.openstreetmap.org/query-features",
+                "/query-features",
+            )
             .to_string();
+
+        // OSM serves fingerprinted JavaScript with a long immutable browser TTL.
+        // Add our own version because the proxy rewrites the asset contents.
+        let rewritten = if content_type.starts_with("text/html") {
+            rewritten.replace(".js\"", ".js?betterid-proxy=1\"")
+        } else {
+            rewritten
+        };
 
         let rewritten = self.inject_login_options(&rewritten, path, query);
         self.inject_root_login_modal(&rewritten, path).into_bytes()
@@ -1202,6 +1225,57 @@ mod tests {
         assert_eq!(
             response.headers().get("cache-control").unwrap(),
             "public, max-age=600"
+        );
+    }
+
+    #[test]
+    fn test_query_service_disables_client_cache() {
+        let mut response = Response::new(HyperBody::empty());
+        OsmProxy::apply_client_cache_policy("/query-features", &mut response);
+
+        assert_eq!(
+            response.headers().get("cache-control").unwrap(),
+            "no-store, no-cache, must-revalidate"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_query_service_route() {
+        let proxy = test_proxy();
+        let url = proxy
+            .build_upstream_url("/query-features", Some("lat=1&lon=2"))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            url.as_str(),
+            "https://query.openstreetmap.org/query-features?lat=1&lon=2"
+        );
+    }
+
+    #[test]
+    fn test_query_service_url_is_rewritten() {
+        let proxy = test_proxy();
+        let source = br#"const url = "https://query.openstreetmap.org/query-features";"#;
+        let rewritten = proxy.rewrite_urls(
+            source,
+            "application/javascript",
+            "/assets/application.js",
+            None,
+        );
+
+        assert!(String::from_utf8_lossy(&rewritten).contains("\"/query-features\""));
+    }
+
+    #[test]
+    fn test_rewritten_javascript_gets_browser_cache_buster() {
+        let proxy = test_proxy();
+        let source = br#"<script src="/assets/application-digest.js"></script>"#;
+        let rewritten = proxy.rewrite_urls(source, "text/html", "/query", None);
+
+        assert!(
+            String::from_utf8_lossy(&rewritten)
+                .contains("src=\"/assets/application-digest.js?betterid-proxy=1\"")
         );
     }
 
