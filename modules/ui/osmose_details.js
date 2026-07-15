@@ -56,7 +56,7 @@ export function uiOsmoseDetails(context) {
     button
       .classed('loading', true)
       .attr('disabled', true);
-    button.select('span').call(t.append('QA.osmose.translating'));
+    button.select('span').text(t('QA.osmose.translating'));
 
     Promise.all(entries.map(entry => translateText(entry.text)
       .then(text => ({ ...entry, translation: text }))
@@ -79,10 +79,10 @@ export function uiOsmoseDetails(context) {
               .text(d => d);
         }
 
-        button.select('span').call(t.append('QA.osmose.translated'));
+        button.select('span').text(t('QA.osmose.translated'));
       })
       .catch(() => {
-        button.select('span').call(t.append('QA.osmose.translate_error'));
+        button.select('span').text(t('QA.osmose.translate_error'));
       })
       .finally(() => {
         button
@@ -128,7 +128,7 @@ export function uiOsmoseDetails(context) {
 
     translateButton
       .append('span')
-        .call(t.append('QA.osmose.translate'));
+        .text(t('QA.osmose.translate'));
 
 
     // Description
