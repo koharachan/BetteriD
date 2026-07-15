@@ -31,6 +31,7 @@ export { utilPrefixCSSProperty } from './util';
 export { utilPrefixDOMProperty } from './util';
 export { utilQsString } from './util';
 export { utilRebind } from './rebind';
+export { utilRelationRoleOptions } from './relation_role_options';
 export { utilSafeClassName } from './util';
 export { utilSetTransform } from './util';
 export { utilSessionMutex } from './session_mutex';

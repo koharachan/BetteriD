@@ -724,6 +724,36 @@ en:
     choose_relation: Choose a parent relation
     role: Role
     multiple_roles: Multiple Roles
+    relation_roles:
+      access: Access
+      admin_centre: Administrative Centre
+      backward: Backward
+      building: Building
+      destination: Destination
+      east: East
+      entry: Entry
+      exit: Exit
+      forward: Forward
+      from: From
+      house: House
+      inner: Inner Boundary
+      label: Label
+      member: Member
+      north: North
+      outer: Outer Boundary
+      parking_space: Parking Space
+      part: Part
+      perimeter: Perimeter
+      platform: Platform
+      sign: Sign
+      south: South
+      space: Space
+      stop: Stop
+      street: Street
+      subarea: Subarea
+      to: To
+      via: Via
+      west: West
     choose: Select feature type
     results:
       one: "{n} result for {search}"

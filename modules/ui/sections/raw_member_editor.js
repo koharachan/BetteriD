@@ -16,7 +16,7 @@ import { svgIcon } from '../../svg/icon';
 import { services } from '../../services';
 import { uiCombobox } from '../combobox';
 import { uiSection } from '../section';
-import { utilDisplayName, utilDisplayType, utilHighlightEntities, utilNoAuto, utilUniqueDomId } from '../../util';
+import { utilDisplayName, utilDisplayType, utilHighlightEntities, utilNoAuto, utilRelationRoleOptions, utilUniqueDomId } from '../../util';
 import { prefs } from '../../core';
 
 
@@ -419,7 +419,7 @@ export function uiSectionRawMemberEditor(context) {
                         geometry: geometry,
                         query: role
                     }, function(err, data) {
-                        if (!err) callback(sort(role, data));
+                        if (!err) callback(sort(role, utilRelationRoleOptions(data)));
                     });
                 })
                 .on('cancel', function() {

@@ -17,7 +17,7 @@ import { uiCombobox } from '../combobox';
 import { uiSection } from '../section';
 import { uiTooltip } from '../tooltip';
 import { utilArrayGroupBy, utilArrayIntersection } from '../../util/array';
-import { utilDisplayName, utilNoAuto, utilHighlightEntities, utilUniqueDomId } from '../../util';
+import { utilDisplayName, utilNoAuto, utilHighlightEntities, utilRelationRoleOptions, utilUniqueDomId } from '../../util';
 import { prefs } from '../../core';
 import { idMatch } from '../feature_list';
 
@@ -721,7 +721,7 @@ export function uiSectionRawMembershipEditor(context) {
                         geometry: context.graph().geometry(_entityIDs[0]),
                         query: role
                     }, function(err, data) {
-                        if (!err) callback(sort(role, data));
+                        if (!err) callback(sort(role, utilRelationRoleOptions(data)));
                     });
                 })
                 .on('cancel', function() {
