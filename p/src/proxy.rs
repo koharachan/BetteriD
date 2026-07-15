@@ -1281,6 +1281,8 @@ mod tests {
         let html = test_proxy().oauth_start_html();
         assert!(html.contains("test-client"));
         assert!(html.contains("code_challenge_method"));
+        assert!(html.contains("new URL('/logout', officialOrigin)"));
+        assert!(html.contains("'/login?referer='"));
         assert!(html.contains("betterid.oauth.root"));
         assert!(html.contains("https://map.osm.asia/callback"));
         assert!(!html.contains("client_secret"));

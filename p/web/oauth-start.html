@@ -85,7 +85,10 @@
         authorize.searchParams.set('code_challenge', challenge);
         authorize.searchParams.set('code_challenge_method', 'S256');
         authorize.searchParams.set('locale', navigator.language || 'zh-CN');
-        window.location.replace(authorize.toString());
+        const loginPath = '/login?referer=' + encodeURIComponent(authorize.pathname + authorize.search);
+        const logout = new URL('/logout', officialOrigin);
+        logout.searchParams.set('referer', loginPath);
+        window.location.replace(logout.toString());
       }
 
       start().catch(error => showError(error?.message || '请返回后重试。'));
