@@ -690,17 +690,29 @@ impl OsmProxy {
         if method != Method::GET {
             return false;
         }
-        let uncacheable = ["/api/0.6/", "/auth", "/callback", "/login", "/oauth2"];
-        if uncacheable.iter().any(|prefix| path.starts_with(prefix)) {
-            return false;
-        }
-        ["/api", "/geocoder", "/planet", "/static", "/style", "/tile"]
-            .iter()
-            .any(|prefix| path.starts_with(prefix))
+        path.starts_with("/tile/")
     }
 
     fn should_cache_response(&self, response: &Response<HyperBody>) -> bool {
         if response.status() != StatusCode::OK {
+            return false;
+        }
+        if response.headers().contains_key("set-cookie") {
+            return false;
+        }
+        if response
+            .headers()
+            .get("vary")
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| {
+                value.split(',').any(|name| {
+                    matches!(
+                        name.trim().to_ascii_lowercase().as_str(),
+                        "*" | "cookie" | "authorization"
+                    )
+                })
+            })
+        {
             return false;
         }
         !response
@@ -721,21 +733,26 @@ impl OsmProxy {
             })
     }
 
-    fn prevent_client_data_cache(path: &str, response: &mut Response<HyperBody>) {
-        if !path.starts_with("/api/0.6/") {
-            return;
+    fn apply_client_cache_policy(path: &str, response: &mut Response<HyperBody>) {
+        if path.starts_with("/api/0.6/") {
+            response.headers_mut().insert(
+                "cache-control",
+                HeaderValue::from_static("no-store, no-cache, must-revalidate"),
+            );
+            response
+                .headers_mut()
+                .insert("pragma", HeaderValue::from_static("no-cache"));
+            response
+                .headers_mut()
+                .insert("expires", HeaderValue::from_static("0"));
+        } else if path.starts_with("/tile/") {
+            response.headers_mut().insert(
+                "cache-control",
+                HeaderValue::from_static("public, max-age=600"),
+            );
+            response.headers_mut().remove("pragma");
+            response.headers_mut().remove("expires");
         }
-
-        response.headers_mut().insert(
-            "cache-control",
-            HeaderValue::from_static("no-store, no-cache, must-revalidate"),
-        );
-        response
-            .headers_mut()
-            .insert("pragma", HeaderValue::from_static("no-cache"));
-        response
-            .headers_mut()
-            .insert("expires", HeaderValue::from_static("0"));
     }
 
     fn build_cache_response(&self, entry: CacheEntry) -> Response<HyperBody> {
@@ -878,7 +895,7 @@ impl OsmProxy {
                     .header("x-proxy", "osm-proxy")
                     .body(HyperBody::from(rewritten))
                     .expect("valid upstream response");
-                Self::prevent_client_data_cache(&path, &mut response);
+                Self::apply_client_cache_policy(&path, &mut response);
                 Ok(response)
             }
             Err(err) => {
@@ -1133,7 +1150,7 @@ mod tests {
     fn test_should_cache() {
         let proxy = test_proxy();
         assert!(proxy.should_cache(&Method::GET, "/tile/1/2/3.png"));
-        assert!(proxy.should_cache(&Method::GET, "/api/capabilities.json"));
+        assert!(!proxy.should_cache(&Method::GET, "/api/capabilities.json"));
         assert!(!proxy.should_cache(&Method::GET, "/api/0.6/node/1"));
         assert!(!proxy.should_cache(&Method::GET, "/api/0.6/map"));
         assert!(!proxy.should_cache(&Method::POST, "/api/0.6/node"));
@@ -1153,9 +1170,21 @@ mod tests {
     }
 
     #[test]
+    fn test_session_response_is_not_cached() {
+        let proxy = test_proxy();
+        let response = Response::builder()
+            .status(StatusCode::OK)
+            .header("set-cookie", "_osm_session=private")
+            .body(HyperBody::empty())
+            .unwrap();
+
+        assert!(!proxy.should_cache_response(&response));
+    }
+
+    #[test]
     fn test_osm_data_disables_client_cache() {
         let mut response = Response::new(HyperBody::empty());
-        OsmProxy::prevent_client_data_cache("/api/0.6/way/1", &mut response);
+        OsmProxy::apply_client_cache_policy("/api/0.6/way/1", &mut response);
 
         assert_eq!(
             response.headers().get("cache-control").unwrap(),
@@ -1163,6 +1192,17 @@ mod tests {
         );
         assert_eq!(response.headers().get("pragma").unwrap(), "no-cache");
         assert_eq!(response.headers().get("expires").unwrap(), "0");
+    }
+
+    #[test]
+    fn test_tiles_expire_after_ten_minutes() {
+        let mut response = Response::new(HyperBody::empty());
+        OsmProxy::apply_client_cache_policy("/tile/1/2/3.png", &mut response);
+
+        assert_eq!(
+            response.headers().get("cache-control").unwrap(),
+            "public, max-age=600"
+        );
     }
 
     #[test]
