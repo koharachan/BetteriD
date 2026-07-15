@@ -1125,6 +1125,10 @@ en:
       elems_title: Features
       fix_title: Fix Guidelines
       trap_title: Common Mistakes
+      translate: Translate to Chinese
+      translating: Translating…
+      translated: Translated
+      translate_error: Translation failed. Try again
     keepRight:
       detail_description: Description
       close: Close (Issue Fixed)

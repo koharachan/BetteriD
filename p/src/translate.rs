@@ -88,16 +88,40 @@ impl FreeTranslator {
             return None;
         }
 
+        // Translation-memory services commonly return mixed brand names unchanged.
+        // Let the AI fallback handle these names with their full context instead.
+        if Self::contains_cjk(text) && text.chars().any(|ch| ch.is_ascii_alphabetic()) {
+            debug!("Mixed-script name requires the AI translation fallback");
+            return None;
+        }
+
         let (zh_cn, zh_tw, en) = tokio::join!(
             self.translate(text, "zh-CN"),
             self.translate(text, "zh-TW"),
             self.translate(text, "en")
         );
 
-        Some(BatchTranslation {
+        let result = BatchTranslation {
             zh_cn: zh_cn?,
             zh_tw: zh_tw?,
             en: en?,
+        };
+        if Self::contains_cjk(&result.en) {
+            debug!("Free English translation still contains CJK text; using AI fallback");
+            return None;
+        }
+
+        Some(result)
+    }
+
+    fn contains_cjk(text: &str) -> bool {
+        text.chars().any(|ch| {
+            matches!(
+                ch,
+                '\u{3400}'..='\u{4DBF}'
+                    | '\u{4E00}'..='\u{9FFF}'
+                    | '\u{F900}'..='\u{FAFF}'
+            )
         })
     }
 
@@ -345,6 +369,13 @@ mod tests {
 
         assert_eq!(result.response_status, 200);
         assert_eq!(result.response_data.translated_text, "Donghe Road");
+    }
+
+    #[test]
+    fn test_mixed_script_names_require_ai_fallback() {
+        let text = "OPPLE集成吊顶";
+        assert!(FreeTranslator::contains_cjk(text));
+        assert!(text.chars().any(|ch| ch.is_ascii_alphabetic()));
     }
 
     #[tokio::test]

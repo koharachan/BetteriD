@@ -3285,6 +3285,31 @@ img.tag-reference-wiki-image {
     display: flex;
     flex-direction: column;
 }
+.qa-translate-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+.qa-translate-button.secondary-action {
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    display: inline-flex;
+    gap: 4px;
+    padding: 6px 10px;
+    width: auto;
+}
+.qa-details-translation {
+    background: var(--bg-color);
+    border-left: 3px solid var(--link-color);
+    color: var(--text-color);
+    margin-top: 6px;
+    padding: 6px 8px;
+}
+.ideditor[dir='rtl'] .qa-details-translation {
+    border-left: none;
+    border-right: 3px solid var(--link-color);
+}
 .qa-details-description-text::first-letter {
     text-transform: capitalize;
 }
