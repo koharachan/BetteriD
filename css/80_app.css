@@ -1935,6 +1935,7 @@ input.date-selector {
     border-radius: 0 0 0 4px;
 }
 .form-field-input-number > input:only-of-type {
+    height: 31px;
     border-radius: 0 0 0 4px;
 }
 .ideditor[dir='rtl'] .form-field-input-number > input:only-of-type {
