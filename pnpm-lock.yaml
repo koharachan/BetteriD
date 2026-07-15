@@ -103,7 +103,7 @@ importers:
         specifier: github:osmlab/editor-layer-index#gh-pages
         version: https://codeload.github.com/osmlab/editor-layer-index/tar.gz/cffac1b35d5dd0368d0c0ab3deefef0bf4ef5734
       '@openstreetmap/id-tagging-schema':
-        specifier: ^7.0.0
+        specifier: 7.0.1
         version: 7.0.1
       '@rapideditor/mapillary_sprite_source':
         specifier: ^1.8.0

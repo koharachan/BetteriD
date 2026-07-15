@@ -16,6 +16,7 @@ transifex.auth
 /dist/locales/en.min.json
 /dist/mapillary-js/
 /dist/pannellum/
+/dist/tagging-schema/
 
 /coverage/
 /docs/statistics.html

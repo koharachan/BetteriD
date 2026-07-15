@@ -20,12 +20,13 @@ var dispatch = d3_dispatch('apiStatusChange', 'authLoading', 'authDone', 'change
 var urlroot = osmApiConnections[0].url;
 var apiUrlroot = osmApiConnections[0].apiUrl || urlroot;
 var redirectPath = window.location.origin + window.location.pathname;
+var redirectUri = osmApiConnections[0].redirect_uri || redirectPath + 'land.html';
 var oauth = new osmAuth({
     url: urlroot,
     apiUrl: apiUrlroot,
     client_id: osmApiConnections[0].client_id,
     scope: 'read_prefs write_prefs write_api read_gpx write_notes',
-    redirect_uri: redirectPath + 'land.html',
+    redirect_uri: redirectUri,
     loading: authLoading,
     done: authDone
 });

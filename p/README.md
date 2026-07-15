@@ -25,6 +25,8 @@ redirect URI with the OSM OAuth application:
 
 Set `OSM_OAUTH_CLIENT_ID` to the public client ID. OAuth uses PKCE, so the client
 secret must not be placed in the editor, this repository, or any browser response.
+For a deployed host, set `OSM_OAUTH_REDIRECT_URI` to the exact callback registered
+with OpenStreetMap. The proxy serves both `/id/land.html` and `/callback`.
 
 Blank optional values are treated as unconfigured. BetteriD checks
 `/api/osm-ai/status` once and disables translation or AI summary controls when

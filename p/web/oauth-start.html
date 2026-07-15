@@ -35,6 +35,7 @@
     (() => {
       const clientId = __BETTERID_OAUTH_CLIENT_ID__;
       const officialOrigin = __BETTERID_OSM_ORIGIN__;
+      const configuredRedirectUri = __BETTERID_OAUTH_REDIRECT_URI__;
       const flowKey = 'betterid.oauth.root';
 
       function base64url(bytes) {
@@ -57,7 +58,7 @@
         const digest = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
         const challenge = base64url(new Uint8Array(digest));
         const state = base64url(window.crypto.getRandomValues(new Uint8Array(24)));
-        const redirectUri = window.location.origin + '/id/land.html';
+        const redirectUri = configuredRedirectUri || window.location.origin + '/id/land.html';
 
         const source = new URLSearchParams(window.location.search);
         const hash = new URLSearchParams();

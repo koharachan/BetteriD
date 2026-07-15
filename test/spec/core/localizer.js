@@ -1,4 +1,5 @@
 import { select as d3_select } from 'd3-selection';
+import { vi } from 'vitest';
 
 describe('iD.coreLocalizer', function() {
     describe('#localized-text', function() {
@@ -90,6 +91,28 @@ describe('iD.coreLocalizer', function() {
             expect(countDecimalPlaces('-0.1')).toEqual(1);
             expect(countDecimalPlaces('1.234')).toEqual(3);
             expect(countDecimalPlaces('10')).toEqual(0);
+        });
+    });
+
+    describe('#ensureLoaded', function() {
+        it('loads general translations when a supplemental translation index fails', async function() {
+            const originalGet = iD.fileFetcher.get.bind(iD.fileFetcher);
+            const getSpy = vi.spyOn(iD.fileFetcher, 'get').mockImplementation(which =>
+                which === 'locales_index_tagging'
+                    ? Promise.reject(new Error('supplemental translations unavailable'))
+                    : originalGet(which)
+            );
+            const warnSpy = vi.spyOn(globalThis.console, 'warn').mockImplementation(() => {});
+
+            try {
+                const localizer = iD.coreLocalizer();
+                localizer.preferredLocaleCodes('en');
+                await localizer.ensureLoaded();
+                expect(localizer.t('icons.download')).toEqual('download');
+            } finally {
+                getSpy.mockRestore();
+                warnSpy.mockRestore();
+            }
         });
     });
 

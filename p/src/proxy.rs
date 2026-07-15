@@ -41,6 +41,7 @@ pub struct OsmProxy {
     tile_upstream_url: String,
     static_dir: PathBuf,
     oauth_client_id: String,
+    oauth_redirect_uri: Option<String>,
     rate_limits: Arc<Mutex<HashMap<IpAddr, VecDeque<Instant>>>>,
 }
 
@@ -70,6 +71,7 @@ impl OsmProxy {
         tile_upstream_url: String,
         static_dir: PathBuf,
         oauth_client_id: String,
+        oauth_redirect_uri: Option<String>,
     ) -> Self {
         let client = ReqwestClient::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -89,6 +91,7 @@ impl OsmProxy {
             tile_upstream_url,
             static_dir,
             oauth_client_id,
+            oauth_redirect_uri,
             rate_limits: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -128,7 +131,7 @@ impl OsmProxy {
         if path == "/id/" {
             return Ok(self.serve_id_index(&method).await);
         }
-        if path == "/id/land.html" {
+        if matches!(path.as_str(), "/id/land.html" | "/callback") {
             return Ok(self.serve_id_landing(&method).await);
         }
         if let Some(relative) = path.strip_prefix("/id/dist/") {
@@ -488,10 +491,13 @@ impl OsmProxy {
             serde_json::to_string(&self.oauth_client_id).unwrap_or_else(|_| "\"\"".to_string());
         let official_origin = serde_json::to_string(self.upstream_url.trim_end_matches('/'))
             .unwrap_or_else(|_| "\"https://www.openstreetmap.org\"".to_string());
+        let redirect_uri =
+            serde_json::to_string(&self.oauth_redirect_uri).unwrap_or_else(|_| "null".to_string());
 
         OAUTH_START_TEMPLATE
             .replace("__BETTERID_OAUTH_CLIENT_ID__", &client_id)
             .replace("__BETTERID_OSM_ORIGIN__", &official_origin)
+            .replace("__BETTERID_OAUTH_REDIRECT_URI__", &redirect_uri)
     }
 
     async fn serve_id_index(&self, method: &Method) -> Response<HyperBody> {
@@ -510,14 +516,20 @@ impl OsmProxy {
             );
         };
 
-        let asset_version = SystemTime::now()
+        let asset_version = tokio::fs::metadata(self.static_dir.join("iD.min.js"))
+            .await
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or_else(|_| SystemTime::now())
             .duration_since(UNIX_EPOCH)
             .map_or(0, |duration| duration.as_secs());
         html = html.replace("__BETTERID_ASSET_VERSION__", &asset_version.to_string());
+        html = html.replace("dist/iD.js?v=", "dist/iD.min.js?v=");
         let client_id =
             serde_json::to_string(&self.oauth_client_id).unwrap_or_else(|_| "\"\"".to_string());
+        let redirect_uri =
+            serde_json::to_string(&self.oauth_redirect_uri).unwrap_or_else(|_| "null".to_string());
         let runtime_config = format!(
-            "<script>window.OSM_PROXY_CONFIG={{assetVersion:{asset_version},osmApiConnection:{{url:window.location.origin,apiUrl:window.location.origin,client_id:{client_id}}}}};</script>"
+            "<script>window.OSM_PROXY_CONFIG={{assetVersion:{asset_version},osmApiConnection:{{url:window.location.origin,apiUrl:window.location.origin,client_id:{client_id},redirect_uri:{redirect_uri}}}}};</script>"
         );
         html = html.replace("</head>", &format!("{runtime_config}</head>"));
         Self::file_response(
@@ -1075,6 +1087,7 @@ mod tests {
             "https://tile.openstreetmap.org".to_string(),
             PathBuf::from("../dist"),
             "test-client".to_string(),
+            Some("https://map.osm.asia/callback".to_string()),
         )
     }
 
@@ -1164,6 +1177,7 @@ mod tests {
         assert!(html.contains("test-client"));
         assert!(html.contains("code_challenge_method"));
         assert!(html.contains("betterid.oauth.root"));
+        assert!(html.contains("https://map.osm.asia/callback"));
         assert!(!html.contains("client_secret"));
     }
 }

@@ -3,6 +3,7 @@
 // cdns for external data packages
 const presetsCdnUrl = ENV__ID_PRESETS_CDN_URL
   || 'https://cdn.jsdelivr.net/npm/@openstreetmap/id-tagging-schema@{presets_version}/';
+const presetTranslationsUrl = 'tagging-schema/dist/translations';
 const ociCdnUrl = ENV__ID_OCI_CDN_URL
   || 'https://cdn.jsdelivr.net/npm/osm-community-index@{version}/';
 const wmfSitematrixCdnUrl = ENV__ID_WMF_SITEMATRIX_CDN_URL
@@ -22,14 +23,15 @@ const defaultOsmApiConnections = {
     client_id: 'Ee1wWJ6UlpERbF6BfTNOpwn0R8k_06mvMXdDUkeHMgw'
   }
 };
-/** @type {{ url: string; apiUrl: string; client_id: string; }[]} */
+/** @type {{ url: string; apiUrl: string; client_id: string; redirect_uri?: string; }[]} */
 const osmApiConnections = [];
 const runtimeConnection = globalThis.OSM_PROXY_CONFIG && globalThis.OSM_PROXY_CONFIG.osmApiConnection;
 if (runtimeConnection?.url && runtimeConnection?.client_id) {
   osmApiConnections.push({
     url: runtimeConnection.url,
     apiUrl: runtimeConnection.apiUrl || runtimeConnection.url,
-    client_id: runtimeConnection.client_id
+    client_id: runtimeConnection.client_id,
+    redirect_uri: runtimeConnection.redirect_uri
   });
 } else if (ENV__ID_API_CONNECTION_URL !== null &&
     ENV__ID_API_CONNECTION_CLIENT_ID !== null) {
@@ -62,6 +64,7 @@ const showDonationMessage = ENV__ID_SHOW_DONATION_MESSAGE !== 'false';
 
 export {
   presetsCdnUrl,
+  presetTranslationsUrl,
   ociCdnUrl,
   wmfSitematrixCdnUrl,
   nsiCdnUrl,

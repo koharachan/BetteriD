@@ -30,6 +30,7 @@ pub struct ProxyConfig {
     pub cache_dir: Option<String>,
     pub id_static_dir: String,
     pub osm_oauth_client_id: String,
+    pub osm_oauth_redirect_uri: Option<String>,
     pub bing_translate_api_key: Option<String>,
     pub bing_translate_region: String,
     pub deepseek_api_key: Option<String>,
@@ -50,6 +51,7 @@ impl Default for ProxyConfig {
             cache_dir: Some("./cache".to_string()),
             id_static_dir: "../dist".to_string(),
             osm_oauth_client_id: "ASM8cOEBbmYIZG89l1Xagbx037aD7fc49t_TcEGU8SU".to_string(),
+            osm_oauth_redirect_uri: None,
             bing_translate_api_key: None,
             bing_translate_region: "global".to_string(),
             deepseek_api_key: None,
@@ -96,6 +98,9 @@ impl ProxyConfig {
         }
         if let Some(v) = value("OSM_OAUTH_CLIENT_ID") {
             config.osm_oauth_client_id = v;
+        }
+        if let Some(v) = value("OSM_OAUTH_REDIRECT_URI") {
+            config.osm_oauth_redirect_uri = Some(v);
         }
         if let Some(v) = value("BING_TRANSLATE_API_KEY") {
             config.bing_translate_api_key = Some(v);

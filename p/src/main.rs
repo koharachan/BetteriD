@@ -53,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.tile_upstream_url.clone(),
         PathBuf::from(&config.id_static_dir),
         config.osm_oauth_client_id.clone(),
+        config.osm_oauth_redirect_uri.clone(),
     );
 
     let cache_for_stats = cache.clone();

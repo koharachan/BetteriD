@@ -5,7 +5,7 @@ import { fileFetcher } from './file_fetcher';
 import { utilDetect } from '../util/detect';
 import { utilExpandLocaleCode, utilStringQs } from '../util';
 import { utilArrayUniq } from '../util/array';
-import { presetsCdnUrl } from '../../config/id.js';
+import { presetTranslationsUrl } from '../../config/id.js';
 
 let _mainLocalizer = coreLocalizer(); // singleton
 let _t = _mainLocalizer.t;
@@ -97,7 +97,7 @@ export function coreLocalizer() {
 
         const localeDirs = {
             general: 'locales',
-            tagging: presetsCdnUrl + 'dist/translations'
+            tagging: presetTranslationsUrl
         };
 
         let fileMap = fileFetcher.fileMap();
@@ -109,7 +109,15 @@ export function coreLocalizer() {
             filesToFetch.push(key);
         }
 
-        return _loadPromise = Promise.all(filesToFetch.map(key => fileFetcher.get(key)))
+        return _loadPromise = Promise.all(filesToFetch.map((key, index) => {
+            // A supplemental locale source (for example, preset translations)
+            // must not prevent iD's own translations from loading.
+            if (index < 3) return fileFetcher.get(key);
+            return fileFetcher.get(key).catch(err => {
+                console.warn(`Unable to load translation index "${key}"`, err);  // eslint-disable-line
+                return null;
+            });
+        }))
             .then(results => {
                 _dataLanguages = results[0];
                 _dataLocales = results[1];
@@ -124,6 +132,7 @@ export function coreLocalizer() {
                 let loadStringsPromises = [];
 
                 indexes.forEach((index, i) => {
+                    if (!index) return;
                     // Will always return the index for `en` if nothing else
                     const fullCoverageIndex = _localeCodes.findIndex(function(locale) {
                         return index[locale] && index[locale].pct === 1;
