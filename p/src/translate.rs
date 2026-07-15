@@ -1,5 +1,6 @@
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 /// Bing (Azure Cognitive Services) Translator.
 ///
@@ -46,6 +47,110 @@ pub struct BatchTranslation {
     pub zh_cn: String,
     pub zh_tw: String,
     pub en: String,
+}
+
+/// Keyless MyMemory translation client used before the paid AI fallback.
+#[derive(Clone)]
+pub struct FreeTranslator {
+    client: reqwest::Client,
+}
+
+#[derive(Debug, Deserialize)]
+struct MyMemoryResponse {
+    #[serde(rename = "responseData")]
+    response_data: MyMemoryResponseData,
+    #[serde(rename = "responseDetails", default)]
+    response_details: String,
+    #[serde(rename = "responseStatus")]
+    response_status: u16,
+}
+
+#[derive(Debug, Deserialize)]
+struct MyMemoryResponseData {
+    #[serde(rename = "translatedText")]
+    translated_text: String,
+}
+
+impl FreeTranslator {
+    pub fn new() -> Self {
+        let client = reqwest::Client::builder()
+            .gzip(true)
+            .timeout(Duration::from_secs(15))
+            .build()
+            .unwrap();
+        Self { client }
+    }
+
+    /// Translate into the three name locales without requiring an API key.
+    pub async fn translate_three(&self, text: &str) -> Option<BatchTranslation> {
+        let text = text.trim();
+        if text.is_empty() {
+            return None;
+        }
+
+        let (zh_cn, zh_tw, en) = tokio::join!(
+            self.translate(text, "zh-CN"),
+            self.translate(text, "zh-TW"),
+            self.translate(text, "en")
+        );
+
+        Some(BatchTranslation {
+            zh_cn: zh_cn?,
+            zh_tw: zh_tw?,
+            en: en?,
+        })
+    }
+
+    async fn translate(&self, text: &str, target: &str) -> Option<String> {
+        let lang_pair = format!("Autodetect|{}", target);
+        let response = match self
+            .client
+            .get("https://api.mymemory.translated.net/get")
+            .query(&[("q", text), ("langpair", lang_pair.as_str())])
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(err) => {
+                error!("MyMemory request failed: {}", err);
+                return None;
+            }
+        };
+
+        if !response.status().is_success() {
+            error!("MyMemory HTTP error {}", response.status());
+            return None;
+        }
+
+        let result = match response.json::<MyMemoryResponse>().await {
+            Ok(result) => result,
+            Err(err) => {
+                error!("Failed to parse MyMemory response: {}", err);
+                return None;
+            }
+        };
+
+        if result.response_status == 200 {
+            let translated = result.response_data.translated_text.trim().to_string();
+            return (!translated.is_empty()).then_some(translated);
+        }
+
+        // MyMemory rejects a source and target that are already the same language.
+        // In that case, the source text is already the correct translation.
+        if result.response_status == 403
+            && result
+                .response_details
+                .contains("SELECT TWO DISTINCT LANGUAGES")
+        {
+            return Some(text.to_string());
+        }
+
+        error!(
+            "MyMemory translation error {}: {}",
+            result.response_status, result.response_details
+        );
+        None
+    }
 }
 
 impl Translator {
@@ -230,6 +335,17 @@ pub async fn generate_multilingual_name(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_mymemory_response() {
+        let result: MyMemoryResponse = serde_json::from_str(
+            r#"{"responseData":{"translatedText":"Donghe Road"},"responseDetails":"","responseStatus":200}"#,
+        )
+        .unwrap();
+
+        assert_eq!(result.response_status, 200);
+        assert_eq!(result.response_data.translated_text, "Donghe Road");
+    }
 
     #[tokio::test]
     async fn test_translator_no_key() {

@@ -21,7 +21,7 @@ use url::{Url, form_urlencoded};
 use crate::ai::AiGenerator;
 use crate::cache::{CacheEntry, CacheHandle};
 use crate::config::ProxyConfig;
-use crate::translate::Translator;
+use crate::translate::{BatchTranslation, FreeTranslator, Translator};
 
 const AI_BODY_LIMIT: usize = 64 * 1024;
 const AI_RATE_LIMIT: usize = 30;
@@ -36,6 +36,7 @@ pub struct OsmProxy {
     client: ReqwestClient,
     cache: CacheHandle,
     translator: Option<Translator>,
+    free_translator: FreeTranslator,
     ai_generator: Option<AiGenerator>,
     upstream_url: String,
     tile_upstream_url: String,
@@ -86,6 +87,7 @@ impl OsmProxy {
             client,
             cache,
             translator,
+            free_translator: FreeTranslator::new(),
             ai_generator,
             upstream_url,
             tile_upstream_url,
@@ -197,7 +199,7 @@ impl OsmProxy {
                 StatusCode::OK,
                 serde_json::json!({
                     "ai": self.ai_generator.is_some(),
-                    "translate": self.translator.is_some()
+                    "translate": true
                 }),
             );
         }
@@ -244,14 +246,6 @@ impl OsmProxy {
     }
 
     async fn handle_translate(&self, body: &[u8]) -> Response<HyperBody> {
-        let Some(translator) = &self.translator else {
-            return Self::json_response(
-                StatusCode::SERVICE_UNAVAILABLE,
-                serde_json::json!({
-                    "error": "Translation service is not configured"
-                }),
-            );
-        };
         let Ok(request) = serde_json::from_slice::<TranslateApiRequest>(body) else {
             return Self::json_response(
                 StatusCode::BAD_REQUEST,
@@ -270,7 +264,29 @@ impl OsmProxy {
                 }),
             );
         }
-        let Some(result) = translator.translate_three(text).await else {
+        let mut result = None;
+        if let Some(translator) = &self.translator {
+            result = translator.translate_three(text).await;
+        }
+        if result.is_none() {
+            result = self.free_translator.translate_three(text).await;
+        }
+        if result.is_none() {
+            if let Some(ai) = &self.ai_generator {
+                match ai.translate_three(text).await {
+                    Ok(ai_result) => {
+                        result = Some(BatchTranslation {
+                            zh_cn: ai_result.zh_cn,
+                            zh_tw: ai_result.zh_tw,
+                            en: ai_result.en,
+                        });
+                    }
+                    Err(err) => error!("DeepSeek translation failed: {}", err),
+                }
+            }
+        }
+
+        let Some(result) = result else {
             return Self::json_response(
                 StatusCode::BAD_GATEWAY,
                 serde_json::json!({
