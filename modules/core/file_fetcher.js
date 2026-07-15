@@ -25,6 +25,7 @@ export function coreFileFetcher() {
     'qa_data': 'data/qa_data.min.json',
     'shortcuts': 'data/shortcuts.min.json',
     'territory_languages': 'data/territory_languages.min.json',
+    'locale_overrides': 'data/locale_overrides.min.json',
     'oci_defaults': ociCdnUrl.replace('{version}', ociVersion) + 'dist/json/defaults.min.json',
     'oci_features': ociCdnUrl.replace('{version}', ociVersion) + 'dist/json/featureCollection.min.json',
     'oci_resources': ociCdnUrl.replace('{version}', ociVersion) + 'dist/json/resources.min.json',
@@ -51,7 +52,13 @@ export function coreFileFetcher() {
     }
 
     const file = _fileMap[which];
-    const url = file && _this.asset(file);
+    let url = file && _this.asset(file);
+    const assetVersion = globalThis.OSM_PROXY_CONFIG?.assetVersion;
+    if (url && assetVersion && !/^https?:\/\//i.test(url)) {
+      const separator = url.includes('?') ? '&' : '?';
+      url += `${separator}v=${encodeURIComponent(assetVersion)}`;
+    }
+
     if (!url) {
       return Promise.reject(`Unknown data file for "${which}"`);
     }

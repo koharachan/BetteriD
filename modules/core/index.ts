@@ -1,3 +1,4 @@
+export { coreChangeBatches } from './change_batches';
 export { coreContext } from './context';
 export { coreFileFetcher, fileFetcher } from './file_fetcher';
 export { coreDifference } from './difference';

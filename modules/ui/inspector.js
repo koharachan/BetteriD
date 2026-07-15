@@ -13,7 +13,7 @@ export function uiInspector(context) {
         presetPane = d3_select(null),
         editorPane = d3_select(null);
     var _state = 'select';
-    var _entityIDs;
+    var _entityIDs = [];
     var _newFeature = false;
 
 

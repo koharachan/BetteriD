@@ -5,8 +5,10 @@ import { actionDiscardTags } from '../actions/discard_tags';
 import { actionMergeRemoteChanges } from '../actions/merge_remote_changes';
 import { actionNoop } from '../actions/noop';
 import { actionRevert } from '../actions/revert';
+import { coreChangeBatches } from '../core/change_batches';
 import { coreGraph } from '../core/graph';
 import { t } from '../core/localizer';
+import { osmChangeset } from '../osm';
 import { utilArrayUnion, utilArrayUniq, utilDisplayName, utilDisplayType, utilRebind } from '../util';
 
 
@@ -34,6 +36,8 @@ export function coreUploader(context) {
     var _conflicts = [];
     var _errors = [];
     var _origChanges;
+    var _saveOptions = {};
+    var _uploadedChangesets = [];
 
     var _discardTags = {};
     fileFetcher.get('discarded')
@@ -46,10 +50,14 @@ export function coreUploader(context) {
         return _isSaving;
     };
 
-    uploader.save = function(changeset, tryAgain, checkConflicts) {
+    uploader.save = function(changeset, tryAgain, checkConflicts, saveOptions) {
         // Guard against accidentally entering save code twice - #4641
         if (_isSaving && !tryAgain) {
             return;
+        }
+        if (!tryAgain) {
+            _saveOptions = saveOptions || {};
+            _uploadedChangesets = [];
         }
 
         var osm = context.connection();
@@ -88,10 +96,10 @@ export function coreUploader(context) {
         }
 
         // Attempt a fast upload.. If there are conflicts, re-enter with `checkConflicts = true`
-        if (!checkConflicts) {
+        if (!checkConflicts && !_saveOptions.enabled) {
             upload(changeset);
 
-        // Do the full (slow) conflict check..
+        // Split uploads always run the full check before the first batch.
         } else {
             performFullConflictCheck(changeset);
         }
@@ -296,23 +304,69 @@ export function coreUploader(context) {
 
         } else {
             if (_anyConflictsAutomaticallyResolved) {
-                // add a changeset tag to aid reviewers
                 changeset.tags.merge_conflict_resolved = 'automatically';
-                await osm.updateChangesetTags(changeset);
+                if (changeset.id) {
+                    await osm.updateChangesetTags(changeset);
+                }
             }
+
             var history = context.history();
             var changes = history.changes(actionDiscardTags(history.difference(), _discardTags));
-            if (changes.modified.length || changes.created.length || changes.deleted.length) {
-
-                dispatch.call('willAttemptUpload', this);
-
-                osm.putChangeset(changeset, changes, uploadCallback);
-
-            } else {
-                // changes were insignificant or reverted by user
+            var hasChanges = changes.modified.length || changes.created.length || changes.deleted.length;
+            if (!hasChanges) {
                 didResultInNoChanges();
+                return;
+            }
+
+            var batches = _saveOptions.enabled ?
+                coreChangeBatches(changes, context.graph(), _saveOptions) : [changes];
+
+            dispatch.call('willAttemptUpload', this);
+            if (batches.length > 1) {
+                uploadBatches(changeset, batches);
+            } else {
+                osm.putChangeset(changeset, batches[0], uploadCallback);
             }
         }
+    }
+
+
+    function uploadBatches(changeset, batches) {
+        var osm = context.connection();
+        if (!osm) return;
+
+        function uploadNext(index) {
+            var batch = batches[index];
+            var tags = Object.assign({}, changeset.tags);
+            if (tags.comment) {
+                tags.comment = `${tags.comment}（第 ${index + 1}/${batches.length} 批）`;
+            }
+            var batchChangeset = new osmChangeset({ tags: tags });
+
+            osm.putChangeset(batchChangeset, batch, function(err, uploadedChangeset) {
+                if (err) {
+                    var completedIDs = _uploadedChangesets.map(item => item.id).filter(Boolean);
+                    _errors.push({
+                        msg: t('save.split_failed', { completed: completedIDs.length, total: batches.length }),
+                        details: completedIDs.length ?
+                            [t('save.split_completed_ids', { ids: completedIDs.join(', ') })] :
+                            [t('save.status_code', { code: err.status })]
+                    });
+                    didResultInErrors();
+                    return;
+                }
+
+                _uploadedChangesets.push(uploadedChangeset);
+                dispatch.call('progressChanged', this, index + 1, batches.length);
+                if (index + 1 < batches.length) {
+                    uploadNext(index + 1);
+                } else {
+                    didResultInSuccess(uploadedChangeset);
+                }
+            });
+        }
+
+        uploadNext(0);
     }
 
 
@@ -370,7 +424,8 @@ export function coreUploader(context) {
         // delete the edit stack cached to local storage
         context.history().clearSaved();
 
-        dispatch.call('resultSuccess', this, changeset);
+        if (!_uploadedChangesets.length) _uploadedChangesets = [changeset];
+        dispatch.call('resultSuccess', this, changeset, _uploadedChangesets.slice());
 
         // Add delay to allow for postgres replication #1646 #2678
         window.setTimeout(function() {
@@ -414,8 +469,14 @@ export function coreUploader(context) {
     };
 
 
-    uploader.reset = function() {
+    uploader.uploadedChangesets = function() {
+        return _uploadedChangesets.slice();
+    };
 
+
+    uploader.reset = function() {
+        _saveOptions = {};
+        _uploadedChangesets = [];
     };
 
 

@@ -5556,6 +5556,77 @@ a.user-info {
     cursor: pointer;
 }
 
+.smart-split-section {
+    margin-bottom: 12px;
+}
+
+.smart-split-toggle {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 8px;
+}
+
+.split-options {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+    margin-top: 10px;
+}
+
+.split-options label {
+    align-self: center;
+}
+
+.split-options .fixed-count-group {
+    display: contents;
+}
+
+.split-options .split-preview {
+    color: var(--text-light-color);
+    font-size: 12px;
+    grid-column: 1 / -1;
+    overflow-wrap: anywhere;
+}
+
+.translation-preview {
+    display: grid;
+    gap: 10px;
+}
+
+.translation-preview-row {
+    align-items: center;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 18px minmax(80px, 120px) minmax(0, 1fr);
+}
+
+.translation-preview-row .translation-language {
+    overflow-wrap: anywhere;
+}
+
+.translation-preview-row .translation-value {
+    min-width: 0;
+    width: 100%;
+}
+
+.translation-preview-row .translation-existing {
+    color: var(--text-light-color);
+    font-size: 12px;
+    grid-column: 3;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+    .translation-preview-row {
+        grid-template-columns: 18px minmax(0, 1fr);
+    }
+    .translation-preview-row .translation-value,
+    .translation-preview-row .translation-existing {
+        grid-column: 2;
+    }
+}
+
 .changeset-list {
     border: 1px solid var(--border-color);
     border-radius: 4px;

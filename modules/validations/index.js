@@ -15,4 +15,5 @@ export { validationOsmApiLimits } from './osm_api_limits';
 export { validationOutdatedTags } from './outdated_tags';
 export { validationPrivateData } from './private_data';
 export { validationSuspiciousName } from './suspicious_name';
+export { validationNonLocalName } from './non_local_name';
 export { validationUnsquareWay } from './unsquare_way';

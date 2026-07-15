@@ -3,6 +3,7 @@ import { select as d3_select } from 'd3-selection';
 
 import { presetManager } from '../presets';
 import { t } from '../core/localizer';
+import { utilChangesetSummary } from '../util/changeset_summary';
 import { svgIcon } from '../svg/icon';
 import { uiCombobox} from './combobox';
 import { uiField } from './field';
@@ -65,6 +66,48 @@ export function uiChangesetEditor(context) {
                 commentNode.focus();
                 commentNode.select();
             }
+
+            var aiSummaryWrap = selection.select('.form-field-comment .form-field-input-wrap');
+            var aiSummaryButton = aiSummaryWrap.selectAll('.ai-summary-button')
+                .data([0]);
+
+            aiSummaryButton = aiSummaryButton.enter()
+                .append('button')
+                .attr('type', 'button')
+                .attr('class', 'ai-summary-button form-field-button')
+                .attr('aria-label', t('commit.ai_summary'))
+                .call(svgIcon('#iD-icon-translate'))
+                .merge(aiSummaryButton);
+
+            aiSummaryButton
+                .on('click', function() {
+                    var button = d3_select(this);
+                    button.classed('loading', true);
+
+                    var summary = utilChangesetSummary(context.history().changes());
+
+                    fetch('/api/osm-ai/summarize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ summary: summary })
+                    })
+                    .then(function(response) {
+                        if (!response.ok) throw new Error('AI summary failed');
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data.summary) {
+                            _tags.comment = data.summary;
+                            dispatch.call('change', this, undefined, { comment: data.summary });
+                        }
+                    })
+                    .catch(function() {
+                        // ignore errors
+                    })
+                    .finally(function() {
+                        button.classed('loading', false);
+                    });
+                });
 
             // trigger a 'blur' event so that comment field can be cleaned
             // and checked for hashtags, even if retrieved from localstorage

@@ -6,6 +6,7 @@ import { presetManager } from '../../presets';
 import { fileFetcher } from '../../core/file_fetcher';
 import { t, localizer } from '../../core/localizer';
 import { svgIcon } from '../../svg';
+import { uiConfirm } from '../confirm';
 import { uiTooltip } from '../tooltip';
 import { uiCombobox } from '../combobox';
 import { utilArrayUniq, utilGetSetValue, utilNoAuto, utilRebind, utilTotalExtent, utilUniqueDomId } from '../../util';
@@ -45,6 +46,9 @@ export function uiFieldLocalized(field, context) {
     var _multilingual = [];
     var _buttonTip = uiTooltip()
         .title(() => t.append('translate.translate'))
+        .placement('left');
+    var _translateButtonTip = uiTooltip()
+        .title(() => t.append('translate.translate_all'))
         .placement('left');
     var _entityIDs = [];
 
@@ -200,6 +204,22 @@ export function uiFieldLocalized(field, context) {
             .call(isLocked ? _buttonTip.destroy : _buttonTip)
             .on('click', addNew);
 
+        var autoTranslateButton = wrap.selectAll('.localized-auto-translate')
+            .data([0]);
+
+        autoTranslateButton = autoTranslateButton.enter()
+            .append('button')
+            .attr('type', 'button')
+            .attr('class', 'localized-auto-translate form-field-button')
+            .attr('aria-label', t('translate.translate_all'))
+            .call(svgIcon('#iD-icon-translate'))
+            .merge(autoTranslateButton);
+
+        autoTranslateButton
+            .classed('disabled', !!isLocked)
+            .call(isLocked ? _translateButtonTip.destroy : _translateButtonTip)
+            .on('click', autoTranslate);
+
 
         if (_tags && !_multilingual.length) {
             calcMultilingual(_tags);
@@ -235,12 +255,132 @@ export function uiFieldLocalized(field, context) {
             }
 
             if (!langExists) {
-                // prepend the value so it appears at the top
                 _multilingual.unshift({ lang: defaultLang, value: '' });
 
                 localizedInputs
                     .call(renderMultilingual);
             }
+        }
+
+        function autoTranslate(d3_event) {
+            d3_event.preventDefault();
+            if (field.locked()) return;
+
+            var mainValue = utilGetSetValue(input);
+            if (!mainValue || !mainValue.trim()) {
+                return;
+            }
+
+            autoTranslateButton.classed('loading', true);
+
+            fetch('/api/osm-ai/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: mainValue,
+                    target_langs: ['zh', 'zh-Hant', 'en']
+                })
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Translation failed');
+                return response.json();
+            })
+            .then(function(result) {
+                showTranslationPreview(result.translations || []);
+            })
+            .catch(function(err) {
+                console.error('Auto-translate failed:', err);  // eslint-disable-line no-console
+            })
+            .finally(function() {
+                autoTranslateButton.classed('loading', false);
+            });
+        }
+
+
+        function showTranslationPreview(translations) {
+            var rows = translations
+                .filter(function(item) { return item.lang && item.text && item.text.trim(); })
+                .map(function(item) {
+                    var existing = _multilingual.find(function(value) { return value.lang === item.lang; });
+                    return {
+                        existing: existing && existing.value,
+                        lang: item.lang,
+                        selected: !(existing && existing.value),
+                        text: item.text.trim()
+                    };
+                });
+            if (!rows.length) return;
+
+            var modal = uiConfirm(context.container()).okButton();
+            modal.classed('translation-preview-modal', true);
+
+            modal.select('.modal-section.header')
+                .append('h3')
+                .call(t.append('translate.preview_title'));
+
+            var section = modal.select('.content')
+                .append('div')
+                .attr('class', 'modal-section translation-preview fillL');
+
+            var row = section.selectAll('.translation-preview-row')
+                .data(rows)
+                .enter()
+                .append('label')
+                .attr('class', 'translation-preview-row');
+
+            row.append('input')
+                .attr('type', 'checkbox')
+                .property('checked', function(d) { return d.selected; });
+
+            row.append('span')
+                .attr('class', 'translation-language')
+                .text(function(d) { return localizer.languageName(d.lang) || d.lang; });
+
+            row.append('input')
+                .attr('type', 'text')
+                .attr('class', 'translation-value')
+                .attr('autocomplete', 'off')
+                .property('value', function(d) { return d.text; });
+
+            row.filter(function(d) { return !!d.existing; })
+                .append('span')
+                .attr('class', 'translation-existing')
+                .text(function(d) { return t('translate.existing_value', { value: d.existing }); });
+
+            var buttons = modal.select('.modal-section.buttons');
+            buttons.insert('button', '.ok-button')
+                .attr('class', 'button cancel-button secondary-action')
+                .call(t.append('confirm.cancel'))
+                .on('click.cancel', function() { modal.remove(); });
+
+            buttons.select('.ok-button')
+                .call(t.append('translate.apply'))
+                .on('click.translate', function() {
+                    var tags = {};
+
+                    row.each(function(d) {
+                        var current = d3_select(this);
+                        if (!current.select('input[type="checkbox"]').property('checked')) return;
+
+                        var value = current.select('.translation-value').property('value').trim();
+                        if (!value) return;
+
+                        var existing = _multilingual.find(function(item) { return item.lang === d.lang; });
+                        if (existing) {
+                            existing.value = value;
+                        } else {
+                            _multilingual.push({ lang: d.lang, value: value });
+                        }
+                        tags[field.key + ':' + d.lang] = value;
+                    });
+
+                    if (Object.keys(tags).length) {
+                        dispatch.call('change', this, tags);
+                        localizedInputs.call(renderMultilingual);
+                    }
+                });
         }
 
 

@@ -42,7 +42,7 @@ const chapterFlow = [
 
 
 export function uiIntro(context) {
-  const INTRO_IMAGERY = 'Bing';
+  const INTRO_IMAGERY = 'EsriWorldImagery';
   let _introGraph = {};
   let _currChapter;
 

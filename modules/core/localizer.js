@@ -84,13 +84,15 @@ export function coreLocalizer() {
 
 
     var _loadPromise;
+    let _localeOverrides = {};
 
     localizer.ensureLoaded = () => {
         if (_loadPromise) return _loadPromise;
 
         let filesToFetch = [
             'languages',  // load the list of languages
-            'locales'     // load the list of supported locales
+            'locales',     // load the list of supported locales
+            'locale_overrides'  // local translation overrides
         ];
 
         const localeDirs = {
@@ -111,8 +113,9 @@ export function coreLocalizer() {
             .then(results => {
                 _dataLanguages = results[0];
                 _dataLocales = results[1];
+                _localeOverrides = results[2] || {};
 
-                let indexes = results.slice(2);
+                let indexes = results.slice(3);
 
                 _localeCodes = localizer.localesToUseFrom(_dataLocales);
                 _localeCode = _localeCodes[0];   // Run iD in the highest-priority locale; the rest are fallbacks
@@ -136,10 +139,38 @@ export function coreLocalizer() {
                 return Promise.all(loadStringsPromises);
             })
             .then(() => {
+                applyLocaleOverrides();
                 updateForCurrentLocale();
             })
             .catch(err => console.error(err));  // eslint-disable-line
     };
+
+    function applyLocaleOverrides() {
+        for (let scopeID in _localeOverrides) {
+            const locales = _localeOverrides[scopeID];
+            if (!locales || typeof locales !== 'object') continue;
+
+            for (let locale in locales) {
+                if (!locales[locale] || typeof locales[locale] !== 'object') continue;
+                if (!_localeStrings[scopeID]) _localeStrings[scopeID] = {};
+                if (!_localeStrings[scopeID][locale]) _localeStrings[scopeID][locale] = {};
+                deepMerge(_localeStrings[scopeID][locale], locales[locale]);
+            }
+        }
+    }
+
+    function deepMerge(target, source) {
+        for (let key in source) {
+            if (source.hasOwnProperty(key)) {
+                if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+                    if (!target[key]) target[key] = {};
+                    deepMerge(target[key], source[key]);
+                } else {
+                    target[key] = source[key];
+                }
+            }
+        }
+    }
 
     // Returns the locales from `requestedLocales` supported by iD that we should use
     /** @param {{ [locale: string]: unknown }} supportedLocales */

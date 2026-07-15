@@ -452,6 +452,7 @@ export function rendererBackground(context) {
     return loadPromise.then(imageryIndex => {
       const extent = context.map().extent();
       const validBackgrounds = background.sources(extent).filter(d => d.id !== 'none' && d.id !== 'custom');
+      const defaultBackground = validBackgrounds.find(d => d.id === 'EsriWorldImagery');
       const first = validBackgrounds.length && validBackgrounds[0];
       const isLastUsedValid = !!validBackgrounds.find(d => d.id && d.id === lastUsedBackground);
 
@@ -477,6 +478,7 @@ export function rendererBackground(context) {
       } else {
         background.baseLayerSource(
           background.findSource(requestedBackground) ||
+          defaultBackground ||
           best ||
           isLastUsedValid && background.findSource(lastUsedBackground) ||
           background.findSource('Bing') ||

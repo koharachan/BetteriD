@@ -20,6 +20,7 @@ export function uiSuccess(context) {
   const MAXEVENTS = 2;
   const dispatch = d3_dispatch('cancel');
   let _changeset;
+  let _changesets = [];
   let _location;
   ensureOSMCommunityIndex();   // start fetching the data
 
@@ -117,13 +118,14 @@ export function uiSuccess(context) {
     let osm = context.connection();
     if (!osm) return;
 
-    let changesetURL = osm.changesetURL(_changeset.id);
-
+    const changesets = _changesets.length ? _changesets : [_changeset];
     let table = summary
       .append('table')
       .attr('class', 'summary-table');
 
-    let row = table
+    let row = table.selectAll('.summary-row')
+      .data(changesets)
+      .enter()
       .append('tr')
       .attr('class', 'summary-row');
 
@@ -132,7 +134,7 @@ export function uiSuccess(context) {
       .attr('class', 'cell-icon summary-icon')
       .append('a')
       .attr('target', '_blank')
-      .attr('href', changesetURL)
+      .attr('href', changeset => osm.changesetURL(changeset.id))
       .append('svg')
       .attr('class', 'logo-small')
       .append('use')
@@ -146,18 +148,21 @@ export function uiSuccess(context) {
       .append('a')
       .attr('class', 'cell-detail summary-view-on-osm')
       .attr('target', '_blank')
-      .attr('href', changesetURL)
+      .attr('href', changeset => osm.changesetURL(changeset.id))
       .call(t.append('success.view_on_osm'));
 
     summaryDetail
       .append('div')
-      .call(t.addOrUpdate('success.changeset_id', {
-        changeset_id: selection => selection
-          .append('a')
-          .attr('target', '_blank')
-          .attr('href', changesetURL)
-          .text(_changeset.id)
-      }));
+      .each(function(changeset) {
+        d3_select(this).call(t.addOrUpdate('success.changeset_id', {
+          changeset_id: selection => selection
+            .append('a')
+            .attr('target', '_blank')
+            .attr('href', osm.changesetURL(changeset.id))
+            .text(changeset.id)
+        }));
+      });
+
 
     if (showDonationMessage !== false) {
       // support ask
@@ -444,6 +449,13 @@ export function uiSuccess(context) {
   success.changeset = function(val) {
     if (!arguments.length) return _changeset;
     _changeset = val;
+    return success;
+  };
+
+
+  success.changesets = function(val) {
+    if (!arguments.length) return _changesets;
+    _changesets = val || [];
     return success;
   };
 

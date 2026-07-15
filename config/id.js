@@ -24,7 +24,14 @@ const defaultOsmApiConnections = {
 };
 /** @type {{ url: string; apiUrl: string; client_id: string; }[]} */
 const osmApiConnections = [];
-if (ENV__ID_API_CONNECTION_URL !== null &&
+const runtimeConnection = globalThis.OSM_PROXY_CONFIG && globalThis.OSM_PROXY_CONFIG.osmApiConnection;
+if (runtimeConnection?.url && runtimeConnection?.client_id) {
+  osmApiConnections.push({
+    url: runtimeConnection.url,
+    apiUrl: runtimeConnection.apiUrl || runtimeConnection.url,
+    client_id: runtimeConnection.client_id
+  });
+} else if (ENV__ID_API_CONNECTION_URL !== null &&
     ENV__ID_API_CONNECTION_CLIENT_ID !== null) {
   // user specified API Oauth2 connection details
   // see https://wiki.openstreetmap.org/wiki/OAuth#OAuth_2.0_2

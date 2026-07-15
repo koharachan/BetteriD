@@ -1,6 +1,7 @@
 export { utilAesEncrypt } from './aes';
 export { utilAesDecrypt } from './aes';
 export * from './array';
+export { utilChangesetSummary } from './changeset_summary';
 export { utilCleanTags } from './clean_tags';
 export { utilCombinedTags } from './util';
 export { utilDeepMemberSelector } from './util';

@@ -154,11 +154,12 @@ export function modeSave(context) {
     }
 
 
-    function showSuccess(changeset) {
+    function showSuccess(changeset, changesets) {
         commit.reset();
 
         var ui = _success
             .changeset(changeset)
+            .changesets(changesets)
             .location(_location)
             .on('cancel', function() { context.ui().sidebar.hide(); });
 

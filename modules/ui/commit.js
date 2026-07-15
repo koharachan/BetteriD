@@ -2,6 +2,7 @@ import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
 import { deepEqual } from 'fast-equals';
 
+import { coreChangeBatches } from '../core/change_batches';
 import { prefs } from '../core/preferences';
 import { t, localizer } from '../core/localizer';
 import { osmChangeset } from '../osm';
@@ -350,6 +351,120 @@ export function uiCommit(context) {
             .on('change', toggleRequestReview);
 
 
+        // Smart Split Options
+        var smartSplitSection = saveSection.selectAll('.smart-split-section')
+            .data([0]);
+
+        var smartSplitEnter = smartSplitSection.enter()
+            .append('div')
+            .attr('class', 'smart-split-section');
+
+        var smartSplitDomId = utilUniqueDomId('commit-input-smart-split');
+        var smartSplitLabelEnter = smartSplitEnter
+            .append('label')
+            .attr('class', 'smart-split-toggle')
+            .attr('for', smartSplitDomId);
+
+        smartSplitLabelEnter
+            .append('input')
+            .attr('type', 'checkbox')
+            .attr('id', smartSplitDomId);
+
+        smartSplitLabelEnter
+            .append('span')
+            .call(t.append('commit.smart_split'));
+
+        var splitOptionsEnter = smartSplitEnter
+            .append('div')
+            .attr('class', 'split-options');
+
+        var splitTypeDomId = utilUniqueDomId('commit-input-split-type');
+        splitOptionsEnter
+            .append('label')
+            .attr('for', splitTypeDomId)
+            .call(t.append('commit.split_type'));
+
+        var splitTypeSelect = splitOptionsEnter
+            .append('select')
+            .attr('id', splitTypeDomId)
+            .attr('class', 'form-field-input');
+
+        splitTypeSelect.append('option')
+            .attr('value', 'auto')
+            .call(t.append('commit.split_auto'));
+        splitTypeSelect.append('option')
+            .attr('value', 'fixed')
+            .call(t.append('commit.split_fixed'));
+        splitTypeSelect.append('option')
+            .attr('value', 'area')
+            .call(t.append('commit.split_area'));
+
+        var fixedCountDomId = utilUniqueDomId('commit-input-fixed-count');
+        var fixedCountGroup = splitOptionsEnter
+            .append('div')
+            .attr('class', 'fixed-count-group');
+
+        fixedCountGroup.append('label')
+            .attr('for', fixedCountDomId)
+            .call(t.append('commit.split_fixed_count'));
+
+        fixedCountGroup.append('input')
+            .attr('type', 'number')
+            .attr('id', fixedCountDomId)
+            .attr('class', 'form-field-input')
+            .attr('min', '1')
+            .attr('max', '10000');
+
+        splitOptionsEnter
+            .append('div')
+            .attr('class', 'split-preview');
+
+        smartSplitSection = smartSplitSection.merge(smartSplitEnter);
+
+        var smartSplitInput = smartSplitSection.select('.smart-split-toggle input')
+            .property('checked', getSmartSplitOptions().enabled)
+            .on('change.smartSplit', function() {
+                prefs('smartSplit', d3_select(this).property('checked') ? 'true' : null);
+                renderSplitOptions();
+            });
+
+        smartSplitSection.select('.split-options select')
+            .property('value', getSmartSplitOptions().strategy)
+            .on('change.smartSplit', function() {
+                prefs('splitType', d3_select(this).property('value'));
+                renderSplitOptions();
+            });
+
+        smartSplitSection.select('.fixed-count-group input')
+            .property('value', getSmartSplitOptions().maxChanges)
+            .on('change.smartSplit', function() {
+                var count = Math.max(1, Number.parseInt(d3_select(this).property('value'), 10) || 50);
+                prefs('splitFixedCount', count.toString());
+                renderSplitOptions();
+            });
+
+        renderSplitOptions();
+
+        function renderSplitOptions() {
+            var options = getSmartSplitOptions();
+            smartSplitInput.property('checked', options.enabled);
+            smartSplitSection.select('.split-options').classed('hide', !options.enabled);
+            smartSplitSection.select('.fixed-count-group').classed('hide', options.strategy !== 'fixed');
+
+            var preview = smartSplitSection.select('.split-preview');
+            if (!options.enabled) {
+                preview.text('');
+                return;
+            }
+
+            var batches = coreChangeBatches(context.history().changes(), context.graph(), options);
+            preview.call(t.append('commit.split_preview', {
+                count: batches.length,
+                sizes: batches.map(batch => batch.count).join(' / ')
+            }));
+        }
+
+
         // Buttons
         var buttonSection = saveSection.selectAll('.buttons')
             .data([0]);
@@ -396,7 +511,7 @@ export function uiCommit(context) {
                         if (!key) delete context.changeset.tags[key];
                     }
 
-                    context.uploader().save(context.changeset);
+                    context.uploader().save(context.changeset, false, false, getSmartSplitOptions());
                 }
             });
 
@@ -450,16 +565,32 @@ export function uiCommit(context) {
     }
 
 
+    function getSmartSplitOptions() {
+        return {
+            enabled: prefs('smartSplit') === 'true',
+            maxChanges: Math.max(1, Number.parseInt(prefs('splitFixedCount'), 10) || 50),
+            strategy: prefs('splitType') || 'auto'
+        };
+    }
+
+
     function getUploadBlockerMessage() {
         // if there are too many edits to fit into a single changeset, then
         // prevent uploading.
         const changesetElements = context.history().changesCount();
         const maxChangesetElements = context.connection().maxChangesetElements();
         if (changesetElements > maxChangesetElements) {
-            return t.append('issues.osm_api_limits.max_changeset_elements.reference', {
-                changesetElements,
-                maxChangesetElements,
-            });
+            var splitOptions = getSmartSplitOptions();
+            var batches = splitOptions.enabled ?
+                coreChangeBatches(context.history().changes(), context.graph(), splitOptions) : [];
+            var hasOversizedBatch = batches.some(batch => batch.count > maxChangesetElements);
+
+            if (!splitOptions.enabled || hasOversizedBatch) {
+                return t.append('issues.osm_api_limits.max_changeset_elements.reference', {
+                    changesetElements,
+                    maxChangesetElements,
+                });
+            }
         }
 
         var errors = context.validator()
