@@ -49,7 +49,7 @@ impl Default for ProxyConfig {
             cache_default_ttl: 1800,
             cache_dir: Some("./cache".to_string()),
             id_static_dir: "../dist".to_string(),
-            osm_oauth_client_id: "0tmNTmd0Jo1dQp4AUmMBLtGiD9YpMuXzHefitcuVStc".to_string(),
+            osm_oauth_client_id: "ASM8cOEBbmYIZG89l1Xagbx037aD7fc49t_TcEGU8SU".to_string(),
             bing_translate_api_key: None,
             bing_translate_region: "global".to_string(),
             deepseek_api_key: None,

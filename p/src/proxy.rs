@@ -16,7 +16,7 @@ use reqwest::Client as ReqwestClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
-use url::Url;
+use url::{Url, form_urlencoded};
 
 use crate::ai::AiGenerator;
 use crate::cache::{CacheEntry, CacheHandle};
@@ -26,6 +26,10 @@ use crate::translate::Translator;
 const AI_BODY_LIMIT: usize = 64 * 1024;
 const AI_RATE_LIMIT: usize = 30;
 const AI_RATE_WINDOW: Duration = Duration::from_secs(60);
+const LOGIN_MODAL_CSS: &str = include_str!("../web/login-modal.css");
+const LOGIN_MODAL_JS: &str = include_str!("../web/login-modal.js");
+const LOGIN_MODAL_TEMPLATE: &str = include_str!("../web/login-modal.html");
+const OAUTH_START_TEMPLATE: &str = include_str!("../web/oauth-start.html");
 
 #[derive(Clone)]
 pub struct OsmProxy {
@@ -97,6 +101,23 @@ impl OsmProxy {
         let method = req.method().clone();
         let path = req.uri().path().to_string();
 
+        if path == "/betterid/login-modal.css" {
+            return Ok(Self::serve_embedded_asset(
+                &method,
+                "text/css; charset=utf-8",
+                LOGIN_MODAL_CSS,
+            ));
+        }
+        if path == "/betterid/login-modal.js" {
+            return Ok(Self::serve_embedded_asset(
+                &method,
+                "application/javascript; charset=utf-8",
+                LOGIN_MODAL_JS,
+            ));
+        }
+        if path == "/id/oauth/start" {
+            return Ok(self.serve_oauth_start(&method));
+        }
         if path.starts_with("/api/osm-ai/") {
             return Ok(self.handle_ai_request(req, remote_ip).await);
         }
@@ -106,6 +127,9 @@ impl OsmProxy {
         }
         if path == "/id/" {
             return Ok(self.serve_id_index(&method).await);
+        }
+        if path == "/id/land.html" {
+            return Ok(self.serve_id_landing(&method).await);
         }
         if let Some(relative) = path.strip_prefix("/id/dist/") {
             return Ok(self.serve_static_file(relative, &method).await);
@@ -423,6 +447,53 @@ impl OsmProxy {
         )
     }
 
+    fn serve_embedded_asset(
+        method: &Method,
+        content_type: &str,
+        content: &str,
+    ) -> Response<HyperBody> {
+        if method != Method::GET && method != Method::HEAD {
+            return Self::empty_response(StatusCode::METHOD_NOT_ALLOWED);
+        }
+        Self::file_response(
+            StatusCode::OK,
+            content_type,
+            if method == Method::HEAD {
+                Vec::new()
+            } else {
+                content.as_bytes().to_vec()
+            },
+            "no-store",
+        )
+    }
+
+    fn serve_oauth_start(&self, method: &Method) -> Response<HyperBody> {
+        if method != Method::GET && method != Method::HEAD {
+            return Self::empty_response(StatusCode::METHOD_NOT_ALLOWED);
+        }
+        Self::file_response(
+            StatusCode::OK,
+            "text/html; charset=utf-8",
+            if method == Method::HEAD {
+                Vec::new()
+            } else {
+                self.oauth_start_html().into_bytes()
+            },
+            "no-store",
+        )
+    }
+
+    fn oauth_start_html(&self) -> String {
+        let client_id =
+            serde_json::to_string(&self.oauth_client_id).unwrap_or_else(|_| "\"\"".to_string());
+        let official_origin = serde_json::to_string(self.upstream_url.trim_end_matches('/'))
+            .unwrap_or_else(|_| "\"https://www.openstreetmap.org\"".to_string());
+
+        OAUTH_START_TEMPLATE
+            .replace("__BETTERID_OAUTH_CLIENT_ID__", &client_id)
+            .replace("__BETTERID_OSM_ORIGIN__", &official_origin)
+    }
+
     async fn serve_id_index(&self, method: &Method) -> Response<HyperBody> {
         if method != Method::GET && method != Method::HEAD {
             return Self::empty_response(StatusCode::METHOD_NOT_ALLOWED);
@@ -458,6 +529,35 @@ impl OsmProxy {
                 html.into_bytes()
             },
             "no-cache",
+        )
+    }
+
+    async fn serve_id_landing(&self, method: &Method) -> Response<HyperBody> {
+        if method != Method::GET && method != Method::HEAD {
+            return Self::empty_response(StatusCode::METHOD_NOT_ALLOWED);
+        }
+
+        let landing_path = self
+            .static_dir
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join("land.html");
+        let Ok(data) = tokio::fs::read(landing_path).await else {
+            return Self::text_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "OAuth landing page is not available",
+            );
+        };
+
+        Self::file_response(
+            StatusCode::OK,
+            "text/html; charset=utf-8",
+            if method == Method::HEAD {
+                Vec::new()
+            } else {
+                data
+            },
+            "no-store",
         )
     }
 
@@ -698,7 +798,7 @@ impl OsmProxy {
                     .unwrap_or_default()
                     .to_string();
                 let bytes = response.bytes().await.unwrap_or_default();
-                let rewritten = self.rewrite_urls(&bytes, &content_type);
+                let rewritten = self.rewrite_urls(&bytes, &content_type, &path, query.as_deref());
                 let mut builder = Response::builder().status(status);
 
                 for (key, value) in &response_headers {
@@ -762,7 +862,13 @@ impl OsmProxy {
             .replace("https://www.gravatar.com/avatar/", "/gravatar/")
     }
 
-    fn rewrite_urls(&self, body: &[u8], content_type: &str) -> Vec<u8> {
+    fn rewrite_urls(
+        &self,
+        body: &[u8],
+        content_type: &str,
+        path: &str,
+        query: Option<&str>,
+    ) -> Vec<u8> {
         let is_text = content_type.starts_with("text/")
             || content_type.starts_with("application/javascript")
             || content_type.starts_with("application/json")
@@ -773,7 +879,7 @@ impl OsmProxy {
         let Ok(text) = std::str::from_utf8(body) else {
             return body.to_vec();
         };
-        text
+        let rewritten = text
             .replace("https://tile.openstreetmap.org/", "/tile/")
             .replace("http://tile.openstreetmap.org/", "/tile/")
             .replace("//tile.openstreetmap.org/", "/tile/")
@@ -789,7 +895,133 @@ impl OsmProxy {
                 "/avatar-s3/",
             )
             .replace("https://www.gravatar.com/avatar/", "/gravatar/")
-            .into_bytes()
+            .to_string();
+
+        let rewritten = self.inject_login_options(&rewritten, path, query);
+        self.inject_root_login_modal(&rewritten, path).into_bytes()
+    }
+
+    fn inject_root_login_modal(&self, html: &str, path: &str) -> String {
+        if path != "/"
+            || html.contains("betterid-login-modal")
+            || !html.contains("login-menu")
+            || !html.contains("href=\"/login")
+            || !html.contains("</head>")
+            || !html.contains("</body>")
+        {
+            return html.to_string();
+        }
+
+        let is_chinese = html.contains("lang=\"zh") || html.contains("lang='zh");
+        let labels = if is_chinese {
+            [
+                "选择登录方式",
+                "选择适合你的方式继续使用 OpenStreetMap。",
+                "账号密码登录",
+                "在当前站点输入 OpenStreetMap 账号和密码",
+                "使用 OSM 官网授权 BetteriD",
+                "前往 openstreetmap.org，授权编辑器访问你的账号",
+                "BetteriD 不会接触或保存你的密码",
+                "关闭登录窗口",
+            ]
+        } else {
+            [
+                "Choose how to sign in",
+                "Select how you want to continue with OpenStreetMap.",
+                "Sign in with password",
+                "Enter your OpenStreetMap username and password on this site",
+                "Authorize BetteriD on OSM",
+                "Continue to openstreetmap.org and authorize the editor",
+                "BetteriD never sees or stores your password",
+                "Close sign-in dialog",
+            ]
+        };
+
+        let modal = LOGIN_MODAL_TEMPLATE
+            .replace("__BETTERID_LOGIN_TITLE__", labels[0])
+            .replace("__BETTERID_LOGIN_DESCRIPTION__", labels[1])
+            .replace("__BETTERID_PASSWORD_TITLE__", labels[2])
+            .replace("__BETTERID_PASSWORD_DESCRIPTION__", labels[3])
+            .replace("__BETTERID_OAUTH_TITLE__", labels[4])
+            .replace("__BETTERID_OAUTH_DESCRIPTION__", labels[5])
+            .replace("__BETTERID_PRIVACY_NOTE__", labels[6])
+            .replace("__BETTERID_CLOSE_LABEL__", labels[7]);
+
+        let with_styles = html.replacen(
+            "</head>",
+            "<link rel=\"stylesheet\" href=\"/betterid/login-modal.css\"></head>",
+            1,
+        );
+        with_styles.replacen(
+            "</body>",
+            &format!("{modal}<script defer src=\"/betterid/login-modal.js\"></script></body>"),
+            1,
+        )
+    }
+
+    fn inject_login_options(&self, html: &str, path: &str, query: Option<&str>) -> String {
+        if path != "/login" || html.contains("betterid-osm-auth-choice") {
+            return html.to_string();
+        }
+
+        let Some(referer) = query.and_then(|query| {
+            form_urlencoded::parse(query.as_bytes()).find_map(|(key, value)| {
+                if key == "referer" {
+                    Some(value.into_owned())
+                } else {
+                    None
+                }
+            })
+        }) else {
+            return html.to_string();
+        };
+        if !referer.starts_with("/oauth2/authorize?") {
+            return html.to_string();
+        }
+
+        let upstream = self.upstream_url.trim_end_matches('/');
+        let Ok(authorize_url) = Url::parse(&format!("{upstream}{referer}")) else {
+            return html.to_string();
+        };
+        let uses_current_client = authorize_url
+            .query_pairs()
+            .any(|(key, value)| key == "client_id" && value == self.oauth_client_id.as_str());
+        if authorize_url.path() != "/oauth2/authorize" || !uses_current_client {
+            return html.to_string();
+        }
+
+        let official_url = Self::escape_html_attribute(authorize_url.as_str());
+        let is_chinese = html.contains("lang=\"zh") || html.contains("lang='zh");
+        let (official_label, password_label) = if is_chinese {
+            ("使用 OpenStreetMap 官网授权登录", "或使用账号密码登录")
+        } else {
+            (
+                "Authorize on the OpenStreetMap website",
+                "or sign in with your username and password",
+            )
+        };
+        let choices = format!(
+            r#"<div id="betterid-osm-auth-choice" class="mb-3">
+<a class="btn btn-success w-100 py-2" rel="nofollow" href="{official_url}">{official_label}</a>
+<div class="d-flex align-items-center gap-2 my-3 text-body-secondary"><hr class="flex-grow-1 my-0"><span>{password_label}</span><hr class="flex-grow-1 my-0"></div>
+</div>
+"#
+        );
+
+        html.replacen(
+            "<form id=\"login_form\"",
+            &format!("{choices}<form id=\"login_form\""),
+            1,
+        )
+    }
+
+    fn escape_html_attribute(value: &str) -> String {
+        value
+            .replace('&', "&amp;")
+            .replace('"', "&quot;")
+            .replace('\'', "&#39;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
     }
 
     async fn handle_request(
@@ -873,5 +1105,63 @@ mod tests {
         assert!(html.contains("hash.set('map'"));
         assert!(html.contains("hash.set('background', 'EsriWorldImagery')"));
         assert!(html.contains("window.location.replace('/id/#'"));
+    }
+
+    #[test]
+    fn test_login_page_adds_official_oauth_choice() {
+        let proxy = test_proxy();
+        let source = br#"<html lang="zh-CN"><body><form id="login_form" action="/login"></form></body></html>"#;
+        let query = concat!(
+            "cookie_test=true&referer=",
+            "%2Foauth2%2Fauthorize%3Fclient_id%3Dtest-client",
+            "%26redirect_uri%3Dhttp%253A%252F%252F127.0.0.1%253A9178%252Fid%252Fland.html"
+        );
+        let html = String::from_utf8(proxy.rewrite_urls(
+            source,
+            "text/html; charset=utf-8",
+            "/login",
+            Some(query),
+        ))
+        .expect("valid UTF-8");
+
+        assert!(html.contains("id=\"betterid-osm-auth-choice\""));
+        assert!(html.contains("使用 OpenStreetMap 官网授权登录"));
+        assert!(html.contains("或使用账号密码登录"));
+        assert!(html.contains(
+            "https://www.openstreetmap.org/oauth2/authorize?client_id=test-client&amp;redirect_uri="
+        ));
+        assert!(html.find("betterid-osm-auth-choice") < html.find("login_form"));
+    }
+
+    #[test]
+    fn test_login_page_rejects_unrelated_referer() {
+        let proxy = test_proxy();
+        let source = br#"<html><body><form id="login_form"></form></body></html>"#;
+        let html = proxy.rewrite_urls(source, "text/html", "/login", Some("referer=%2F"));
+        assert!(!String::from_utf8_lossy(&html).contains("betterid-osm-auth-choice"));
+    }
+
+    #[test]
+    fn test_root_page_adds_modern_login_modal() {
+        let proxy = test_proxy();
+        let source = br#"<html lang="zh-CN"><head></head><body><div class="login-menu"><a href="/login?referer=%2F">Login</a></div></body></html>"#;
+        let html = String::from_utf8(proxy.rewrite_urls(source, "text/html", "/", None))
+            .expect("valid UTF-8");
+
+        assert!(html.contains("href=\"/betterid/login-modal.css\""));
+        assert!(html.contains("src=\"/betterid/login-modal.js\""));
+        assert!(html.contains("id=\"betterid-login-modal\""));
+        assert!(html.contains("选择登录方式"));
+        assert!(html.contains("使用 OSM 官网授权 BetteriD"));
+        assert!(html.contains("href=\"/id/oauth/start\""));
+    }
+
+    #[test]
+    fn test_oauth_start_uses_pkce_without_client_secret() {
+        let html = test_proxy().oauth_start_html();
+        assert!(html.contains("test-client"));
+        assert!(html.contains("code_challenge_method"));
+        assert!(html.contains("betterid.oauth.root"));
+        assert!(!html.contains("client_secret"));
     }
 }

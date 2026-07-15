@@ -1,0 +1,49 @@
+<div id="betterid-login-modal" class="betterid-login-modal" role="dialog" aria-modal="true" aria-labelledby="betterid-login-title" hidden>
+  <button type="button" class="betterid-login-backdrop" data-betterid-login-close aria-label="__BETTERID_CLOSE_LABEL__"></button>
+  <section class="betterid-login-dialog" tabindex="-1">
+    <header class="betterid-login-header">
+      <div class="betterid-login-brand" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img">
+          <path d="M12 2.75a6.25 6.25 0 0 0-3.92 11.12L5.3 18.65a1.45 1.45 0 0 0 .52 1.98l.44.26a1.45 1.45 0 0 0 1.98-.52l2.77-4.79A6.25 6.25 0 1 0 12 2.75Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <circle cx="12" cy="9" r="2.35" fill="currentColor"/>
+        </svg>
+      </div>
+      <div class="betterid-login-heading">
+        <h2 id="betterid-login-title">__BETTERID_LOGIN_TITLE__</h2>
+        <p>__BETTERID_LOGIN_DESCRIPTION__</p>
+      </div>
+      <button type="button" class="betterid-login-close" data-betterid-login-close aria-label="__BETTERID_CLOSE_LABEL__">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.75 6.75 10.5 10.5m0-10.5-10.5 10.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+
+    <div class="betterid-login-options">
+      <a class="betterid-login-option betterid-login-option-password" data-betterid-account-login href="/login?referer=%2F">
+        <span class="betterid-login-option-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 12.25a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Zm-7.25 8c.52-3.5 3.34-5.75 7.25-5.75s6.73 2.25 7.25 5.75" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </span>
+        <span class="betterid-login-option-copy">
+          <strong>__BETTERID_PASSWORD_TITLE__</strong>
+          <small>__BETTERID_PASSWORD_DESCRIPTION__</small>
+        </span>
+        <svg class="betterid-login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.25 5.75 6.5 6.25-6.5 6.25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+
+      <a class="betterid-login-option betterid-login-option-oauth" data-betterid-oauth-login href="/id/oauth/start">
+        <span class="betterid-login-option-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.9 12h16.2M12 3.75c2.05 2.26 3.15 5.01 3.15 8.25S14.05 18 12 20.25C9.95 18 8.85 15.24 8.85 12S9.95 6 12 3.75Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
+        </span>
+        <span class="betterid-login-option-copy">
+          <strong>__BETTERID_OAUTH_TITLE__</strong>
+          <small>__BETTERID_OAUTH_DESCRIPTION__</small>
+        </span>
+        <svg class="betterid-login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.25 5.75 6.5 6.25-6.5 6.25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+
+    <footer class="betterid-login-footer">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.25" y="10" width="13.5" height="10" rx="2.25" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10V7.75a3.5 3.5 0 0 1 7 0V10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span>__BETTERID_PRIVACY_NOTE__</span>
+    </footer>
+  </section>
+</div>

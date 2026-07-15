@@ -1,12 +1,78 @@
 <!DOCTYPE html>
 <html>
-    <head></head>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>OpenStreetMap OAuth</title>
+    </head>
     <body>
         <script>
-            if (new URLSearchParams(location.search).has('code')) {
-                new BroadcastChannel('osm-api-auth-complete').postMessage(location.href);
-                window.close();
-            }
+            (async () => {
+                const params = new URLSearchParams(location.search);
+                const flowKey = 'betterid.oauth.root';
+                const storedFlow = sessionStorage.getItem(flowKey);
+
+                if (!storedFlow) {
+                    if (params.has('code') || params.has('error')) {
+                        new BroadcastChannel('osm-api-auth-complete').postMessage(location.href);
+                        window.close();
+                    }
+                    return;
+                }
+
+                function showError(message) {
+                    document.body.style.fontFamily = 'system-ui, sans-serif';
+                    document.body.style.padding = '32px';
+                    const title = document.createElement('h1');
+                    title.textContent = 'OpenStreetMap 授权失败';
+                    const detail = document.createElement('p');
+                    detail.textContent = message;
+                    const link = document.createElement('a');
+                    link.href = '/';
+                    link.textContent = '返回 OpenStreetMap';
+                    document.body.replaceChildren(title, detail, link);
+                }
+
+                try {
+                    sessionStorage.removeItem(flowKey);
+                    const flow = JSON.parse(storedFlow);
+                    if (Date.now() - Number(flow.createdAt) > 10 * 60 * 1000) {
+                        throw new Error('授权请求已过期，请返回后重新登录。');
+                    }
+                    if (!params.get('state') || params.get('state') !== flow.state) {
+                        throw new Error('授权状态校验失败，请返回后重试。');
+                    }
+                    if (params.has('error')) {
+                        throw new Error(params.get('error_description') || params.get('error'));
+                    }
+                    if (!params.get('code')) {
+                        throw new Error('OpenStreetMap 没有返回授权码。');
+                    }
+
+                    const tokenURL = new URL('/oauth2/token', location.origin);
+                    tokenURL.searchParams.set('client_id', flow.clientId);
+                    tokenURL.searchParams.set('redirect_uri', flow.redirectUri);
+                    tokenURL.searchParams.set('grant_type', 'authorization_code');
+                    tokenURL.searchParams.set('code', params.get('code'));
+                    tokenURL.searchParams.set('code_verifier', flow.verifier);
+                    const response = await fetch(tokenURL, {
+                        method: 'POST',
+                        headers: { Accept: 'application/json' }
+                    });
+                    if (!response.ok) throw new Error('令牌交换失败，请重新授权。');
+
+                    const token = await response.json();
+                    if (!token.access_token) throw new Error('OpenStreetMap 没有返回访问令牌。');
+                    localStorage.setItem(location.origin + 'oauth2_access_token', token.access_token);
+
+                    const returnTo = typeof flow.returnTo === 'string' && flow.returnTo.startsWith('/id/')
+                        ? flow.returnTo
+                        : '/id/';
+                    location.replace(returnTo);
+                } catch (error) {
+                    showError(error?.message || '请返回后重试。');
+                }
+            })();
         </script>
     </body>
 </html>
