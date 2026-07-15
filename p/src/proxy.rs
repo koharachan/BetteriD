@@ -841,9 +841,19 @@ impl OsmProxy {
             if matches!(
                 key_lower.as_str(),
                 "host" | "content-length" | "origin" | "referer"
-            ) || (!forwards_private_headers
-                && matches!(key_lower.as_str(), "cookie" | "authorization"))
-            {
+            ) {
+                continue;
+            }
+            if !forwards_private_headers && key_lower == "authorization" {
+                continue;
+            }
+            if !forwards_private_headers && key_lower == "cookie" {
+                if path == "/query-features"
+                    && let Ok(cookie) = value.to_str()
+                    && let Some(token) = Self::query_service_cookie(cookie)
+                {
+                    request_builder = request_builder.header("cookie", token);
+                }
                 continue;
             }
             request_builder = request_builder.header(key.as_str(), value.as_bytes());
@@ -921,6 +931,17 @@ impl OsmProxy {
             .filter(|part| !part.trim().to_ascii_lowercase().starts_with("domain="))
             .collect::<Vec<_>>()
             .join(";")
+    }
+
+    fn query_service_cookie(cookie: &str) -> Option<String> {
+        cookie
+            .split(';')
+            .map(str::trim)
+            .find(|part| {
+                part.split_once('=')
+                    .is_some_and(|(name, _)| name == "_osm_totp_token")
+            })
+            .map(str::to_string)
     }
 
     fn rewrite_location(&self, location: &str) -> String {
@@ -1265,6 +1286,17 @@ mod tests {
         );
 
         assert!(String::from_utf8_lossy(&rewritten).contains("\"/query-features\""));
+    }
+
+    #[test]
+    fn test_query_service_only_receives_totp_cookie() {
+        let cookie = "_osm_session=private; _osm_totp_token=123456; preferences=private";
+
+        assert_eq!(
+            OsmProxy::query_service_cookie(cookie).as_deref(),
+            Some("_osm_totp_token=123456")
+        );
+        assert_eq!(OsmProxy::query_service_cookie("_osm_session=private"), None);
     }
 
     #[test]
