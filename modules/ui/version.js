@@ -8,6 +8,7 @@ import { uiTooltip } from './tooltip';
 var sawVersion = null;
 var isNewVersion = false;
 var isNewUser = false;
+var repositoryURL = 'https://github.com/koharachan/BetteriD';
 
 
 export function uiVersion(context) {
@@ -31,7 +32,7 @@ export function uiVersion(context) {
         selection
             .append('a')
             .attr('target', '_blank')
-            .attr('href', 'https://github.com/openstreetmap/iD')
+            .attr('href', repositoryURL)
             .text(currVersion);
 
         // only show new version indicator to users that have used iD before
@@ -40,7 +41,7 @@ export function uiVersion(context) {
                 .append('a')
                 .attr('class', 'badge')
                 .attr('target', '_blank')
-                .attr('href', `https://github.com/openstreetmap/iD/releases/tag/v${currVersion}`)
+                .attr('href', `${repositoryURL}/releases/tag/v${currVersion}`)
                 .call(svgIcon('#maki-gift'))
                 .call(uiTooltip()
                     .title(() => t.append('version.whats_new', { version: currVersion }))

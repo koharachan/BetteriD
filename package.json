@@ -5,10 +5,10 @@
   "main": "dist/iD.min.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/openstreetmap/iD.git"
+    "url": "git+https://github.com/koharachan/BetteriD.git"
   },
-  "homepage": "https://github.com/openstreetmap/iD",
-  "bugs": "https://github.com/openstreetmap/iD/issues",
+  "homepage": "https://map.osm.asia",
+  "bugs": "https://github.com/koharachan/BetteriD/issues",
   "keywords": [
     "editor",
     "openstreetmap"
