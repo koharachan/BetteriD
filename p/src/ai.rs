@@ -269,11 +269,16 @@ impl AiRouter {
             &[PROVIDER_OPENAI, PROVIDER_KIMI],
             DEFAULT_SEARCH_ORDER,
         );
+        let mut empty_response = None;
         for provider in order {
             match provider.as_str() {
                 PROVIDER_OPENAI => {
                     if let Some(client) = &self.openai {
                         match client.search_tags(&request).await {
+                            Ok(response) if response.suggestions.is_empty() => {
+                                debug!("OpenAI web search returned no usable suggestions");
+                                remember_first_empty_response(&mut empty_response, response);
+                            }
                             Ok(response) => return Ok(response),
                             Err(error) => debug!("OpenAI web search fallback: {}", error.0),
                         }
@@ -282,6 +287,10 @@ impl AiRouter {
                 PROVIDER_KIMI => {
                     if let Some(client) = &self.kimi {
                         match client.suggest(request.clone()).await {
+                            Ok(response) if response.suggestions.is_empty() => {
+                                debug!("Kimi web search returned no usable suggestions");
+                                remember_first_empty_response(&mut empty_response, response);
+                            }
                             Ok(response) => return Ok(response),
                             Err(error) => debug!("Kimi web search fallback: {error}"),
                         }
@@ -289,6 +298,9 @@ impl AiRouter {
                 }
                 _ => {}
             }
+        }
+        if let Some(response) = empty_response {
+            return Ok(response);
         }
         Err(TagSuggestionError::Upstream(
             "all configured search providers failed".to_string(),
@@ -584,6 +596,7 @@ impl OpenAiClient {
         request: &TagSuggestionRequest,
     ) -> Result<TagSuggestionResponse, ProviderError> {
         let mut last_error = ProviderError("search request failed".to_string());
+        let mut empty_response = None;
 
         for attempt in 0..2 {
             let instruction = if attempt == 0 {
@@ -600,7 +613,7 @@ impl OpenAiClient {
                 "locale": request.locale.as_deref().unwrap_or("zh-CN")
             }))
             .map_err(|error| ProviderError(error.to_string()))?;
-            let response = self
+            let response = match self
                 .compatible
                 .http
                 .post(format!("{}/responses", self.compatible.base_url))
@@ -617,7 +630,17 @@ impl OpenAiClient {
                 }))
                 .send()
                 .await
-                .map_err(|error| ProviderError(format!("request failed: {error}")))?;
+            {
+                Ok(response) => response,
+                Err(error) => {
+                    last_error = ProviderError(format!("request failed: {error}"));
+                    if attempt == 0 {
+                        debug!("OpenAI web search request retry: {}", last_error.0);
+                        continue;
+                    }
+                    break;
+                }
+            };
             let status = response.status();
             if !status.is_success() {
                 let error = ProviderError(format!("HTTP {status}"));
@@ -626,7 +649,8 @@ impl OpenAiClient {
                     last_error = error;
                     continue;
                 }
-                return Err(error);
+                last_error = error;
+                break;
             }
             let body: Value = match response.json().await {
                 Ok(body) => body,
@@ -637,7 +661,8 @@ impl OpenAiClient {
                         last_error = error;
                         continue;
                     }
-                    return Err(error);
+                    last_error = error;
+                    break;
                 }
             };
             if let Err(error) = validate_responses_result(&body) {
@@ -646,7 +671,8 @@ impl OpenAiClient {
                     last_error = error;
                     continue;
                 }
-                return Err(error);
+                last_error = error;
+                break;
             }
             let Some(content) = responses_output_text(&body) else {
                 let error = ProviderError("empty Responses output".to_string());
@@ -655,9 +681,20 @@ impl OpenAiClient {
                     last_error = error;
                     continue;
                 }
-                return Err(error);
+                last_error = error;
+                break;
             };
             match parse_and_sanitize_response(&content, &request.tags) {
+                Ok(response) if response.suggestions.is_empty() => {
+                    if attempt == 0 {
+                        debug!("OpenAI web search empty-result retry");
+                        last_error =
+                            ProviderError("search returned no usable suggestions".to_string());
+                        remember_first_empty_response(&mut empty_response, response);
+                        continue;
+                    }
+                    return Ok(empty_response.unwrap_or(response));
+                }
                 Ok(response) => return Ok(response),
                 Err(parse_error) => {
                     let error = ProviderError(parse_error.to_string());
@@ -666,12 +703,22 @@ impl OpenAiClient {
                         last_error = error;
                         continue;
                     }
-                    return Err(error);
+                    last_error = error;
+                    break;
                 }
             }
         }
 
-        Err(last_error)
+        empty_response.ok_or(last_error)
+    }
+}
+
+fn remember_first_empty_response(
+    retained: &mut Option<TagSuggestionResponse>,
+    response: TagSuggestionResponse,
+) {
+    if retained.is_none() {
+        *retained = Some(response);
     }
 }
 
@@ -1059,8 +1106,26 @@ mod tests {
         assert_eq!(parsed, Parsed { ok: true });
     }
 
+    #[test]
+    fn preserves_the_first_empty_search_response() {
+        let empty = |summary: &str| TagSuggestionResponse {
+            summary: summary.to_string(),
+            suggestions: Vec::new(),
+            sources: Vec::new(),
+            warnings: None,
+        };
+        let mut retained = None;
+        remember_first_empty_response(&mut retained, empty("preferred provider"));
+        remember_first_empty_response(&mut retained, empty("fallback provider"));
+
+        assert_eq!(
+            retained.expect("empty response").summary,
+            "preferred provider"
+        );
+    }
+
     #[tokio::test]
-    async fn openai_search_retries_incomplete_compactly_and_parses_split_output() {
+    async fn openai_search_retries_empty_compactly_and_parses_split_output() {
         let requests = Arc::new(Mutex::new(Vec::<Value>::new()));
         let requests_for_server = requests.clone();
         let make_service = make_service_fn(move |_| {
@@ -1080,10 +1145,17 @@ mod tests {
                         };
                         let response = if index == 1 {
                             json!({
-                                "status": "incomplete",
+                                "status": "completed",
                                 "error": null,
-                                "incomplete_details": {"reason":"max_output_tokens"},
-                                "output": []
+                                "incomplete_details": null,
+                                "output": [{
+                                    "type": "message",
+                                    "status": "completed",
+                                    "content": [{
+                                        "type": "output_text",
+                                        "text": "{\"summary\":\"sources found\",\"suggestions\":[],\"sources\":[],\"warnings\":[]}"
+                                    }]
+                                }]
                             })
                         } else {
                             json!({
@@ -1100,7 +1172,7 @@ mod tests {
                                         },
                                         {
                                             "type": "output_text",
-                                            "text": "],\"sources\":[],\"warnings\":[]}\n```"
+                                            "text": "{\"key\":\"amenity\",\"value\":\"restaurant\",\"reason\":\"verified\",\"confidence\":0.9}],\"sources\":[],\"warnings\":[]}\n```"
                                         }
                                     ]
                                 }]
@@ -1144,6 +1216,8 @@ mod tests {
 
         task.abort();
         assert_eq!(response.summary, "ok");
+        assert_eq!(response.suggestions.len(), 1);
+        assert_eq!(response.suggestions[0].key, "amenity");
         let requests = requests.lock().expect("requests lock");
         assert_eq!(requests.len(), 2);
         for payload in requests.iter() {
