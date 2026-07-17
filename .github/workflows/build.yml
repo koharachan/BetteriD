@@ -5,9 +5,9 @@ name: build
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ release, main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ release, main, develop ]
 
 permissions:
   contents: read

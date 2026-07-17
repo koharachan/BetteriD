@@ -64,7 +64,7 @@ export function uiSplash(context) {
         website: selection => selection
           .append('a')
           .attr('target', '_blank')
-          .attr('href', 'https://github.com/koharachan/BetteriD/blob/develop/CHANGELOG.md')
+          .attr('href', 'https://github.com/koharachan/BetteriD/blob/release/CHANGELOG.md')
           .call(t.addOrUpdate('splash.changelog')),
         github: selection => selection
           .append('a')

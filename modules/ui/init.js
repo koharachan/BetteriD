@@ -334,7 +334,7 @@ export function uiInit(context) {
             .append('a')
             .attr('target', '_blank')
             .attr('rel', 'noopener noreferrer')
-            .attr('href', 'https://github.com/koharachan/BetteriD/blob/develop/CONTRIBUTING.md#translating')
+            .attr('href', 'https://github.com/koharachan/BetteriD/blob/release/CONTRIBUTING.md#translating')
             .attr('aria-label', t('help_translate'))
             .call(svgIcon('#iD-icon-translate', 'light'))
             .call(uiTooltip()
