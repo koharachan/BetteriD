@@ -19,11 +19,14 @@ import { presetManager } from '../presets';
 import { rendererBackground, rendererFeatures, rendererMap, rendererPhotos } from '../renderer';
 import { services } from '../services';
 import { uiInit } from '../ui/init';
-import { utilKeybinding, utilRebind, utilStringQs, utilCleanOsmString } from '../util';
+import { uiMilitaryWarning } from '../ui/military_warning';
+import {
+  utilKeybinding, utilMilitaryEditViolation, utilRebind, utilStringQs, utilCleanOsmString
+} from '../util';
 
 
 export function coreContext() {
-  const dispatch = d3_dispatch('enter', 'exit', 'change');
+  const dispatch = d3_dispatch('enter', 'exit', 'change', 'blockedEdit');
   const context = {};
   let _deferred = new Set();
 
@@ -303,6 +306,15 @@ export function coreContext() {
   // Debounce save, since it's a synchronous localStorage write,
   // and history changes can happen frequently (e.g. when dragging).
   context.debouncedSave = debounce(context.save, 100);
+
+  context.editPolicy = (before, after) => {
+    if (_inIntro) return null;
+    return utilMilitaryEditViolation(before, after);
+  };
+
+  context.blockEdit = violation => {
+    dispatch.call('blockedEdit', context, violation);
+  };
 
   /** @template {Function} T @param {T} fn @returns {T} */
   function withDebouncedSave(fn) {
@@ -586,6 +598,9 @@ export function coreContext() {
       _photos = rendererPhotos(context);
 
       _ui = uiInit(context);
+      context.on('blockedEdit.military', violation => {
+        uiMilitaryWarning(context, violation);
+      });
     }
 
     // Set up objects that might need to access properties of `context`. The order

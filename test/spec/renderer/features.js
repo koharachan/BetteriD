@@ -53,6 +53,36 @@ describe('iD.rendererFeatures', function() {
         });
     });
 
+    describe('#init', function() {
+        afterEach(function() {
+            window.location.hash = '';
+            iD.prefs('disabled-features', null);
+            iD.prefs('betterid.migration.boundaries_visible', null);
+        });
+
+        it('migrates the legacy default that hid administrative boundaries', function() {
+            iD.prefs('disabled-features', 'boundaries,water');
+            iD.prefs('betterid.migration.boundaries_visible', null);
+
+            features.init();
+
+            expect(features.disabled()).not.toContain('boundaries');
+            expect(features.disabled()).toContain('water');
+            expect(iD.prefs('disabled-features')).toEqual('water');
+            expect(iD.prefs('betterid.migration.boundaries_visible')).toEqual('true');
+        });
+
+        it('keeps an explicit URL request to hide administrative boundaries', function() {
+            window.location.hash = '#disable_features=boundaries';
+            iD.prefs('disabled-features', 'boundaries,water');
+            iD.prefs('betterid.migration.boundaries_visible', null);
+
+            features.init();
+
+            expect(features.disabled()).toContain('boundaries');
+        });
+    });
+
     describe('#gatherStats', function() {
         it('counts features', function() {
             var graph = new iD.coreGraph([

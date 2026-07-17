@@ -1,6 +1,6 @@
 {
   "name": "BetteriD",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A friendly editor for OpenStreetMap",
   "main": "dist/iD.min.js",
   "repository": {
@@ -15,6 +15,7 @@
   ],
   "license": "ISC",
   "type": "module",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "all": "run-s clean build dist",
     "build": "run-s build:css build:data build:js",
@@ -50,7 +51,8 @@
     "test:spec": "vitest --no-isolate",
     "test:once": "vitest run --no-isolate",
     "test:coverage": "vitest run --no-isolate --coverage.enabled",
-    "translations": "node scripts/update_locales.js"
+    "translations": "node scripts/inherit_release_locales.js",
+    "translations:dev": "node scripts/update_locales.js"
   },
   "dependencies": {
     "@mapbox/geojson-area": "^0.2.2",

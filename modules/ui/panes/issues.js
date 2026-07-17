@@ -2,6 +2,7 @@ import { t } from '../../core/localizer';
 import { uiPane } from '../pane';
 
 import { uiSectionValidationIssues } from '../sections/validation_issues';
+import { uiSectionValidationAutofix } from '../sections/validation_autofix';
 import { uiSectionValidationOptions } from '../sections/validation_options';
 import { uiSectionValidationRules } from '../sections/validation_rules';
 import { uiSectionValidationStatus } from '../sections/validation_status';
@@ -15,6 +16,7 @@ export function uiPaneIssues(context) {
         .iconName('iD-icon-alert')
         .sections([
             uiSectionValidationOptions(context),
+            uiSectionValidationAutofix(context),
             uiSectionValidationStatus(context),
             uiSectionValidationIssues('issues-errors', 'error', context),
             uiSectionValidationIssues('issues-warnings', 'warning', context),

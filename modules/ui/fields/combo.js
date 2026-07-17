@@ -179,6 +179,17 @@ export function uiFieldCombo(field, context) {
     }
 
 
+    function fallbackOptionLabel(value) {
+      if (field.translateFallback === false) return value;
+      const genericID = `tag_values.${value}`;
+      if (localizer.hasTextForStringId(genericID)) {
+        return t(genericID, { default: value });
+      }
+      const spaced = String(value || '').replaceAll('_', ' ').replaceAll('-', ' ');
+      return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : spaced;
+    }
+
+
     // returns the display value for a tag value
     // (for multiCombo, tval should be the key suffix, not the entire key)
     function displayValue(tval) {
@@ -205,7 +216,7 @@ export function uiFieldCombo(field, context) {
         return '';
       }
 
-      return tval;
+      return fallbackOptionLabel(tval);
     }
 
 
@@ -236,7 +247,7 @@ export function uiFieldCombo(field, context) {
         tval = '';
       }
 
-      return selection => selection.text(tval);
+      return selection => selection.text(fallbackOptionLabel(tval));
     }
 
 
@@ -347,12 +358,13 @@ export function uiFieldCombo(field, context) {
         }
         const result = options.map(function(v) {
             const labelId = getLabelId(field, v);
+            const fallback = fallbackOptionLabel(v);
             return {
                 key: v,
-                value: field.t(labelId, { default: v }),
+                value: field.t(labelId, { default: fallback }),
                 title: formatTag(field.key, v, _isMulti),
                 description: presetDescription(v),
-                display: addComboboxIcons(field.t.append(labelId, { default: v }), v),
+                display: addComboboxIcons(field.t.append(labelId, { default: fallback }), v),
                 klass: field.hasTextForStringId(labelId) ? '' : 'raw-option'
             };
         });

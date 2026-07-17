@@ -42,7 +42,7 @@ export default tseslint.config(
       'grouped-accessor-pairs': 'error',
       'indent': ['off', 4],
       'keyword-spacing': 'error',
-      'linebreak-style': ['error', 'unix'],
+      'linebreak-style': 'off',  // allow Windows checkouts without rewriting the worktree
       'no-caller': 'error',
       'no-catch-shadow': 'error',
       'no-console': 'warn',

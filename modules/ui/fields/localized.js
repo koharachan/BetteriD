@@ -3,6 +3,7 @@ import { select as d3_select } from 'd3-selection';
 import * as countryCoder from '@rapideditor/country-coder';
 
 import { presetManager } from '../../presets';
+import { getProviderOrder, getTranslationLanguages } from '../../core/betterid_preferences';
 import { fileFetcher } from '../../core/file_fetcher';
 import { t, localizer } from '../../core/localizer';
 import { svgIcon } from '../../svg';
@@ -280,7 +281,8 @@ export function uiFieldLocalized(field, context) {
                 },
                 body: JSON.stringify({
                     text: mainValue,
-                    target_langs: ['zh', 'zh-Hant', 'en']
+                    target_langs: getTranslationLanguages(),
+                    provider_order: getProviderOrder('text')
                 })
             })
             .then(function(response) {

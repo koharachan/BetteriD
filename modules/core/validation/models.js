@@ -101,6 +101,8 @@ export function validationIssueFix(attrs) {
     this.disabledReason = attrs.disabledReason; // Optional - a string explaining why the fix is unavailable, if any
     this.icon = attrs.icon;                     // Optional - shows 'iD-icon-wrench' if not set
     this.entityIds = attrs.entityIds || [];     // Optional - used for hover-higlighting.
+    // Explicit opt-in for deterministic, non-destructive batch fixing.
+    this.autoSafe = attrs.autoSafe === true;
 
     this.issue = null;    // Generated link - added by validationIssue
 }

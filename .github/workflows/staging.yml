@@ -14,9 +14,11 @@ jobs:
     environment: workflows
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: '.nvmrc'
+          cache: pnpm
       # install and build development version of id-tagging-schema
       - name: Checkout the id-tagging-schema repository code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -35,17 +37,14 @@ jobs:
       - name: id-tagging-schema - Create directories
         run: mkdir dist/id-tagging-schema && mv id-tagging-schema/dist dist/id-tagging-schema/dist
       # build iD using freshest version of presets and ELI
-      - run: npm clean-install
-      - run: npm install editor-layer-index
-      - run: npm audit signatures
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm add editor-layer-index
       - run: mkdir dist/data
-      - run: npm run imagery
-      - run: npm run all
-      - run: npm run translations
-        env:
-          transifex_password: ${{secrets.TX_TOKEN}}
-        if: env.transifex_password != null
-      - run: npm run dist
+      - run: pnpm run imagery
+      - run: pnpm run all
+      - name: Inherit stable iD translations
+        run: pnpm run translations
+      - run: pnpm run dist
         env:
           ID_PRESETS_CDN_URL: './id-tagging-schema/'
       # deploy to netlify
@@ -53,4 +52,4 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{secrets.NETLIFY_AUTH_TOKEN}}
           NETLIFY_SITE_ID: ${{secrets.NETLIFY_SITE_ID}}
-        run: npx netlify-cli deploy --no-build --prod --dir=dist
+        run: pnpm dlx netlify-cli deploy --no-build --prod --dir=dist

@@ -26,6 +26,7 @@ export function uiSidebar(context) {
     var _wasData = false;
     var _wasNote = false;
     var _wasQaItem = false;
+    const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
 
     // use pointer events on supported platforms; fallback to mouse events
     var _pointerPrefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
@@ -273,16 +274,16 @@ export function uiSidebar(context) {
         };
 
 
-        sidebar.select = function(ids, newFeature) {
+        sidebar.select = function(ids, newFeature, presetGeometries) {
             sidebar.hide();
 
             if (ids && ids.length) {
 
                 var entity = ids.length === 1 && context.entity(ids[0]);
-                if (entity && newFeature && selection.classed('collapsed')) {
+                if (entity && (newFeature || isMobileViewport()) && selection.classed('collapsed')) {
                     // uncollapse the sidebar
                     var extent = entity.extent(context.graph());
-                    sidebar.expand(sidebar.intersects(extent));
+                    sidebar.expand(!isMobileViewport() && sidebar.intersects(extent));
                 }
 
                 featureListWrap
@@ -297,7 +298,8 @@ export function uiSidebar(context) {
                 inspector
                     .state('select')
                     .entityIDs(ids)
-                    .newFeature(newFeature);
+                    .newFeature(newFeature)
+                    .presetGeometries(presetGeometries);
 
                 inspectorWrap
                     .call(inspector);
@@ -429,6 +431,15 @@ export function uiSidebar(context) {
                 hover([]);
             }
         });
+
+        if (isMobileViewport()) {
+            const marginProperty = localizer.textDirection() === 'rtl' ? 'margin-right' : 'margin-left';
+            selection
+                .classed('collapsed', true)
+                .style('max-width', '100%')
+                .style('width', '100%')
+                .style(marginProperty, '-100%');
+        }
     }
 
     sidebar.showPresetList = function() {};

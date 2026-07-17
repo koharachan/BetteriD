@@ -5,7 +5,11 @@ import { validationIssue, validationIssueFix } from '../core/validation';
 const incompatibleRules = [
   {
     id: 'amap',
-    regex: /(^amap$|^amap\.com|autonavi|mapabc|高德)/i
+    regex: /(^amap$|(?:^|\W)amap\.com|autonavi|mapabc|高德(?:地图|导航|影像|卫星|街景)?(?=$|[\s;,_/()\-]))/i
+  },
+  {
+    id: 'tianditu',
+    regex: /(tianditu|tiandimap|天地图(?:影像|卫星|街景|矢量|底图)?(?=$|[\s;,_/()\-]))/i
   },
   {
     id: 'baidu',
@@ -23,6 +27,7 @@ const incompatibleRules = [
  * @returns {{id:string, regex: RegExp, exceptRegex?: RegExp}[]}
  */
 export function getIncompatibleSources(str) {
+  if (typeof str !== 'string' || !str.trim()) return [];
   return incompatibleRules
     .filter(rule =>
       rule.regex.test(str) &&

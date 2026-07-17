@@ -1,6 +1,7 @@
 import * as countryCoder from '@rapideditor/country-coder';
 
 import { fileFetcher } from '../core/file_fetcher';
+import { BETTERID_PREFS, betteridBool } from '../core/betterid_preferences';
 import { t } from '../core/localizer';
 import { presetManager } from '../presets';
 import { validationIssue } from '../core/validation';
@@ -104,6 +105,21 @@ export function validationNonLocalName() {
   }
 
 
+  function localScriptShare(name, expected) {
+    let local = 0;
+    let recognized = 0;
+    for (const character of name) {
+      const scripts = SCRIPT_TESTS
+        .filter(([, regex]) => regex.test(character))
+        .map(([script]) => script);
+      if (!scripts.length) continue;
+      recognized++;
+      if (scripts.some(script => expected.has(script))) local++;
+    }
+    return recognized ? local / recognized : 1;
+  }
+
+
   function countryCodeForEntity(entity, graph) {
     const center = entity.extent(graph).center();
     const countryCode = countryCoder.iso1A2Code(center, { level: 'territory' });
@@ -156,6 +172,7 @@ export function validationNonLocalName() {
 
 
   const validation = function checkNonLocalName(entity, graph) {
+    if (!betteridBool(BETTERID_PREFS.nonLocalName, true)) return [];
     const name = entity.tags.name;
     if (!name || !_territoryLanguages) return [];
 
@@ -165,7 +182,10 @@ export function validationNonLocalName() {
     const expected = localScripts(countryCode);
     const actual = scriptsInName(name);
     if (!expected.size || !actual.length) return [];
-    if (actual.some(script => expected.has(script))) return [];
+    if (actual.every(script => expected.has(script))) return [];
+    // A token local character should not make an otherwise foreign primary
+    // name pass. Mixed-script names need a meaningful local-script majority.
+    if (localScriptShare(name, expected) >= 0.5) return [];
 
     return [makeIssue(entity)];
   };

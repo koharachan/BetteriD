@@ -26,6 +26,7 @@ export function coreFileFetcher() {
     'shortcuts': 'data/shortcuts.min.json',
     'territory_languages': 'data/territory_languages.min.json',
     'locale_overrides': 'data/locale_overrides.min.json',
+    'betterid_locale_overrides': 'data/betterid_locale_overrides.min.json',
     'oci_defaults': ociCdnUrl.replace('{version}', ociVersion) + 'dist/json/defaults.min.json',
     'oci_features': ociCdnUrl.replace('{version}', ociVersion) + 'dist/json/featureCollection.min.json',
     'oci_resources': ociCdnUrl.replace('{version}', ociVersion) + 'dist/json/resources.min.json',

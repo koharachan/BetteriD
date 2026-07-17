@@ -75,21 +75,30 @@ export function coreHistory(context) {
 
 
     // internal _perform with eased time
-    function _perform(args, t) {
+    function _perform(args, t, actionResult) {
         var previous = _stack[_index].graph;
         _stack = _stack.slice(0, _index + 1);
-        var actionResult = _act(args, t);
+        actionResult ||= _act(args, t);
         _stack.push(actionResult);
         _index++;
         return change(previous);
     }
 
 
+    function blocked(actionResult, previous) {
+        const violation = context.editPolicy?.(previous, actionResult.graph);
+        if (!violation) return false;
+
+        context.blockEdit?.(violation);
+        return true;
+    }
+
+
     // internal _replace with eased time
-    function _replace(args, t) {
+    function _replace(args, t, actionResult) {
         var previous = _stack[_index].graph;
         // assert(_index == _stack.length - 1)
-        var actionResult = _act(args, t);
+        actionResult ||= _act(args, t);
         _stack[_index] = actionResult;
         return change(previous);
     }
@@ -158,6 +167,16 @@ export function coreHistory(context) {
                 transitionable = !!action0.transitionable;
             }
 
+            // Actions are pure graph transforms. Preview the completed edit so
+            // policy-protected data cannot be changed through tools, shortcuts,
+            // or transition animations.
+            var previous = _stack[_index].graph;
+            var preview = _act(arguments, transitionable ? 1 : undefined);
+            if (blocked(preview, previous)) {
+                var noChange = coreDifference(previous, previous);
+                return action0?.transitionable ? Promise.resolve(noChange) : noChange;
+            }
+
             if (transitionable) {
                 var origArguments = arguments;
                 return new Promise(resolve => {
@@ -179,14 +198,17 @@ export function coreHistory(context) {
                 });
 
             } else {
-                return _perform(arguments);
+                return _perform(arguments, undefined, preview);
             }
         },
 
 
         replace: function() {
             d3_select(document).interrupt('history.perform');
-            return _replace(arguments);
+            var previous = _stack[_index].graph;
+            var preview = _act(arguments);
+            if (blocked(preview, previous)) return coreDifference(previous, previous);
+            return _replace(arguments, undefined, preview);
         },
 
 
@@ -231,6 +253,7 @@ export function coreHistory(context) {
             while (tryIndex < _stack.length - 1) {
                 tryIndex++;
                 if (_stack[tryIndex].annotation) {
+                    if (blocked(_stack[tryIndex], previous)) break;
                     _index = tryIndex;
                     dispatch.call('redone', this, _stack[_index], previousStack);
                     break;

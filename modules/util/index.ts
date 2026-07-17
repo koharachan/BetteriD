@@ -22,6 +22,7 @@ export { utilGetSetValue } from './get_set_value';
 export { utilHashcode } from './util';
 export { utilHighlightEntities } from './util';
 export { utilKeybinding } from './keybinding';
+export { utilIsMilitaryArea, utilMilitaryEditViolation } from './military_policy';
 export * from './localizer';
 export { utilNoAuto } from './util';
 export { utilObjectOmit, utilCheckTagDictionary, stringifyProperties } from './object';

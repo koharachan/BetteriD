@@ -1,0 +1,145 @@
+.experimental-background-group {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.experimental-background-group h4,
+.experimental-background-group > p {
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.dual-imagery-controls > label,
+.local-photo-transform-controls > label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 45%) 48px;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 4px 12px;
+}
+
+.dual-imagery-controls select {
+  grid-column: 2 / 4;
+  width: 100%;
+  min-height: 30px;
+}
+
+.local-photo-picker,
+.local-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.local-photo-picker input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.local-photo-status {
+  min-height: 0;
+  color: #555;
+}
+
+.local-photo-status.status-error {
+  color: #b54b4b;
+}
+
+.local-photo-preview {
+  display: none;
+  padding: 0 12px 10px;
+}
+
+.has-photo .local-photo-preview {
+  display: block;
+}
+
+.local-photo-preview img {
+  display: block;
+  width: 100%;
+  max-height: 190px;
+  object-fit: contain;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+}
+
+.local-photo-preview a {
+  display: inline-block;
+  margin-top: 5px;
+}
+
+.local-photo-transform-controls,
+.local-photo-actions {
+  display: none;
+}
+
+.has-photo .local-photo-transform-controls,
+.has-photo .local-photo-actions {
+  display: flex;
+}
+
+.has-photo .local-photo-transform-controls {
+  display: block;
+}
+
+.layer-local-photo {
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.layer-secondary-background {
+  z-index: 1;
+}
+
+.layer-local-photo img {
+  position: absolute;
+  max-width: none;
+  transform-origin: center;
+  user-select: none;
+}
+
+.layer-local-photo.adjusting img {
+  outline: 2px solid rgba(65, 135, 65, 0.9);
+  cursor: move;
+}
+
+.photo-analysis-result {
+  padding: 10px 12px;
+  border-top: 1px solid #ddd;
+}
+
+.photo-analysis-result p {
+  margin: 0 0 6px;
+}
+
+.photo-analysis-result ul {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo-analysis-result li {
+  padding: 6px 0;
+  border-top: 1px solid #eee;
+}
+
+.photo-analysis-result label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+
+.photo-analysis-result label span,
+.photo-analysis-result small {
+  display: block;
+}
+
+.photo-analysis-result small {
+  margin-top: 2px;
+  color: #666;
+}

@@ -11,6 +11,7 @@ import { utilArrayIdentical } from '../util/array';
 import { utilDisplayLabel } from '../util/utilDisplayLabel';
 import { localizer, t } from '../core/localizer';
 import { prefs } from '../core/preferences';
+import { BETTERID_PREFS, betteridBool } from '../core/betterid_preferences';
 
 
 const dispatch = d3_dispatch('change');
@@ -53,7 +54,9 @@ export function patchHash(updater) {
 
     // save last used map location for future
     const { map } = utilStringQs(latestHash);
-    if (map) prefs('map-location', map);
+    if (map && betteridBool(BETTERID_PREFS.rememberLocation, true)) {
+        prefs('map-location', map);
+    }
 
     return true;
 }
@@ -237,7 +240,7 @@ export function behaviorHash(context) {
 
         if (q.map) {
             behavior.hadLocation = true;
-        } else if (!q.id && prefs('map-location')) {
+        } else if (!q.id && betteridBool(BETTERID_PREFS.rememberLocation, true) && prefs('map-location')) {
             // center map at last visited map location
             const mapArgs = prefs('map-location').split('/').map(Number);
             context.map().centerZoom([mapArgs[2], Math.min(_latitudeLimit, Math.max(-_latitudeLimit, mapArgs[1]))], mapArgs[0]);

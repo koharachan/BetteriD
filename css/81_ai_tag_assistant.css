@@ -1,0 +1,200 @@
+.ai-tag-assistant {
+    padding: 10px;
+}
+
+.ai-tag-intro,
+.ai-tag-disclaimer {
+    color: var(--muted-text-color);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.ai-tag-intro {
+    margin-bottom: 8px;
+}
+
+.ai-tag-input {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    line-height: 1.4;
+    min-height: 82px;
+    padding: 8px;
+    resize: vertical;
+    width: 100%;
+}
+
+.ai-tag-input:focus {
+    border-color: var(--link-color);
+    box-shadow: 0 0 0 1px var(--link-color);
+    outline: 0;
+}
+
+.ai-tag-actions,
+.ai-tag-footer {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.ai-tag-run.secondary-action,
+.ai-tag-apply.action {
+    align-items: center;
+    border-radius: 4px;
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 4px;
+    padding: 7px 10px;
+    width: auto;
+}
+
+.ai-tag-web-badge,
+.ai-tag-confidence {
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    padding: 4px 7px;
+}
+
+.ai-tag-web-badge {
+    background: var(--bg-color-3);
+    border: 1px solid var(--border-color);
+    color: var(--muted-text-color);
+}
+
+.ai-tag-status {
+    border-radius: 4px;
+    line-height: 1.45;
+    margin-top: 10px;
+    padding: 7px 8px;
+}
+
+.ai-tag-status-summary {
+    background: var(--bg-color-3);
+    color: var(--text-color);
+}
+
+.ai-tag-status-error,
+.ai-tag-status-warning {
+    background: var(--warning-bg-color);
+    color: var(--text-color);
+}
+
+.ai-tag-status-success {
+    background: var(--valid-bg-color);
+    color: var(--text-color);
+}
+
+.ai-tag-status-empty {
+    color: var(--muted-text-color);
+    padding-left: 0;
+}
+
+.ai-tag-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.ai-tag-suggestion {
+    background: var(--bg-color-3);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.ai-tag-suggestion > label {
+    align-items: flex-start;
+    cursor: pointer;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+}
+
+.ai-tag-suggestion input[type='checkbox'] {
+    flex: 0 0 auto;
+    margin-top: 3px;
+}
+
+.ai-tag-suggestion-content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.ai-tag-suggestion-heading {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ai-tag-proposed {
+    color: var(--text-color);
+    overflow-wrap: anywhere;
+}
+
+.ai-tag-confidence {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--muted-text-color);
+}
+
+.ai-tag-confidence.confidence-high {
+    border-color: var(--valid-border-color);
+    color: var(--valid-text-color);
+}
+
+.ai-tag-confidence.confidence-low {
+    border-color: var(--warning-border-color);
+    color: var(--warning-text-color);
+}
+
+.ai-tag-current,
+.ai-tag-reason {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.ai-tag-current {
+    color: var(--muted-text-color);
+}
+
+.ai-tag-item-sources,
+.ai-tag-source-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+}
+
+.ai-tag-item-sources a,
+.ai-tag-source-links a {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-tag-footer {
+    align-items: flex-end;
+}
+
+.ai-tag-disclaimer {
+    flex: 1 1 auto;
+}
+
+.ai-tag-sources {
+    border-top: 1px solid var(--border-color);
+    margin-top: 10px;
+    padding-top: 8px;
+}
+
+.ai-tag-sources h4 {
+    margin-bottom: 5px;
+}

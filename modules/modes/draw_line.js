@@ -3,6 +3,7 @@ import { behaviorDrawWay } from '../behavior/draw_way';
 
 
 export function modeDrawLine(context, wayID, startGraph, button, affix, continuing) {
+    var _presetGeometries;
     var mode = {
         button: button,
         id: 'draw-line'
@@ -36,6 +37,12 @@ export function modeDrawLine(context, wayID, startGraph, button, affix, continui
 
     mode.activeID = function() {
         return (behavior && behavior.activeID()) || [];
+    };
+
+    mode.presetGeometries = function(val) {
+        if (!arguments.length) return _presetGeometries;
+        _presetGeometries = val;
+        return mode;
     };
 
     return mode;

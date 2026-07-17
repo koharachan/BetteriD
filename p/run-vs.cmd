@@ -11,4 +11,8 @@ call "%VSDEVCMD%" -arch=x64 -host_arch=x64
 if errorlevel 1 exit /b %errorlevel%
 
 if not defined RUST_LOG set "RUST_LOG=info"
-cargo run
+if "%~1"=="" (
+  cargo run
+) else (
+  cargo %*
+)

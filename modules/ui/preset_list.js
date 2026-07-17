@@ -2,7 +2,7 @@ import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
 import { debounce } from 'es-toolkit';
 
-import { presetManager } from '../presets';
+import { presetCollection, presetManager } from '../presets';
 import { t, localizer } from '../core/localizer';
 import { actionChangePreset } from '../actions/change_preset';
 import { svgIcon } from '../svg/index';
@@ -19,12 +19,13 @@ export function uiPresetList(context) {
     var _currLoc;
     var _currentPresets;
     var _autofocus = false;
+    var _geometryChoices;
 
 
     function presetList(selection) {
         if (!_entityIDs) return;
 
-        var presets = presetManager.matchAllGeometry(entityGeometries());
+        var presets = availablePresets();
 
         selection.html('');
 
@@ -85,7 +86,7 @@ export function uiPresetList(context) {
 
             var results, messageText;
             if (value.length) {
-                results = presets.search(value, entityGeometries()[0], _currLoc);
+                results = presets.search(value, _geometryChoices || entityGeometries()[0], _currLoc);
                 messageText = t.addOrUpdate('inspector.results', {
                     n: results.collection.length,
                     search: value
@@ -93,7 +94,7 @@ export function uiPresetList(context) {
             } else {
                 var entityPresets = _entityIDs.map(entityID =>
                     presetManager.match(context.graph().entity(entityID), context.graph()));
-                results = presetManager.defaults(entityGeometries()[0], 36, !context.inIntro(), _currLoc, entityPresets);
+                results = defaultPresets(entityPresets);
                 messageText = t.addOrUpdate('inspector.choose');
             }
             list.call(drawList, results);
@@ -136,7 +137,7 @@ export function uiPresetList(context) {
         var list = listWrap
             .append('div')
             .attr('class', 'preset-list')
-            .call(drawList, presetManager.defaults(entityGeometries()[0], 36, !context.inIntro(), _currLoc, entityPresets));
+            .call(drawList, defaultPresets(entityPresets));
 
         listWrap.node().scrollTo({ top: 0 });
         context.features().on('change.preset-list', updateForFeatureHiddenState);
@@ -144,12 +145,15 @@ export function uiPresetList(context) {
 
 
     function drawList(list, presets) {
-        presets = presets.matchAllGeometry(entityGeometries());
+        presets = uiPresetListGeometryMatches(presets, entityGeometries(), !!_geometryChoices);
         var collection = presets.collection.reduce(function(collection, preset) {
             if (!preset) return collection;
 
             if (preset.members) {
-                if (preset.members.collection.filter(function(preset) {
+                const members = uiPresetListGeometryMatches(
+                    preset.members, entityGeometries(), !!_geometryChoices
+                );
+                if (members.collection.filter(function(preset) {
                     return preset.addable();
                 }).length > 1) {
                     collection.push(CategoryItem(preset));
@@ -349,7 +353,9 @@ export function uiPresetList(context) {
                     .style('padding-bottom', '0px');
             } else {
                 shown = true;
-                var members = preset.members.matchAllGeometry(entityGeometries());
+                var members = uiPresetListGeometryMatches(
+                    preset.members, entityGeometries(), !!_geometryChoices
+                );
                 sublist.call(drawList, members);
                 box.transition()
                     .duration(200)
@@ -411,6 +417,11 @@ export function uiPresetList(context) {
                 function(graph) {
                     for (var i in _entityIDs) {
                         var entityID = _entityIDs[i];
+                        var entity = graph.entity(entityID);
+                        if (_geometryChoices && entity.type === 'way' && !entity.isClosed() &&
+                            preset.matchGeometry('area') && !preset.matchGeometry('line')) {
+                            graph = graph.replace(entity.addNode(entity.first()));
+                        }
                         var oldPreset = presetManager.match(graph.entity(entityID), graph);
                         graph = actionChangePreset(entityID, oldPreset, preset)(graph);
                     }
@@ -505,7 +516,34 @@ export function uiPresetList(context) {
         return presetList;
     };
 
+    presetList.geometryChoices = function(val) {
+        if (!arguments.length) return _geometryChoices;
+        _geometryChoices = Array.isArray(val) && val.length ? val.slice() : undefined;
+        return presetList;
+    };
+
+    function availablePresets() {
+        const geometries = entityGeometries();
+        return _geometryChoices ?
+            presetManager.matchAnyGeometry(geometries) :
+            presetManager.matchAllGeometry(geometries);
+    }
+
+    function defaultPresets(entityPresets) {
+        const geometries = entityGeometries();
+        if (!_geometryChoices) {
+            return presetManager.defaults(geometries[0], 36, !context.inIntro(), _currLoc, entityPresets);
+        }
+
+        const defaults = geometries.flatMap(geometry =>
+            presetManager.defaults(geometry, 20, !context.inIntro(), _currLoc, entityPresets).collection
+        );
+        return presetCollection(Array.from(new Set(defaults)).slice(0, 36));
+    }
+
     function entityGeometries() {
+
+        if (_geometryChoices) return _geometryChoices.slice();
 
         var counts = {};
 
@@ -529,4 +567,11 @@ export function uiPresetList(context) {
     }
 
     return utilRebind(presetList, dispatch, 'on');
+}
+
+
+export function uiPresetListGeometryMatches(presets, geometries, matchAny) {
+    return matchAny ?
+        presets.matchAnyGeometry(geometries) :
+        presets.matchAllGeometry(geometries);
 }

@@ -45,7 +45,8 @@ export function uiOsmoseDetails(context) {
     const button = d3_select(this);
     if (button.classed('loading')) return;
 
-    const container = d3_select(this.parentNode.parentNode);
+    const editor = this.closest('.qa-editor');
+    const container = d3_select(editor || this.parentNode.parentNode);
     const entries = [];
     container.selectAll('.qa-translatable').each(function() {
       const text = this.textContent.trim();
@@ -67,13 +68,15 @@ export function uiOsmoseDetails(context) {
         if (!translated.length) throw new Error('Translation failed');
 
         for (const result of translated) {
+          const isHeader = result.source.classed('qa-header-label');
           const subsection = d3_select(result.source.node().parentNode);
-          const translation = subsection.selectAll('.qa-details-translation')
+          const className = isHeader ? 'qa-header-translation' : 'qa-details-translation';
+          const translation = subsection.selectAll(`.${className}`)
             .data([result.translation]);
 
           translation.enter()
-            .append('p')
-              .attr('class', 'qa-details-translation')
+            .append(isHeader ? 'div' : 'p')
+              .attr('class', className)
               .attr('lang', 'zh-CN')
             .merge(translation)
               .text(d => d);

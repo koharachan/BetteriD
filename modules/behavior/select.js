@@ -1,6 +1,7 @@
 import { select as d3_select } from 'd3-selection';
 
 import { geoVecLength } from '../geo';
+import { getSnapTolerance } from '../core/betterid_preferences';
 import { modeBrowse } from '../modes/browse';
 import { modeSelect } from '../modes/select';
 import { modeSelectData } from '../modes/select_data';
@@ -11,7 +12,6 @@ import { utilFastMouse } from '../util/util';
 
 
 export function behaviorSelect(context) {
-    var _tolerancePx = 4; // see also behaviorDrag
     var _lastMouseEvent = null;
     var _showMenu = false;
     var _downPointers = {};
@@ -207,7 +207,7 @@ export function behaviorSelect(context) {
         var p2 = pointGetter(lastEvent);
         var dist = geoVecLength(p1, p2);
 
-        if (dist > _tolerancePx ||
+        if (dist > getSnapTolerance() / 2 ||
             !mapContains(lastEvent)) {
 
             resetProperties();
@@ -266,7 +266,7 @@ export function behaviorSelect(context) {
 
                 var p1 = pointGetter(pointerInfo.firstEvent);
                 var p2 = pointGetter(pointerInfo.lastEvent);
-                if (geoVecLength(p1, p2) > _tolerancePx) continue;
+                if (geoVecLength(p1, p2) > getSnapTolerance() / 2) continue;
 
                 var datum = pointerInfo.firstEvent.target.__data__;
                 var entity = (datum && datum.properties && datum.properties.entity) || datum;

@@ -16,7 +16,9 @@ export function uiSplash(context) {
     // If user has not seen this version of the privacy policy, show the splash again.
     let updateMessage = '';
     const sawPrivacyVersion = prefs('sawPrivacyVersion');
-    let showSplash = !prefs('sawSplash');
+    let sawUnofficialNotice = false;
+    try { sawUnofficialNotice = sessionStorage.getItem('betterid-unofficial-notice') === 'seen'; } catch {}  // eslint-disable-line no-empty
+    let showSplash = !prefs('sawSplash') || !sawUnofficialNotice;
     if (sawPrivacyVersion && sawPrivacyVersion !== context.privacyVersion) {
       updateMessage = t('splash.privacy_update');
       showSplash = true;
@@ -26,6 +28,7 @@ export function uiSplash(context) {
 
     prefs('sawSplash', true);
     prefs('sawPrivacyVersion', context.privacyVersion);
+    try { sessionStorage.setItem('betterid-unofficial-notice', 'seen'); } catch {}  // eslint-disable-line no-empty
 
     // fetch intro graph data now, while user is looking at the splash screen
     fileFetcher.get('intro_graph');
@@ -43,11 +46,16 @@ export function uiSplash(context) {
       .append('div')
       .attr('class','modal-section')
       .append('h3')
-      .call(t.append('splash.welcome'));
+      .call(t.append('splash.betterid_welcome'));
 
     let modalSection = introModal
       .append('div')
       .attr('class','modal-section');
+
+    modalSection
+      .append('p')
+      .attr('class', 'betterid-unofficial-notice')
+      .call(t.append('splash.unofficial_notice'));
 
     modalSection
       .append('p')
@@ -56,12 +64,12 @@ export function uiSplash(context) {
         website: selection => selection
           .append('a')
           .attr('target', '_blank')
-          .attr('href', 'https://github.com/openstreetmap/iD/blob/develop/CHANGELOG.md#whats-new')
+          .attr('href', 'https://github.com/koharachan/BetteriD/blob/develop/CHANGELOG.md')
           .call(t.addOrUpdate('splash.changelog')),
         github: selection => selection
           .append('a')
           .attr('target', '_blank')
-          .attr('href', 'https://github.com/openstreetmap/iD/issues')
+          .attr('href', 'https://github.com/koharachan/BetteriD/issues')
           .text('github.com')
       }));
 

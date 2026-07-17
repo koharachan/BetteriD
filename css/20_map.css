@@ -60,18 +60,27 @@
 .way.target {
     pointer-events: stroke;
     fill: none;
-    stroke-width: 12;
+    stroke-width: calc(var(--betterid-snap-tolerance, 6px) * 2);
     stroke-opacity: 0.8;
     stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
 
+.main-map.betterid-indoor-focus .layer-background,
+.main-map.betterid-indoor-focus .layer-overlay {
+    filter: grayscale(45%) brightness(82%);
+}
+
+.main-map.betterid-indoor-focus .layer-osm .betterid-indoor-dim {
+    opacity: 0.18 !important;
+}
+
 .ideditor[pointer='pen'] .way.target {
-    stroke-width: 18;
+    stroke-width: max(18px, calc(var(--betterid-snap-tolerance, 6px) * 2));
 }
 .ideditor[pointer='touch'] .way.target {
-    stroke-width: 32;
+    stroke-width: max(32px, calc(var(--betterid-snap-tolerance, 6px) * 2));
 }
 .ideditor[pointer='touch'] .node.vertex.target {
     pointer-events: painted;

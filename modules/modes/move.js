@@ -3,6 +3,7 @@ import {
 } from 'd3-selection';
 
 import { t } from '../core/localizer';
+import { getSnapTolerance } from '../core/betterid_preferences';
 
 import { actionMove } from '../actions/move';
 import { actionNoop } from '../actions/noop';
@@ -23,8 +24,6 @@ import { operationRotate } from '../operations/rotate';
 
 
 export function modeMove(context, entityIDs, baseGraph) {
-
-    var _tolerancePx = 4; // see also behaviorDrag, behaviorSelect, modeRotate
 
     var mode = {
         id: 'move',
@@ -158,7 +157,7 @@ export function modeMove(context, entityIDs, baseGraph) {
                 var p2 = pointGetter(d3_event);
                 var dist = geoVecLength(p1, p2);
 
-                if (dist <= _tolerancePx) finish(d3_event);
+                if (dist <= getSnapTolerance() / 2) finish(d3_event);
                 downEvent = null;
             }, true);
 

@@ -133,6 +133,7 @@ export function validationOutdatedTags() {
           let fixes = [
             new validationIssueFix({
               title: t.append('issues.fix.upgrade_tags.title'),
+              autoSafe: true,
               onClick: (context) => {
                 context.perform(graph => doUpgrade(graph, deprecationDiff), t('issues.fix.upgrade_tags.annotation'));
               }

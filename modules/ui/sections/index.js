@@ -1,9 +1,11 @@
 export { uiSectionBackgroundDisplayOptions } from './background_display_options';
 export { uiSectionBackgroundList } from './background_list';
 export { uiSectionBackgroundOffset } from './background_offset';
+export { uiSectionAiTagAssistant } from './ai_tag_assistant';
 export { uiSectionChanges } from './changes';
 export { uiSectionDataLayers } from './data_layers';
 export { uiSectionEntityIssues } from './entity_issues';
+export { uiSectionExperimentalBackground } from './experimental_background';
 export { uiSectionFeatureType } from './feature_type';
 export { uiSectionMapFeatures } from './map_features';
 export { uiSectionMapStyleOptions } from './map_style_options';

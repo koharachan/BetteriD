@@ -1,0 +1,152 @@
+{
+  "general": {
+    "zh": {
+      "preferences": {
+        "move_up": "上移",
+        "move_down": "下移",
+        "general": {
+          "title": "常规",
+          "remember_location": "记住上次地图位置",
+          "remember_location_description": "再次打开 BetteriD 时回到上次浏览的位置。"
+        },
+        "editing": {
+          "title": "编辑",
+          "right_drag": "按住右键拖动地图",
+          "right_drag_description": "拖动时平移地图；短按右键仍会打开编辑菜单。",
+          "josm_shortcuts": "兼容 JOSM 快捷键",
+          "josm_shortcuts_description": "只添加不会替换 iD 原快捷键的兼容按键。",
+          "snap_tolerance": "吸附范围（像素）",
+          "smart_split": "智能拆分上传",
+          "smart_split_description": "按下面设置的依据拆分较大的上传。"
+        },
+        "language": {
+          "title": "语言与翻译",
+          "description": "选择并排序自动生成多语言名称时使用的目标语言，最多八种。",
+          "add": "添加语言"
+        },
+        "validation": {
+          "title": "检查",
+          "non_local_name": "检查非本地语言的主名称",
+          "non_local_name_description": "主名称未使用所在地法定语言文字时显示黄色警告。"
+        },
+        "ai": {
+          "title": "AI",
+          "search_order": "网络搜索顺序",
+          "text_order": "长文本生成顺序",
+          "vision_order": "视觉任务顺序",
+          "free_notice": "AI 功能目前对用户免费，但服务器和维护并不是免费的。你可以{donate}，也可以加入{qq}。",
+          "donate": "赞助 BetteriD",
+          "qq_group": "BetteriD QQ 交流群",
+          "providers": {
+            "openai": "GPT",
+            "deepseek": "DeepSeek",
+            "kimi": "Kimi 搜索",
+            "mimo": "MiMo"
+          }
+        },
+        "experimental": {
+          "title": "实验性功能",
+          "enabled": "启用实验性功能",
+          "enabled_description": "实验工具默认关闭，在测试过程中可能会发生变化。",
+          "dual_imagery": "叠加两种底图",
+          "dual_imagery_description": "选择第二种底图并单独调整透明度。",
+          "local_photo": "本地照片底图",
+          "local_photo_description": "上传并审核本地照片，然后将其作为临时底图拖动、缩放、旋转和识别。",
+          "indoor_focus": "室内聚焦增强",
+          "indoor_focus_description": "保持当前楼层和所在建筑清晰，压暗其他楼层和周边地图。",
+          "wasd_navigation": "WASD 地图移动",
+          "wasd_navigation_description": "未聚焦表单输入框时使用 WASD 移动地图。",
+          "navigation_mode": "移动模式",
+          "navigation_walk": "行走（线性，松手即停）",
+          "navigation_fly": "飞行（缓入缓出并短暂滑行）"
+        }
+      },
+      "splash": {
+        "betterid_welcome": "欢迎使用 BetteriD",
+        "unofficial_notice": "这是一个独立部署的非官方 OpenStreetMap 编辑器，并非由 OpenStreetMap 基金会运营或认可。上传前请认真检查每一项修改。"
+      },
+      "issues": {
+        "incompatible_source": {
+          "reference": {
+            "tianditu": "天地图产品属于专有来源，不得作为 OpenStreetMap 绘图参考。"
+          }
+        }
+      },
+      "ai_tags": {
+        "description": "描述地图要素以获得经过检索的 OSM 标签建议；搜索与生成服务会按偏好顺序静默降级。"
+      },
+      "background": {
+        "experimental": {
+          "title": "实验性影像",
+          "dual_title": "双底图叠加",
+          "second_source": "第二底图",
+          "second_opacity": "第二底图透明度",
+          "photo_title": "本地照片底图",
+          "photo_instructions": "照片必须先上传并检查安全性和 OSM 适用性，通过后才会显示，并获得公开只读地址。",
+          "choose_photo": "选择照片",
+          "photo_preview_alt": "已通过审核的本地照片预览",
+          "open_public_photo": "打开公开照片",
+          "photo_opacity": "照片透明度",
+          "photo_scale": "照片缩放",
+          "photo_rotation": "照片旋转",
+          "adjust_photo": "在地图上调整",
+          "finish_adjusting": "完成调整",
+          "analyze_photo": "识别 POI",
+          "remove_photo": "从地图移除",
+          "invalid_photo": "请选择不超过 12 MB 的 JPEG、PNG 或 WebP 图片。",
+          "photo_rejected": "图片未通过安全性和 OSM 适用性审核。",
+          "photo_upload_error": "图片上传失败。",
+          "photo_uploading": "正在上传并审核图片……",
+          "photo_approved": "图片已通过审核，可在地图上拖动或使用下面的控件调整。",
+          "photo_analyzing": "正在识别 POI 信息……",
+          "photo_analysis_error": "图片识别失败。",
+          "apply_photo_tags": "应用所选标签"
+        }
+      },
+      "betterid": {
+        "military_warning": {
+          "title": "此处不提供军事区域编辑",
+          "message": "你真的要这样做吗？BetteriD 不允许在中国区域创建或修改军事区域，包括相关的成员节点。如果确实需要进行此编辑，请移步 OpenStreetMap 官方网站。",
+          "cancel": "留在 BetteriD",
+          "official": "打开 OSM 官方编辑器"
+        },
+        "validation_autofix": {
+          "title": "安全的一键修复",
+          "preview": "有 {count} 个明确的标签问题可以安全修复。",
+          "action": "全部修复",
+          "annotation": "应用了 {count} 个安全检查修复。"
+        }
+      },
+      "tag_values": {
+        "rural": "农村聚落",
+        "apartments": "公寓住宅",
+        "single_family": "独栋住宅",
+        "urban": "城市区域",
+        "trailer_park": "拖车住宅区",
+        "condominium": "共管公寓",
+        "irregular_settlement": "非正规聚居区",
+        "yes": "是",
+        "gated": "封闭社区"
+      }
+    },
+    "zh-CN": {},
+    "zh-TW": {
+      "preferences": {
+        "move_up": "上移",
+        "move_down": "下移",
+        "general": { "title": "一般", "remember_location": "記住上次地圖位置", "remember_location_description": "再次開啟 BetteriD 時回到上次瀏覽的位置。" },
+        "editing": { "title": "編輯", "right_drag": "按住右鍵拖曳地圖", "right_drag_description": "拖曳時平移地圖；短按右鍵仍會開啟編輯選單。", "josm_shortcuts": "相容 JOSM 快捷鍵", "josm_shortcuts_description": "只加入不會取代 iD 原快捷鍵的相容按鍵。", "snap_tolerance": "吸附範圍（像素）", "smart_split": "智慧拆分上傳", "smart_split_description": "依下面設定的依據拆分較大的上傳。" },
+        "language": { "title": "語言與翻譯", "description": "選擇並排序自動產生多語言名稱時使用的目標語言，最多八種。", "add": "加入語言" },
+        "validation": { "title": "檢查", "non_local_name": "檢查非本地語言的主要名稱", "non_local_name_description": "主要名稱未使用所在地法定語言文字時顯示黃色警告。" },
+        "ai": { "title": "AI", "search_order": "網路搜尋順序", "text_order": "長文字產生順序", "vision_order": "視覺任務順序", "free_notice": "AI 功能目前對使用者免費，但伺服器和維護並不是免費的。你可以{donate}，也可以加入{qq}。", "donate": "贊助 BetteriD", "qq_group": "BetteriD QQ 交流群", "providers": { "openai": "GPT", "deepseek": "DeepSeek", "kimi": "Kimi 搜尋", "mimo": "MiMo" } },
+        "experimental": { "title": "實驗性功能", "enabled": "啟用實驗性功能", "enabled_description": "實驗工具預設關閉，在測試過程中可能會發生變化。", "dual_imagery": "疊加兩種底圖", "dual_imagery_description": "選擇第二種底圖並單獨調整透明度。", "local_photo": "本地照片底圖", "local_photo_description": "上傳並審核本地照片，然後將其作為臨時底圖拖曳、縮放、旋轉和辨識。", "indoor_focus": "室內聚焦增強", "indoor_focus_description": "保持目前樓層和所在建築清晰，壓暗其他樓層和周邊地圖。", "wasd_navigation": "WASD 地圖移動", "wasd_navigation_description": "未聚焦表單輸入框時使用 WASD 移動地圖。", "navigation_mode": "移動模式", "navigation_walk": "行走（線性，放開即停）", "navigation_fly": "飛行（緩入緩出並短暫滑行）" }
+      },
+      "splash": { "betterid_welcome": "歡迎使用 BetteriD", "unofficial_notice": "這是一個獨立部署的非官方 OpenStreetMap 編輯器，並非由 OpenStreetMap 基金會營運或認可。上傳前請仔細檢查每一項修改。" },
+      "issues": { "incompatible_source": { "reference": { "tianditu": "天地圖產品屬於專有來源，不得作為 OpenStreetMap 繪圖參考。" } } },
+      "ai_tags": { "description": "描述地圖圖徵以取得經過檢索的 OSM 標籤建議；搜尋與產生服務會依偏好順序靜默降級。" },
+      "background": { "experimental": { "title": "實驗性影像", "dual_title": "雙底圖疊加", "second_source": "第二底圖", "second_opacity": "第二底圖透明度", "photo_title": "本地照片底圖", "photo_instructions": "照片必須先上傳並檢查安全性和 OSM 適用性，通過後才會顯示，並取得公開唯讀網址。", "choose_photo": "選擇照片", "photo_preview_alt": "已通過審核的本地照片預覽", "open_public_photo": "開啟公開照片", "photo_opacity": "照片透明度", "photo_scale": "照片縮放", "photo_rotation": "照片旋轉", "adjust_photo": "在地圖上調整", "finish_adjusting": "完成調整", "analyze_photo": "辨識 POI", "remove_photo": "從地圖移除", "invalid_photo": "請選擇不超過 12 MB 的 JPEG、PNG 或 WebP 圖片。", "photo_rejected": "圖片未通過安全性和 OSM 適用性審核。", "photo_upload_error": "圖片上傳失敗。", "photo_uploading": "正在上傳並審核圖片……", "photo_approved": "圖片已通過審核，可在地圖上拖曳或使用下面的控制項調整。", "photo_analyzing": "正在辨識 POI 資訊……", "photo_analysis_error": "圖片辨識失敗。", "apply_photo_tags": "套用所選標籤" } },
+      "betterid": { "military_warning": { "title": "此處不提供軍事區域編輯", "message": "你真的要這樣做嗎？BetteriD 不允許在中國區域建立或修改軍事區域，包括相關的成員節點。如果確實需要進行此編輯，請前往 OpenStreetMap 官方網站。", "cancel": "留在 BetteriD", "official": "開啟 OSM 官方編輯器" }, "validation_autofix": { "title": "安全的一鍵修復", "preview": "有 {count} 個明確的標籤問題可以安全修復。", "action": "全部修復", "annotation": "套用了 {count} 個安全檢查修復。" } },
+      "tag_values": { "rural": "農村聚落", "apartments": "公寓住宅", "single_family": "獨棟住宅", "urban": "城市區域", "trailer_park": "拖車住宅區", "condominium": "共管公寓", "irregular_settlement": "非正規聚居區", "yes": "是", "gated": "封閉社區" }
+    }
+  }
+}

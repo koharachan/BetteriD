@@ -93,6 +93,7 @@ function buildData() {
     minifyJSON('data/intro_graph.json', 'dist/data/intro_graph.min.json'),
     minifyJSON('data/languages.json', 'dist/data/languages.min.json'),
     minifyJSON('data/locale_overrides.min.json', 'dist/data/locale_overrides.min.json'),
+    minifyJSON('data/betterid_locale_overrides.json', 'dist/data/betterid_locale_overrides.min.json'),
     minifyJSON('data/phone_formats.json', 'dist/data/phone_formats.min.json'),
     minifyJSON('data/qa_data.json', 'dist/data/qa_data.min.json'),
     minifyJSON('data/shortcuts.json', 'dist/data/shortcuts.min.json'),

@@ -15,11 +15,13 @@ export function uiInspector(context) {
     var _state = 'select';
     var _entityIDs = [];
     var _newFeature = false;
+    var _presetGeometries;
 
 
     function inspector(selection, options = {}) {
         presetList
             .entityIDs(_entityIDs)
+            .geometryChoices(_presetGeometries)
             .autofocus(_newFeature)
             .on('choose', inspector.setPreset)
             .on('cancel', function() {
@@ -186,6 +188,12 @@ export function uiInspector(context) {
     inspector.newFeature = function(val) {
         if (!arguments.length) return _newFeature;
         _newFeature = val;
+        return inspector;
+    };
+
+    inspector.presetGeometries = function(val) {
+        if (!arguments.length) return _presetGeometries;
+        _presetGeometries = val;
         return inspector;
     };
 

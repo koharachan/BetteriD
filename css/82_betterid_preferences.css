@@ -1,0 +1,144 @@
+.betterid-preference-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e5e5;
+  cursor: pointer;
+}
+
+.betterid-preference-row input {
+  margin: 2px 0 0;
+}
+
+.betterid-preference-row small {
+  grid-column: 2;
+  margin-top: 3px;
+  color: #666;
+  line-height: 1.35;
+}
+
+.betterid-preference-row.disabled,
+.betterid-preference-subgroup.disabled {
+  opacity: 0.55;
+}
+
+.betterid-preference-subgroup {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.betterid-number-preference {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 35%);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.betterid-number-preference input,
+.betterid-number-preference select {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.betterid-preference-subgroup > label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 45%);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.betterid-preference-subgroup > label:last-child {
+  margin-bottom: 0;
+}
+
+.betterid-preference-subgroup select,
+.betterid-preference-subgroup input[type='number'],
+.translation-language-add select {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.translation-language-intro,
+.betterid-ai-support {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e5e5;
+  color: #555;
+  line-height: 1.45;
+}
+
+.betterid-order-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.betterid-order-list li {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px 5px 12px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+}
+
+.betterid-order-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.betterid-order-controls {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.betterid-order-controls button {
+  width: 30px;
+  height: 28px;
+  padding: 5px;
+  border: 0;
+  background: transparent;
+}
+
+.betterid-order-controls button:hover:not(:disabled) {
+  background: #e8f2e8;
+}
+
+.translation-language-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.betterid-provider-group h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.betterid-provider-group .betterid-order-list {
+  border: 1px solid #ddd;
+}
+
+.betterid-provider-group .betterid-order-list li:last-child {
+  border-bottom: 0;
+}
+
+.modal-splash .betterid-unofficial-notice {
+  margin: 0 0 12px;
+  padding: 9px 10px;
+  border-left: 4px solid #d6a100;
+  background: #fff8d8;
+  color: #4a430f;
+  line-height: 1.45;
+}

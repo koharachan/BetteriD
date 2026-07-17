@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::net::IpAddr;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SplitStrategy {
@@ -34,6 +35,24 @@ pub struct ProxyConfig {
     pub bing_translate_api_key: Option<String>,
     pub bing_translate_region: String,
     pub deepseek_api_key: Option<String>,
+    pub deepseek_base_url: String,
+    pub deepseek_model: String,
+    pub openai_api_key: Option<String>,
+    pub openai_base_url: String,
+    pub openai_resolve_ip: Option<String>,
+    pub openai_text_model: String,
+    pub openai_search_model: String,
+    pub openai_moderation_model: String,
+    pub openai_vision_model: String,
+    pub kimi_api_key: Option<String>,
+    pub kimi_base_url: String,
+    pub kimi_model: String,
+    pub mimo_api_keys: Vec<String>,
+    pub mimo_base_url: String,
+    pub mimo_text_model: String,
+    pub mimo_vision_model: String,
+    pub photo_upload_dir: String,
+    pub trusted_proxy_ips: Vec<IpAddr>,
     pub default_language: String,
     pub enabled_rules: Vec<String>,
     pub enable_smart_split: bool,
@@ -55,6 +74,24 @@ impl Default for ProxyConfig {
             bing_translate_api_key: None,
             bing_translate_region: "global".to_string(),
             deepseek_api_key: None,
+            deepseek_base_url: "https://api.deepseek.com/v1".to_string(),
+            deepseek_model: "deepseek-chat".to_string(),
+            openai_api_key: None,
+            openai_base_url: "https://api.openai.com/v1".to_string(),
+            openai_resolve_ip: None,
+            openai_text_model: "gpt-5.4-mini".to_string(),
+            openai_search_model: "gpt-5.4-mini".to_string(),
+            openai_moderation_model: "gpt-5.4-mini".to_string(),
+            openai_vision_model: "gpt-5.6-sol".to_string(),
+            kimi_api_key: None,
+            kimi_base_url: "https://api.moonshot.cn/v1".to_string(),
+            kimi_model: "kimi-k2.6".to_string(),
+            mimo_api_keys: Vec::new(),
+            mimo_base_url: "https://api.xiaomimimo.com/v1".to_string(),
+            mimo_text_model: "mimo-v2.5".to_string(),
+            mimo_vision_model: "mimo-v2-omni".to_string(),
+            photo_upload_dir: "./photo-uploads".to_string(),
+            trusted_proxy_ips: Vec::new(),
             default_language: "zh-CN".to_string(),
             enabled_rules: vec!["foreign_name_check".to_string()],
             enable_smart_split: false,
@@ -111,6 +148,62 @@ impl ProxyConfig {
         if let Some(v) = value("DEEPSEEK_API_KEY") {
             config.deepseek_api_key = Some(v);
         }
+        if let Some(v) = value("DEEPSEEK_BASE_URL") {
+            config.deepseek_base_url = v;
+        }
+        if let Some(v) = value("DEEPSEEK_MODEL") {
+            config.deepseek_model = v;
+        }
+        if let Some(v) = value("OPENAI_API_KEY") {
+            config.openai_api_key = Some(v);
+        }
+        if let Some(v) = value("OPENAI_BASE_URL") {
+            config.openai_base_url = v;
+        }
+        if let Some(v) = value("OPENAI_RESOLVE_IP") {
+            config.openai_resolve_ip = Some(v);
+        }
+        if let Some(v) = value("OPENAI_TEXT_MODEL") {
+            config.openai_text_model = v;
+        }
+        if let Some(v) = value("OPENAI_SEARCH_MODEL") {
+            config.openai_search_model = v;
+        }
+        if let Some(v) = value("OPENAI_MODERATION_MODEL") {
+            config.openai_moderation_model = v;
+        }
+        if let Some(v) = value("OPENAI_VISION_MODEL") {
+            config.openai_vision_model = v;
+        }
+        if let Some(v) = value("KIMI_API_KEY") {
+            config.kimi_api_key = Some(v);
+        }
+        if let Some(v) = value("KIMI_BASE_URL") {
+            config.kimi_base_url = v;
+        }
+        if let Some(v) = value("KIMI_MODEL") {
+            config.kimi_model = v;
+        }
+        if let Some(v) = value("MIMO_API_KEYS") {
+            config.mimo_api_keys = split_secrets(&v);
+        } else if let Some(v) = value("MIMO_API_KEY") {
+            config.mimo_api_keys = split_secrets(&v);
+        }
+        if let Some(v) = value("MIMO_BASE_URL") {
+            config.mimo_base_url = v;
+        }
+        if let Some(v) = value("MIMO_TEXT_MODEL") {
+            config.mimo_text_model = v;
+        }
+        if let Some(v) = value("MIMO_VISION_MODEL") {
+            config.mimo_vision_model = v;
+        }
+        if let Some(v) = value("OSM_PHOTO_UPLOAD_DIR") {
+            config.photo_upload_dir = v;
+        }
+        if let Some(v) = value("OSM_TRUSTED_PROXY_IPS") {
+            config.trusted_proxy_ips = split_ip_addresses(&v);
+        }
         if let Some(v) = value("OSM_DEFAULT_LANGUAGE") {
             config.default_language = v;
         }
@@ -148,6 +241,24 @@ impl ProxyConfig {
     }
 }
 
+fn split_secrets(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+fn split_ip_addresses(value: &str) -> Vec<IpAddr> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .filter_map(|item| item.parse().ok())
+        .collect()
+}
+
 fn read_env_files() -> HashMap<String, String> {
     let mut values = HashMap::new();
     for path in [".env", "../.env"] {
@@ -171,7 +282,7 @@ fn read_env_files() -> HashMap<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_value;
+    use super::{normalize_value, split_ip_addresses, split_secrets};
 
     #[test]
     fn normalize_value_ignores_empty_values() {
@@ -184,6 +295,22 @@ mod tests {
         assert_eq!(
             normalize_value("  configured  ".to_string()),
             Some("configured".to_string())
+        );
+    }
+
+    #[test]
+    fn split_secrets_ignores_empty_items() {
+        assert_eq!(split_secrets(" first, ,second "), ["first", "second"]);
+    }
+
+    #[test]
+    fn trusted_proxy_list_only_accepts_ip_addresses() {
+        assert_eq!(
+            split_ip_addresses("127.0.0.1, invalid, ::1"),
+            [
+                "127.0.0.1".parse::<std::net::IpAddr>().unwrap(),
+                "::1".parse::<std::net::IpAddr>().unwrap()
+            ]
         );
     }
 }

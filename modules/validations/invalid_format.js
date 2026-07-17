@@ -177,6 +177,7 @@ export function validationFormatting(context) {
                         const wikimedia_commons_reference = this.data?.fix;
                         return [new validationIssueFix({
                             title: t.append('issues.fix.move_value_to_wikimedia_commons.title'),
+                            autoSafe: true,
                             onClick: function() {
                                 const entityID = this.issue.entityIds[0];
                                 const entity = context.entity(entityID);
@@ -222,6 +223,7 @@ export function validationFormatting(context) {
                         dynamicFixes: function(context) {
                             return [new validationIssueFix({
                                 title: t.append('issues.fix.upgrade_tags.title'),
+                                autoSafe: true,
                                 onClick: function() {
                                     const entityID = this.issue.entityIds[0];
                                     const entity = context.entity(entityID);

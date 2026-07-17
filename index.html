@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset='utf-8'>
-    <title>iD</title>
+    <title>BetteriD</title>
     <link rel='stylesheet' href='dist/iD.css?v=__BETTERID_ASSET_VERSION__'>
     <link rel='icon' type='image/png' href='data:image/png;base64,iVBORw0KGgo='>
     <meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no'/>
@@ -51,12 +51,6 @@
             .containerNode(container);
           window.context = window.id = context;  // for debugging
           context.init();
-
-          // disable boundaries (unless we have an explicit disable_features list)
-          var q = iD.utilStringQs(window.location.hash);
-          if (!q.hasOwnProperty('disable_features')) {
-            context.features().disable('boundaries');
-          }
         }
       }
     </script>

@@ -7,6 +7,7 @@ describe('iD.behaviorHash', function () {
     var hash, context;
 
     beforeEach(function () {
+        iD.prefs('betterid.general.remember_location', 'true');
         window.location.hash = '#background=none';   // Try not to load imagery
         var container = d3_select(document.createElement('div'));
         context = iD.coreContext().assetPath('../dist/').init().container(container);
@@ -17,6 +18,7 @@ describe('iD.behaviorHash', function () {
     afterEach(function () {
         hash.off();
         window.location.hash = '#background=none';   // Try not to load imagery
+        iD.prefs('betterid.general.remember_location', null);
     });
 
 

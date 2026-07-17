@@ -3207,6 +3207,28 @@ img.tag-reference-wiki-image {
 .ideditor[dir='rtl'] .qa-header-label {
     border-radius: 5px 0 0 5px;
 }
+.qa-header-text {
+    display: flex;
+    flex: 1 1 100%;
+    flex-direction: column;
+    min-width: 0;
+    padding: 10px 0;
+}
+.qa-header-text .qa-header-label {
+    flex: none;
+}
+.qa-header-translation {
+    background: var(--bg-color);
+    border-left: 3px solid var(--link-color);
+    color: var(--text-color);
+    font-size: 13px;
+    margin: 6px 15px 0;
+    padding: 6px 8px;
+}
+.ideditor[dir='rtl'] .qa-header-translation {
+    border-left: none;
+    border-right: 3px solid var(--link-color);
+}
 
 .note-category {
     margin: 20px 0px;

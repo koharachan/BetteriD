@@ -17,6 +17,25 @@ import {
 } from '../util';
 
 
+export function areaGeometryIsComplete(entity, graph, seen = new Set()) {
+    if (seen.has(entity.id)) return true;
+    seen.add(entity.id);
+
+    if (entity.type === 'way') {
+        return entity.nodes.every(id => graph.hasEntity(id));
+    }
+    if (entity.type === 'relation') {
+        return entity.members.every(member => {
+            const child = graph.hasEntity(member.id);
+            if (!child) return false;
+            return child.type !== 'way' && child.type !== 'relation' ||
+                areaGeometryIsComplete(child, graph, seen);
+        });
+    }
+    return true;
+}
+
+
 
 export function svgLabels(projection, context) {
     var path = d3_geoPath(projection);
@@ -300,6 +319,10 @@ export function svgLabels(projection, context) {
             if (geometry === 'vertex') {
                 geometry = 'point';
             }
+
+            // Wait until an area's child geometry is complete before calculating
+            // a centroid, otherwise its icon briefly jumps to a false position.
+            if (geometry === 'area' && !areaGeometryIsComplete(entity, graph)) continue;
 
             // Determine which entities are label-able
             var preset = geometry === 'area' && presetManager.match(entity, graph);

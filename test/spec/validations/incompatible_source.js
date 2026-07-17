@@ -74,4 +74,29 @@ describe('iD.validations.incompatible_source', function () {
         var issues = validate();
         expect(issues).toHaveLength(0);
     });
+
+    it('flags Tianditu as an incompatible source', function() {
+        createWay({ building: 'yes', source: '\u5929\u5730\u56fe' });
+        var issues = validate();
+        expect(issues).toHaveLength(1);
+        expect(issues[0].type).toEqual('incompatible_source');
+    });
+
+    it('does not flag a geographic name containing Amap Chinese characters', function() {
+        createWay({ building: 'yes', source: '\u9ad8\u5fb7\u7f6e\u5730\u5e7f\u573a survey' });
+        var issues = validate();
+        expect(issues).toHaveLength(0);
+    });
+
+    it('does not flag a geographic name starting with Tianditu Chinese characters', function() {
+        createWay({ building: 'yes', source: '\u5929\u5730\u56fe\u4e66\u9986 survey' });
+        var issues = validate();
+        expect(issues).toHaveLength(0);
+    });
+
+    it('still flags an explicit Amap Chinese source', function() {
+        createWay({ building: 'yes', source: '\u9ad8\u5fb7\u5730\u56fe' });
+        var issues = validate();
+        expect(issues).toHaveLength(1);
+    });
 });

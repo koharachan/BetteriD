@@ -171,6 +171,7 @@ describe('iD.validations.invalid_format', function () {
             expect(issues[0].subtype).toEqual('wikimedia_commons');
             const fixes = issues[0].dynamicFixes(context);
             expect(fixes).toHaveLength(1);
+            expect(fixes[0].autoSafe).toBe(true);
             issues[0].fixes(context)[0].onClick(context);
             const fixedEntity = context.entity(entity.id);
             expect(fixedEntity.tags.image).toBeUndefined();
@@ -218,6 +219,7 @@ describe('iD.validations.invalid_format', function () {
             expect(issues[0].subtype).to.eql('wikimedia_commons');
             const fixes = issues[0].dynamicFixes(context);
             expect(fixes).to.have.lengthOf(1);
+            expect(fixes[0].autoSafe).toBe(true);
             issues[0].fixes(context)[0].onClick(context);
             const fixedEntity = context.entity(entity.id);
             const expected = decodeURIComponent(url)

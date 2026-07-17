@@ -68,7 +68,10 @@ export function uiFieldDirectionalCombo(field, context) {
                 const subField = {
                     ...field,
                     type: 'combo',
-                    key
+                    key,
+                    // Directional values feed merge logic and must remain raw
+                    // OSM values unless this field has its own schema translation.
+                    translateFallback: false
                 };
                 const combo = uiFieldCombo(subField, context);
                 combo.on('change', t => change(key, t[key]));

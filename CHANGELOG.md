@@ -1,11 +1,8 @@
 # What's New
 
-Thanks to all our contributors, users, and the many people that make iD possible! :heart:
-
-The iD map editor is an open source project. You can submit bug reports, help out,
-or learn more by visiting our project page on GitHub:  :octocat: https://github.com/openstreetmap/iD
-
-If you love iD, please star our project on GitHub to show your support! :star:
+BetteriD release notes appear first. The retained iD changelog below records the
+upstream work this fork builds on. Report BetteriD issues or contribute at
+https://github.com/koharachan/BetteriD.
 
 _Breaking developer changes, which may affect downstream projects or sites that embed iD, are marked with a_ :warning:
 
@@ -34,6 +31,49 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [#xxxx]: https://github.com/openstreetmap/iD/pull/xxxx
 [@xxxx]: https://github.com/xxxx
 -->
+
+# BetteriD 0.0.2
+##### 2026-Jul-17
+
+#### :mega: Release Highlights
+* Add a sourced AI tag assistant with confidence levels, selective apply, and task-specific provider ordering.
+* Add moderated local-photo backgrounds with positioning controls and optional POI tag analysis.
+* Add dual imagery, indoor focus, mobile drawing improvements, and walk/fly WASD navigation.
+
+#### :shield: Security
+* Keep all provider credentials server-side and expose only capability flags and provider names.
+* Bound and filter provider lists, AI bodies, photo allocations, dimensions, pixels, and analysis context.
+* Re-encode approved uploads to JPEG before persistence, removing original metadata.
+* Add per-client AI rate limiting and trusted reverse-proxy chain validation.
+* Block creation or modification of military areas and their members in China, Hong Kong, and Macau, with an explicit handoff to the official OSM editor.
+
+#### :tada: New Features
+* Let users configure multilingual-name targets and text, search, and vision provider order.
+* Add smart validation autofix for fixes explicitly marked deterministic and non-destructive.
+* Add configurable snap tolerance, right-button map panning, location memory, and compatible JOSM shortcut aliases.
+* Add a second imagery layer, approved local-photo overlay, indoor level focus, and experimental navigation preferences.
+* Add Kimi web search plus OpenAI, DeepSeek, and MiMo task routing with silent key/provider fallback.
+
+#### :sparkles: Usability & Accessibility
+* Add mobile point/line drawing gestures, line completion by double tap, full-width mobile sidebars, and larger touch targets.
+* Preserve drawing geometry choices when choosing presets and close new linework when an area-only preset is selected.
+* Avoid IME autocomplete interference while text composition is active.
+* Keep area labels hidden until all child geometry is loaded, preventing transient misplaced icons.
+* Migrate legacy hidden-boundary preferences so boundaries are visible by default.
+
+#### :white_check_mark: Validation
+* Improve mixed-script non-local primary-name detection and make the rule configurable.
+* Tighten Amap source matching and add Tianditu as an incompatible mapping source.
+
+#### :earth_asia: Localization
+* Separate BetteriD-owned locale overrides from inherited upstream translations.
+* Add Chinese labels for common values, preferences, AI tools, imagery tools, validation, and the unofficial deployment notice.
+* Translate Osmose issue headers as well as detail content.
+
+#### :hammer: Development
+* :warning: Migrate dependency installation, scripts, and CI from npm to pnpm 10.28.2; remove `package-lock.json`.
+* Inherit stable iD release translations during normal builds while keeping a separate Transifex development command.
+* Expand frontend and Rust tests for mobile drawing, imagery, AI suggestions, photo handling, provider fallback, rate limiting, military policy, validation, and rendering.
 
 # Unreleased (2.42.0-dev)
 

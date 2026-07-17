@@ -44,6 +44,7 @@ export function modeSelect(context, selectedIDs) {
     var _operations = [];
     var _newFeature = false;
     var _follow = false;
+    var _presetGeometries;
 
     // `_focusedParentWayId` is used when we visit a vertex with multiple
     // parents, and we want to remember which parent line we started on.
@@ -191,6 +192,12 @@ export function modeSelect(context, selectedIDs) {
         return mode;
     };
 
+    mode.presetGeometries = function(val) {
+        if (!arguments.length) return _presetGeometries;
+        _presetGeometries = val;
+        return mode;
+    };
+
     function loadOperations() {
         _operations.forEach(function(operation) {
             if (operation.behavior) {
@@ -289,7 +296,7 @@ export function modeSelect(context, selectedIDs) {
             .call(keybinding);
 
         context.ui().sidebar
-            .select(selectedIDs, _newFeature);
+            .select(selectedIDs, _newFeature, _presetGeometries);
 
         context.history()
             .on('change.select', function() {

@@ -8,6 +8,7 @@ import {
 } from 'd3-polygon';
 
 import { t } from '../core/localizer';
+import { getSnapTolerance } from '../core/betterid_preferences';
 import { actionRotate } from '../actions/rotate';
 import { actionNoop } from '../actions/noop';
 import { behaviorEdit } from '../behavior/edit';
@@ -26,8 +27,6 @@ import { utilFastMouse, utilGetAllNodes } from '../util/util';
 
 
 export function modeRotate(context, entityIDs) {
-
-    var _tolerancePx = 4; // see also behaviorDrag, behaviorSelect, modeMove
 
     var mode = {
         id: 'rotate',
@@ -152,7 +151,7 @@ export function modeRotate(context, entityIDs) {
                 var p2 = pointGetter(d3_event);
                 var dist = geoVecLength(p1, p2);
 
-                if (dist <= _tolerancePx) finish(d3_event);
+                if (dist <= getSnapTolerance() / 2) finish(d3_event);
                 downEvent = null;
             }, true);
 

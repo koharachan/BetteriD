@@ -4,6 +4,7 @@ import {
 } from 'd3-selection';
 
 import { prefs } from '../core/preferences';
+import { BETTERID_PREFS, betteridBool } from '../core/betterid_preferences';
 import { t, localizer } from '../core/localizer';
 import { presetManager } from '../presets';
 import { behaviorHash } from '../behavior';
@@ -321,7 +322,8 @@ export function uiInit(context) {
         issueLinks
             .append('a')
             .attr('target', '_blank')
-            .attr('href', 'https://github.com/openstreetmap/iD/issues')
+            .attr('rel', 'noopener noreferrer')
+            .attr('href', 'https://github.com/koharachan/BetteriD/issues')
             .attr('aria-label', t('report_a_bug'))
             .call(svgIcon('#iD-icon-bug', 'light'))
             .call(uiTooltip()
@@ -331,7 +333,8 @@ export function uiInit(context) {
         issueLinks
             .append('a')
             .attr('target', '_blank')
-            .attr('href', 'https://github.com/openstreetmap/iD/blob/develop/CONTRIBUTING.md#translating')
+            .attr('rel', 'noopener noreferrer')
+            .attr('href', 'https://github.com/koharachan/BetteriD/blob/develop/CONTRIBUTING.md#translating')
             .attr('aria-label', t('help_translate'))
             .call(svgIcon('#iD-icon-translate', 'light'))
             .call(uiTooltip()
@@ -375,6 +378,12 @@ export function uiInit(context) {
 
         var panPixels = 80;
         context.keybinding()
+            .on('f1', function josmHelpAlias(d3_event) {
+                if (!betteridBool(BETTERID_PREFS.josmShortcuts, true)) return;
+                d3_event.preventDefault();
+                const pane = context.container().select('.help-pane');
+                ui.togglePanes(pane.classed('shown') ? null : pane);
+            })
             .on([t('sidebar.key'), '`', '²', '@'], (d3_event) => {
                 d3_event.preventDefault();
                 ui.sidebar.toggle();

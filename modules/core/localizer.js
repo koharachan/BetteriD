@@ -92,7 +92,8 @@ export function coreLocalizer() {
         let filesToFetch = [
             'languages',  // load the list of languages
             'locales',     // load the list of supported locales
-            'locale_overrides'  // local translation overrides
+            'locale_overrides',  // inherited/local translation overrides
+            'betterid_locale_overrides'  // BetteriD-owned strings
         ];
 
         const localeDirs = {
@@ -112,7 +113,7 @@ export function coreLocalizer() {
         return _loadPromise = Promise.all(filesToFetch.map((key, index) => {
             // A supplemental locale source (for example, preset translations)
             // must not prevent iD's own translations from loading.
-            if (index < 3) return fileFetcher.get(key);
+            if (index < 4) return fileFetcher.get(key);
             return fileFetcher.get(key).catch(err => {
                 console.warn(`Unable to load translation index "${key}"`, err);  // eslint-disable-line
                 return null;
@@ -122,8 +123,9 @@ export function coreLocalizer() {
                 _dataLanguages = results[0];
                 _dataLocales = results[1];
                 _localeOverrides = results[2] || {};
+                deepMerge(_localeOverrides, results[3] || {});
 
-                let indexes = results.slice(3);
+                let indexes = results.slice(4);
 
                 _localeCodes = localizer.localesToUseFrom(_dataLocales);
                 _localeCode = _localeCodes[0];   // Run iD in the highest-priority locale; the rest are fallbacks

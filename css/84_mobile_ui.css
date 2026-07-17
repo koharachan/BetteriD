@@ -1,0 +1,41 @@
+.mobile-sidebar-close {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .top-toolbar {
+        padding-top: 4px;
+    }
+
+    .top-toolbar .toolbar-item .item-content {
+        height: 48px;
+        margin-left: 2px;
+        margin-right: 2px;
+    }
+
+    .top-toolbar .toolbar-item .item-label,
+    .top-toolbar button.bar-button .label {
+        display: none;
+    }
+
+    .top-toolbar button.add-button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0 12px;
+    }
+
+    .sidebar {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .preset-list-button,
+    .pane-heading button,
+    .sidebar .header button {
+        min-height: 44px;
+    }
+
+    .mobile-sidebar-close {
+        display: block;
+    }
+}

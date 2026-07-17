@@ -2,6 +2,7 @@ import { t } from '../core/localizer';
 
 import { behaviorHover } from '../behavior/hover';
 import { behaviorLasso } from '../behavior/lasso';
+import { behaviorMobileDraw } from '../behavior/mobile_draw';
 import { behaviorPaste } from '../behavior/paste';
 import { behaviorSelect } from '../behavior/select';
 
@@ -36,6 +37,7 @@ export function modeBrowse(context) {
             _behaviors = [
                 behaviorPaste(context),
                 behaviorHover(context).on('hover', context.ui().sidebar.hover),
+                behaviorMobileDraw(context),
                 _selectBehavior,
                 behaviorLasso(context),
                 modeDragNode(context).behavior,

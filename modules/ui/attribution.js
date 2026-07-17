@@ -87,6 +87,8 @@ export function uiAttribution(context) {
 
     const z = context.map().zoom();
     let overlays = context.background().overlayLayerSources() || [];
+    const secondary = context.background().secondaryLayerSource?.();
+    if (secondary) overlays = [secondary, ...overlays];
     _selection
       .call(render, overlays.filter(s => s.validZoom(z)), 'overlay-layer-attribution');
   }

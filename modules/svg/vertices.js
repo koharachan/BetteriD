@@ -3,6 +3,7 @@ import { select as d3_select } from 'd3-selection';
 
 import { presetManager } from '../presets';
 import { geoScaleToZoom } from '../geo';
+import { getSnapTolerance } from '../core/betterid_preferences';
 import { osmIdManager } from '../osm';
 import { svgPassiveVertex, svgPointTransform } from './helpers';
 import { svgTagClasses } from './tag_classes';
@@ -246,11 +247,13 @@ export function svgVertices(projection, context) {
         // enter/update
         targets.enter()
             .append('circle')
-            .attr('r', function(d) {
-                return _radii[d.id]
-                  || radiuses.shadow[3];
-            })
             .merge(targets)
+            .attr('r', function(d) {
+                return Math.max(
+                    _radii[d.id] || radiuses.shadow[3],
+                    getSnapTolerance()
+                );
+            })
             .attr('class', function(d) {
                 return 'node vertex target target-allowed '
                 + targetClass + d.id;
@@ -270,8 +273,13 @@ export function svgVertices(projection, context) {
         // enter/update
         nopes.enter()
             .append('circle')
-            .attr('r', function(d) { return (_radii[d.properties.entity.id] || radiuses.shadow[3]); })
             .merge(nopes)
+            .attr('r', function(d) {
+                return Math.max(
+                    _radii[d.properties.entity.id] || radiuses.shadow[3],
+                    getSnapTolerance()
+                );
+            })
             .attr('class', function(d) { return 'node vertex target target-nope ' + nopeClass + d.id; })
             .attr('transform', getTransform);
     }

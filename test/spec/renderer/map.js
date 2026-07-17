@@ -265,3 +265,238 @@ describe('iD.Map', function() {
         });
     });
 });
+
+
+describe('rendererMap BetteriD interactions', function() {
+    var container, context, surface;
+    var pointerPrefix, PointerEventClass;
+
+    function pointerEvent(type, options) {
+        return new PointerEventClass(pointerPrefix + type, {
+            bubbles: true,
+            cancelable: true,
+            view: jsdom.window,
+            pointerId: 1,
+            pointerType: 'mouse',
+            ...options
+        });
+    }
+
+    beforeEach(function() {
+        pointerPrefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
+        PointerEventClass = 'PointerEvent' in window ? PointerEvent : MouseEvent;
+        iD.prefs('betterid.editing.right_drag', 'true');
+
+        container = d3_select('body').append('div');
+        context = iD.coreContext().assetPath('../dist/').init().container(container);
+        container.append('div')
+            .attr('class', 'main-map')
+            .call(context.map());
+        context.map().redrawEnable(false);
+        surface = context.surface().node();
+    });
+
+    afterEach(function() {
+        iD.prefs('betterid.editing.right_drag', null);
+        iD.prefs('betterid.editing.snap_tolerance', null);
+        iD.prefs('betterid.experimental.enabled', null);
+        iD.prefs('betterid.experimental.wasd_navigation', null);
+        iD.prefs('betterid.experimental.indoor_focus', null);
+        iD.prefs('betterid.navigation.mode', null);
+        vi.restoreAllMocks();
+        container.remove();
+    });
+
+    it('pans with a right-button drag and suppresses its context menu', function() {
+        const before = context.map().center();
+        surface.dispatchEvent(pointerEvent('down', {
+            button: 2, buttons: 2, clientX: 100, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('move', {
+            button: 2, buttons: 2, clientX: 125, clientY: 110
+        }));
+        window.dispatchEvent(pointerEvent('up', {
+            button: 2, buttons: 0, clientX: 125, clientY: 110
+        }));
+
+        expect(context.map().center()).not.toEqual(before);
+        expect(context.map().isTransformed()).toBe(false);
+
+        const menuEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+        expect(surface.dispatchEvent(menuEvent)).toBe(false);
+        expect(menuEvent.defaultPrevented).toBe(true);
+    });
+
+    it('does not suppress the context menu for a short right click', function() {
+        surface.dispatchEvent(pointerEvent('down', {
+            button: 2, buttons: 2, clientX: 100, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('up', {
+            button: 2, buttons: 0, clientX: 100, clientY: 100
+        }));
+
+        const menuEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+        expect(surface.dispatchEvent(menuEvent)).toBe(true);
+        expect(menuEvent.defaultPrevented).toBe(false);
+    });
+
+    it('resets a transformed map when the pointer is released on window', function() {
+        surface.dispatchEvent(pointerEvent('down', {
+            button: 0, buttons: 1, clientX: 100, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('move', {
+            button: 0, buttons: 1, clientX: 125, clientY: 110
+        }));
+        expect(context.map().isTransformed()).toBe(true);
+
+        window.dispatchEvent(pointerEvent('up', {
+            button: 0, buttons: 0, clientX: 125, clientY: 110
+        }));
+        expect(context.map().isTransformed()).toBe(false);
+    });
+    it('resets a transformed map on pointer cancellation', function() {
+        surface.dispatchEvent(pointerEvent('down', {
+            button: 0, buttons: 1, clientX: 100, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('move', {
+            button: 0, buttons: 1, clientX: 125, clientY: 110
+        }));
+        expect(context.map().isTransformed()).toBe(true);
+
+        const cancel = new Event('pointercancel', { bubbles: true, cancelable: true });
+        if ('PointerEvent' in window) {
+            Object.defineProperty(cancel, 'pointerId', { value: 1 });
+        }
+        window.dispatchEvent(cancel);
+
+        expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('uses the configured snap tolerance as the right-drag threshold', function() {
+        iD.prefs('betterid.editing.snap_tolerance', '30');
+        const before = context.map().center();
+
+        surface.dispatchEvent(pointerEvent('down', {
+            button: 2, buttons: 2, clientX: 100, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('move', {
+            button: 2, buttons: 2, clientX: 110, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('up', {
+            button: 2, buttons: 0, clientX: 110, clientY: 100
+        }));
+        expect(context.map().center()).toEqual(before);
+
+        iD.prefs('betterid.editing.snap_tolerance', '2');
+        surface.dispatchEvent(pointerEvent('down', {
+            button: 2, buttons: 2, clientX: 100, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('move', {
+            button: 2, buttons: 2, clientX: 110, clientY: 100
+        }));
+        window.dispatchEvent(pointerEvent('up', {
+            button: 2, buttons: 0, clientX: 110, clientY: 100
+        }));
+        expect(context.map().center()).not.toEqual(before);
+    });
+
+    it('moves linearly with WASD walk mode and stops on key release', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.navigation.mode', 'walk');
+
+        let frame;
+        const cancelFrame = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+            frame = callback;
+            return 1;
+        });
+
+        const before = context.map().center();
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', cancelable: true }));
+        expect(frame).toBeTypeOf('function');
+        frame(performance.now() + 16);
+        expect(context.map().center()).not.toEqual(before);
+
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+        expect(cancelFrame).toHaveBeenCalled();
+        expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('eases WASD fly mode and continues briefly after key release', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.navigation.mode', 'fly');
+
+        let frame;
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+            frame = callback;
+            return 1;
+        });
+
+        const start = performance.now();
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', cancelable: true }));
+        frame(start + 10);
+        frame(start + 150);
+        const atRelease = context.map().center();
+
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'd' }));
+        frame(start + 170);
+        expect(context.map().center()).not.toEqual(atRelease);
+
+        frame(start + 600);
+        expect(context.map().isTransformed()).toBe(false);
+    });
+    it('dims entities outside the selected indoor level while preserving its building', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.indoor_focus', 'true');
+        context.map().centerZoom([0, 0], 20);
+
+        const selected = new iD.osmNode({
+            id: 'n-indoor-selected',
+            loc: [0, 0],
+            tags: { indoor: 'room', level: '1' }
+        });
+        const sameLevel = new iD.osmNode({
+            id: 'n-indoor-same',
+            loc: [0.00001, 0],
+            tags: { indoor: 'room', level: '1' }
+        });
+        const otherLevel = new iD.osmNode({
+            id: 'n-indoor-other',
+            loc: [0.00002, 0],
+            tags: { indoor: 'room', level: '2' }
+        });
+        const corners = [
+            new iD.osmNode({ id: 'n-building-1', loc: [-0.0001, -0.0001] }),
+            new iD.osmNode({ id: 'n-building-2', loc: [0.0001, -0.0001] }),
+            new iD.osmNode({ id: 'n-building-3', loc: [0.0001, 0.0001] }),
+            new iD.osmNode({ id: 'n-building-4', loc: [-0.0001, 0.0001] })
+        ];
+        const building = new iD.osmWay({
+            id: 'w-indoor-building',
+            nodes: corners.map(node => node.id).concat(corners[0].id),
+            tags: { building: 'yes' }
+        });
+        context.history().merge([selected, sameLevel, otherLevel, ...corners, building]);
+        vi.spyOn(context, 'selectedIDs').mockReturnValue([selected.id]);
+
+        const layer = d3_select(surface).select('.layer-osm');
+        expect(layer.size()).toEqual(1);
+        const selectedMark = layer.append('path').datum(selected);
+        const sameLevelMark = layer.append('path').datum(sameLevel);
+        const otherLevelMark = layer.append('path').datum(otherLevel);
+        const buildingMark = layer.append('path').datum(building);
+
+        context.map().redrawEnable(true);
+        context.map().pan([0, 0]);
+
+        expect(container.select('.main-map').classed('betterid-indoor-focus')).toBe(true);
+        expect(selectedMark.classed('betterid-indoor-dim')).toBe(false);
+        expect(sameLevelMark.classed('betterid-indoor-dim')).toBe(false);
+        expect(buildingMark.classed('betterid-indoor-dim')).toBe(false);
+        expect(otherLevelMark.classed('betterid-indoor-dim')).toBe(true);
+        context.map().redrawEnable(false);
+    });
+});

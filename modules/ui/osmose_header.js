@@ -53,9 +53,13 @@ export function uiOsmoseHeader() {
         .attr('transform', 'translate(4, 5.5)')
         .attr('xlink:href', d => d.icon ? '#' + d.icon : '');
 
-    headerEnter
+    const headerText = headerEnter
       .append('div')
-        .attr('class', 'qa-header-label')
+        .attr('class', 'qa-header-text');
+
+    headerText
+      .append('div')
+        .attr('class', 'qa-header-label qa-translatable')
         .text(issueTitle);
   }
 

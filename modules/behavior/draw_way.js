@@ -537,7 +537,11 @@ export function behaviorDrawWay(context, wayID, mode, startGraph) {
         }, 1000);
 
         var isNewFeature = !mode.isContinuing;
-        context.enter(modeSelect(context, [wayID]).newFeature(isNewFeature));
+        const selectMode = modeSelect(context, [wayID]).newFeature(isNewFeature);
+        if (isNewFeature && typeof mode.presetGeometries === 'function') {
+            selectMode.presetGeometries(mode.presetGeometries());
+        }
+        context.enter(selectMode);
     };
 
 

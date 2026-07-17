@@ -5,6 +5,7 @@ import {
 } from 'd3-selection';
 
 import { presetManager } from '../presets';
+import { getSnapTolerance } from '../core/betterid_preferences';
 import { behaviorEdit } from './edit';
 import { behaviorHover } from './hover';
 import { geoChooseEdge, geoVecLength } from '../geo';
@@ -27,11 +28,11 @@ export function behaviorDraw(context) {
         .on('hover', context.ui().sidebar.hover);
     var _edit = behaviorEdit(context);
 
-    var _closeTolerance = 4;
     var _tolerance = 12;
     var _mouseLeave = false;
     var _lastMouse = null;
     var _lastPointerUpEvent;
+    var _lastMobileTap;
 
     var _downPointer;
 
@@ -89,7 +90,20 @@ export function behaviorDraw(context) {
         var p2 = downPointer.pointerLocGetter(d3_event);
         var dist = geoVecLength(downPointer.downLoc, p2);
 
-        if (dist < _closeTolerance ||
+        if (isMobileDrawEvent(d3_event) && context.mode().id === 'draw-line') {
+            const now = performance.now();
+            const isDoubleTap = _lastMobileTap && now - _lastMobileTap.time <= 350 &&
+                geoVecLength(_lastMobileTap.loc, p2) <= 24;
+            _lastMobileTap = { loc: p2, time: now };
+            if (isDoubleTap) {
+                _lastMobileTap = null;
+                d3_event.preventDefault();
+                dispatch.call('finish', this);
+                return;
+            }
+        }
+
+        if (dist < getSnapTolerance() / 2 ||
             (dist < _tolerance && (t2 - downPointer.downTime) < 500)) {
             // Prevent a quick second click
             d3_select(window).on('click.draw-block', function() {
@@ -113,7 +127,7 @@ export function behaviorDraw(context) {
             !_downPointer.isCancelled) {
             var p2 = _downPointer.pointerLocGetter(d3_event);
             var dist = geoVecLength(_downPointer.downLoc, p2);
-            if (dist >= _closeTolerance) {
+            if (dist >= getSnapTolerance() / 2) {
                 _downPointer.isCancelled = true;
                 dispatch.call('downcancel', this);
             }
@@ -288,6 +302,13 @@ export function behaviorDraw(context) {
     behavior.hover = function() {
         return _hover;
     };
+
+
+    function isMobileDrawEvent(event) {
+        if (!['touch', 'pen'].includes(event.pointerType)) return false;
+        return typeof window.matchMedia === 'function' ?
+            window.matchMedia('(max-width: 767px)').matches : window.innerWidth <= 767;
+    }
 
 
     return utilRebind(behavior, dispatch, 'on');

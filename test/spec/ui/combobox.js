@@ -152,6 +152,22 @@ describe('uiCombobox', function() {
         expect(body.selectAll('.combobox-option.selected').size()).toEqual(0);
     });
 
+    it('does not autocomplete while an IME composition is active', function() {
+        input.call(combobox.data(data));
+        focusTypeahead(input);
+        input.property('value', 'b');
+        input.node().setSelectionRange(1, 1);
+        input.node().dispatchEvent(new InputEvent('input', {
+            bubbles: true,
+            data: 'b',
+            inputType: 'insertCompositionText',
+            isComposing: true
+        }));
+
+        expect(input.property('value')).toEqual('b');
+        expect(body.selectAll('.combobox-option.selected').size()).toEqual(0);
+    });
+
     it('selects the completed portion of the value', function() {
         input.call(combobox.data(data));
         focusTypeahead(input);

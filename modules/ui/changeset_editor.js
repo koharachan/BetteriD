@@ -2,6 +2,7 @@ import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
 
 import { presetManager } from '../presets';
+import { getProviderOrder } from '../core/betterid_preferences';
 import { t } from '../core/localizer';
 import { utilAIStatus } from '../util/ai_status';
 import { utilChangesetSummary } from '../util/changeset_summary';
@@ -137,7 +138,10 @@ export function uiChangesetEditor(context) {
                     fetch('/api/osm-ai/summarize', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ summary: summary })
+                        body: JSON.stringify({
+                            summary: summary,
+                            provider_order: getProviderOrder('text')
+                        })
                     })
                     .then(async function(response) {
                         var data = await response.json().catch(() => ({}));

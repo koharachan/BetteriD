@@ -1,0 +1,38 @@
+.validation-autofix {
+    align-items: center;
+    background: var(--valid-bg-color);
+    border: 1px solid var(--valid-border-color);
+    border-radius: 4px;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 8px 10px;
+}
+
+.validation-autofix-copy {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.validation-autofix-count {
+    color: var(--muted-text-color);
+    overflow-wrap: anywhere;
+}
+
+.validation-autofix-button {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 480px) {
+    .validation-autofix {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .validation-autofix-button {
+        min-height: 44px;
+        width: 100%;
+    }
+}

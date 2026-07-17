@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use log::{error, info};
 
-use crate::ai::AiGenerator;
+use crate::ai::AiRouter;
 use crate::cache::SmartCache;
 use crate::config::ProxyConfig;
 use crate::proxy::OsmProxy;
@@ -13,6 +13,9 @@ use crate::translate::Translator;
 mod ai;
 mod cache;
 mod config;
+mod kimi;
+mod photos;
+mod providers;
 mod proxy;
 mod rules;
 mod split;
@@ -40,20 +43,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("Bing Translate API configured");
         Translator::new(key.clone(), config.bing_translate_region.clone())
     });
-    let ai_generator = config.deepseek_api_key.as_ref().map(|key| {
-        info!("DeepSeek AI API configured");
-        AiGenerator::new(key.clone())
-    });
+    let ai_router = AiRouter::from_config(&config);
+    if ai_router.text_configured() || ai_router.search_configured() || ai_router.visual_configured()
+    {
+        info!("One or more AI providers are configured");
+    }
 
     let proxy = OsmProxy::new(
         cache.clone(),
         translator,
-        ai_generator,
+        ai_router,
         config.upstream_url.clone(),
         config.tile_upstream_url.clone(),
         PathBuf::from(&config.id_static_dir),
         config.osm_oauth_client_id.clone(),
         config.osm_oauth_redirect_uri.clone(),
+        PathBuf::from(&config.photo_upload_dir),
+        config.trusted_proxy_ips.clone(),
     );
 
     let cache_for_stats = cache.clone();

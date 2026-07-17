@@ -6,6 +6,7 @@ import {
 } from 'd3-selection';
 
 import { geoVecLength } from '../geo';
+import { getSnapTolerance } from '../core/betterid_preferences';
 import { osmNote } from '../osm';
 import { utilRebind } from '../util/rebind';
 import { utilFastMouse, utilPrefixCSSProperty, utilPrefixDOMProperty } from '../util';
@@ -30,7 +31,6 @@ export function behaviorDrag() {
     var dispatch = d3_dispatch('start', 'move', 'end');
 
     // see also behaviorSelect
-    var _tolerancePx = 1; // keep this low to facilitate pixel-perfect micromapping
     var _penTolerancePx = 4; // styluses can be touchy so require greater movement - #1981
 
     var _origin = null;
@@ -91,7 +91,9 @@ export function behaviorDrag() {
 
             if (!started) {
                 var dist = geoVecLength(startOrigin,  p);
-                var tolerance = d3_event.pointerType === 'pen' ? _penTolerancePx : _tolerancePx;
+                var tolerance = d3_event.pointerType === 'pen' ?
+                    Math.max(_penTolerancePx, getSnapTolerance() / 8) :
+                    getSnapTolerance() / 8;
                 // don't start until the drag has actually moved somewhat
                 if (dist < tolerance) return;
 

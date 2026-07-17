@@ -49,6 +49,14 @@ export function uiFeatureList(context) {
             .append('h2')
             .call(t.append('inspector.feature_list'));
 
+        header
+            .append('button')
+            .attr('type', 'button')
+            .attr('class', 'close mobile-sidebar-close')
+            .attr('title', t('icons.close'))
+            .on('click', () => context.ui().sidebar.toggle())
+            .call(svgIcon('#iD-icon-close'));
+
         var searchWrap = selection
             .append('div')
             .attr('class', 'search-header');

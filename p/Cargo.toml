@@ -17,3 +17,5 @@ serde_json = "1.0"
 futures-util = "0.3"
 scraper = "0.18"
 base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+sha2 = "0.10"

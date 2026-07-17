@@ -21,9 +21,13 @@ let _imageryIndex = null;
 export function rendererBackground(context) {
   const dispatch = d3_dispatch('change');
   const baseLayer = rendererTileLayer(context).projection(context.projection);
+  const secondaryLayer = rendererTileLayer(context).projection(context.projection);
   let _checkedBlocklists = [];
   let _isValid = true;
   let _overlayLayers = [];
+  let _secondarySource = null;
+  let _secondaryOpacity = 0.5;
+  let _localPhoto = null;
   let _brightness = 1;
   let _contrast = 1;
   let _saturation = 1;
@@ -149,6 +153,17 @@ export function rendererBackground(context) {
       .merge(imagery)
       .call(baseLayer);
 
+    let secondary = selection.selectAll('.layer-secondary-background')
+      .data(_secondarySource ? [0] : []);
+
+    secondary.exit().remove();
+    secondary.enter()
+      .insert('div', '.layer-data')
+      .attr('class', 'layer layer-secondary-background')
+      .merge(secondary)
+      .style('opacity', _secondaryOpacity)
+      .call(secondaryLayer);
+
 
     let maskFilter = '';
     let mixBlendMode = '';
@@ -177,6 +192,30 @@ export function rendererBackground(context) {
       .style('filter', maskFilter || null)
       .style('mix-blend-mode', mixBlendMode || null);
 
+    let localPhoto = selection.selectAll('.layer-local-photo')
+      .data(_localPhoto ? [_localPhoto] : []);
+
+    localPhoto.exit().remove();
+    const localPhotoEnter = localPhoto.enter()
+      .insert('div', '.layer-data')
+      .attr('class', 'layer layer-local-photo');
+    localPhotoEnter.append('img')
+      .attr('alt', '')
+      .attr('draggable', 'false')
+      .on('pointerdown.local-photo', startPhotoDrag)
+      .on('wheel.local-photo', adjustPhotoWithWheel);
+
+    localPhoto = localPhotoEnter.merge(localPhoto);
+    localPhoto.classed('adjusting', d => !!d.adjust);
+    localPhoto.select('img')
+      .attr('src', d => d.url)
+      .style('left', d => `${context.projection(d.anchor)[0]}px`)
+      .style('top', d => `${context.projection(d.anchor)[1]}px`)
+      .style('width', d => `${Math.max(80, d.width * d.scale * Math.pow(2, context.map().zoom() - d.zoom))}px`)
+      .style('opacity', d => d.opacity)
+      .style('transform', d => `translate(-50%, -50%) rotate(${d.rotation}deg)`)
+      .style('pointer-events', d => d.adjust ? 'auto' : 'none');
+
 
     let overlays = selection.selectAll('.layer-overlay')
       .data(_overlayLayers, d => d.source().name());
@@ -189,6 +228,46 @@ export function rendererBackground(context) {
       .attr('class', 'layer layer-overlay')
       .merge(overlays)
       .each((layer, i, nodes) => d3_select(nodes[i]).call(layer));
+  }
+
+
+  function startPhotoDrag(d3_event, photo) {
+    if (!photo.adjust || d3_event.button !== 0) return;
+    d3_event.preventDefault();
+    d3_event.stopPropagation();
+    const start = [d3_event.clientX, d3_event.clientY];
+    const anchor = context.projection(photo.anchor);
+    const pointerID = d3_event.pointerId;
+
+    d3_select(window)
+      .on('pointermove.local-photo', function(event) {
+        if (event.pointerId !== pointerID) return;
+        const next = [
+          anchor[0] + event.clientX - start[0],
+          anchor[1] + event.clientY - start[1]
+        ];
+        photo.anchor = context.projection.invert(next);
+        dispatch.call('change');
+      })
+      .on('pointerup.local-photo pointercancel.local-photo', function(event) {
+        if (event.pointerId !== pointerID) return;
+        d3_select(window)
+          .on('pointermove.local-photo', null)
+          .on('pointerup.local-photo pointercancel.local-photo', null);
+      });
+  }
+
+
+  function adjustPhotoWithWheel(d3_event, photo) {
+    if (!photo.adjust) return;
+    d3_event.preventDefault();
+    d3_event.stopPropagation();
+    if (d3_event.shiftKey) {
+      photo.rotation = Math.max(-180, Math.min(180, photo.rotation + (d3_event.deltaY > 0 ? 2 : -2)));
+    } else {
+      photo.scale = Math.max(0.05, Math.min(8, photo.scale * Math.exp(-d3_event.deltaY * 0.002)));
+    }
+    dispatch.call('change');
   }
 
 
@@ -224,6 +303,13 @@ export function rendererBackground(context) {
     const currUsed = currSource.imageryUsed();
     if (currUsed && _isValid) {
       imageryUsed.push(currUsed);
+    }
+
+    if (_secondarySource) {
+      imageryUsed.push(_secondarySource.imageryUsed());
+    }
+    if (_localPhoto) {
+      imageryUsed.push('User-contributed moderated photo');
     }
 
     _overlayLayers
@@ -294,6 +380,7 @@ export function rendererBackground(context) {
   background.dimensions = (val) => {
     if (!val) return;
     baseLayer.dimensions(val);
+    secondaryLayer.dimensions(val);
     _overlayLayers.forEach(layer => layer.dimensions(val));
   };
 
@@ -345,7 +432,38 @@ export function rendererBackground(context) {
   background.showsLayer = (d) => {
     const currSource = baseLayer.source();
     if (!d || !currSource) return false;
-    return d.id === currSource.id || _overlayLayers.some(layer => d.id === layer.source().id);
+    return d.id === currSource.id || d.id === _secondarySource?.id ||
+      _overlayLayers.some(layer => d.id === layer.source().id);
+  };
+
+
+  background.secondaryLayerSource = function(d) {
+    if (!arguments.length) return _secondarySource;
+    if (_secondarySource === (d || null)) return background;
+    _secondarySource = d || null;
+    if (_secondarySource) secondaryLayer.source(_secondarySource);
+    dispatch.call('change');
+    background.updateImagery();
+    return background;
+  };
+
+
+  background.secondaryOpacity = function(d) {
+    if (!arguments.length) return _secondaryOpacity;
+    const value = Math.max(0, Math.min(1, Number(d) || 0));
+    if (_secondaryOpacity === value) return background;
+    _secondaryOpacity = value;
+    dispatch.call('change');
+    return background;
+  };
+
+
+  background.localPhoto = function(d) {
+    if (!arguments.length) return _localPhoto;
+    _localPhoto = d || null;
+    dispatch.call('change');
+    background.updateImagery();
+    return background;
   };
 
 

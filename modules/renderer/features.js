@@ -612,7 +612,20 @@ export function rendererFeatures(context) {
 
     features.init = function() {
         const hash = utilStringQs(window.location.hash).disable_features;
-        const storage = prefs('disabled-features');
+        let storage = prefs('disabled-features');
+
+        // Older BetteriD releases persisted `boundaries` as a default-disabled
+        // feature. Remove that legacy default once, while preserving an explicit
+        // `disable_features=boundaries` URL choice for the current session.
+        if (prefs('betterid.migration.boundaries_visible') !== 'true') {
+            if (storage) {
+                const migrated = storage.replace(/;/g, ',').split(',')
+                    .filter(feature => feature && feature !== 'boundaries');
+                storage = migrated.join(',');
+                prefs('disabled-features', storage || null);
+            }
+            prefs('betterid.migration.boundaries_visible', 'true');
+        }
 
         if (hash) {
             const disabledFeatures = hash.replace(/;/g, ',').split(',');

@@ -580,6 +580,20 @@ en:
     localized_translation_language: Choose language
     localized_translation_name: Name
     language_and_code: "{language} ({code})"
+    translate_all: Auto-translate to multiple languages
+    apply: Apply selected translations
+    existing_value: "Existing value: {value}"
+    preview_title: Confirm multilingual names
+  tag_values:
+    rural: Rural settlement
+    apartments: Apartment housing
+    single_family: Single-family housing
+    urban: Urban area
+    trailer_park: Trailer park
+    condominium: Condominium
+    irregular_settlement: Informal settlement
+    "yes": "Yes"
+    gated: Gated community
   zoom_in_edit: Zoom in to edit
   login: Log In
   logout: Log Out
@@ -611,6 +625,16 @@ en:
     save: Upload
     cancel: Cancel
     changes: Changes
+    ai_summary: Generate changeset comment with DeepSeek AI
+    smart_split: Smart split commits
+    split_type: Split method
+    split_auto: Auto-detect (by value and fixed changes)
+    split_fixed: Fixed count
+    split_area: By area
+    split_fixed_count: Items per batch
+    split_preview: "Planned batches: {count}. Objects per batch: {sizes}"
+    ai_summary_unavailable: DeepSeek AI is not configured
+    ai_summary_error: DeepSeek AI generation failed. Try again later.
     download_changes: Download osmChange file
     errors: Errors
     warnings: Warnings
@@ -852,6 +876,31 @@ en:
     title: Background
     description: Background Settings
     key: B
+    experimental:
+      title: Experimental Imagery
+      dual_title: Dual imagery
+      second_source: Second source
+      second_opacity: Second-source opacity
+      photo_title: Local photo background
+      photo_instructions: Photos are uploaded for safety and OSM suitability review before they can be shown. Approved uploads receive a public read-only URL.
+      choose_photo: Choose photo
+      photo_preview_alt: Approved local photo preview
+      open_public_photo: Open public photo
+      photo_opacity: Photo opacity
+      photo_scale: Photo scale
+      photo_rotation: Photo rotation
+      adjust_photo: Adjust on map
+      finish_adjusting: Finish adjusting
+      analyze_photo: Recognize POI
+      remove_photo: Remove from map
+      invalid_photo: Choose a JPEG, PNG, or WebP image no larger than 12 MB.
+      photo_rejected: The image was rejected by the safety and OSM suitability review.
+      photo_upload_error: The image could not be uploaded.
+      photo_uploading: Uploading and reviewing the image...
+      photo_approved: The image was approved. Drag it on the map or use the controls below.
+      photo_analyzing: Recognizing POI information...
+      photo_analysis_error: The image could not be analyzed.
+      apply_photo_tags: Apply selected tags
     backgrounds: Backgrounds
     none: None
     best_imagery: Best known imagery source for this location
@@ -1049,6 +1098,57 @@ en:
     title: Preferences
     description: Preferences
     key: P
+    move_up: Move up
+    move_down: Move down
+    general:
+      title: General
+      remember_location: Remember the last map location
+      remember_location_description: Reopen BetteriD at the map location you last viewed.
+    editing:
+      title: Editing
+      right_drag: Pan with right-button drag
+      right_drag_description: Dragging pans the map; a short right-click still opens the edit menu.
+      josm_shortcuts: JOSM-compatible shortcuts
+      josm_shortcuts_description: Add only compatible aliases that do not replace iD shortcuts.
+      snap_tolerance: Snap range (pixels)
+      smart_split: Smart split uploads
+      smart_split_description: Split large uploads using the method configured below.
+    language:
+      title: Language and Translation
+      description: Choose and order up to eight target languages for automatic multilingual names.
+      add: Add language
+    validation:
+      title: Validation
+      non_local_name: Warn about a non-local primary name
+      non_local_name_description: Show a yellow warning when a primary name does not use a locally official script.
+    ai:
+      title: AI
+      search_order: Web search order
+      text_order: Long text generation order
+      vision_order: Visual task order
+      free_notice: "AI features are currently free for users, but servers and maintenance are not free. You can {donate}, or join the {qq}."
+      donate: sponsor BetteriD
+      qq_group: BetteriD QQ group
+      providers:
+        openai: GPT
+        deepseek: DeepSeek
+        kimi: Kimi Search
+        mimo: MiMo
+    experimental:
+      title: Experimental
+      enabled: Enable experimental features
+      enabled_description: Experimental tools are off by default and may change as they are tested.
+      dual_imagery: Overlay two imagery sources
+      dual_imagery_description: Select a second background and adjust its opacity independently.
+      local_photo: Local photo background
+      local_photo_description: Upload, moderate, position, scale, rotate, and inspect a local photo as a temporary mapping background.
+      indoor_focus: Indoor focus enhancement
+      indoor_focus_description: Keep the current floor and building clear while dimming other floors and the surrounding map.
+      wasd_navigation: WASD map navigation
+      wasd_navigation_description: Move the map with WASD when no form field is focused.
+      navigation_mode: Navigation mode
+      navigation_walk: Walk (linear, stops on release)
+      navigation_fly: Fly (eased motion with a short glide)
     privacy:
       title: Privacy
       privacy_link: View the iD privacy policy
@@ -1070,6 +1170,8 @@ en:
     uploading: Uploading changes to OpenStreetMap...
     conflict_progress: "Checking for conflicts: {num} of {total}"
     unsaved_changes: You have unsaved changes
+    split_completed_ids: "Completed changesets: {ids}"
+    split_failed: Split upload stopped after {completed} of {total} batches
     conflict:
       header: Resolve conflicting edits
       count: 'Conflict {num} of {total}'
@@ -1118,6 +1220,8 @@ en:
     cancel: "Cancel"
   splash:
     welcome: Welcome to the iD OpenStreetMap editor
+    betterid_welcome: Welcome to BetteriD
+    unofficial_notice: This is an independent, unofficial OpenStreetMap editor deployment. It is not operated or endorsed by the OpenStreetMap Foundation. Review every change before uploading.
     text: "iD is a friendly but powerful tool for contributing to the world's best free world map. This is version {version}. For more information see {website} and report bugs at {github}."
     changelog: changelog
     privacy_update: "Our privacy policy has recently been updated."
@@ -1163,6 +1267,37 @@ en:
       detail_description: Description
       close: Close (Issue Fixed)
       ignore: Remove (False Positive)
+  ai_tags:
+    title: AI Tag Assistant
+    description: Describe a feature to get researched OSM tag suggestions. Search and generation providers fall back silently in your preferred order.
+    placeholder: Describe the feature, location, or facts you know...
+    search: Get suggestions
+    searching: Searching...
+    apply: Apply
+    applied: Applied
+    no_results: No tag suggestions found.
+    error: Unable to get tag suggestions. Try again.
+    unavailable: AI tag suggestions are not configured.
+    current_value: "Current value: {value}"
+    replace_value: "Replace with: {value}"
+    source_title: Sources
+    web_badge: Web result
+    confidence_high: High confidence
+    confidence_medium: Medium confidence
+    confidence_low: Low confidence
+    remove: Remove
+    disclaimer: Verify suggestions against on-the-ground knowledge and OSM documentation before applying them.
+  betterid:
+    military_warning:
+      title: Military-area editing is unavailable here
+      message: Are you sure you want to do this? BetteriD does not allow creating or modifying military areas in China, including their member points. If you genuinely need to make this edit, continue on the official OpenStreetMap website.
+      cancel: Stay in BetteriD
+      official: Open official OSM editor
+    validation_autofix:
+      title: Safe automatic fixes
+      preview: "{count} unambiguous tag fixes are ready."
+      action: Fix all
+      annotation: "Applied {count} safe validation fixes."
   streetside:
     tooltip: "Streetside photos from Microsoft"
     title: "Bing Streetside"
@@ -1300,15 +1435,15 @@ en:
     key: H
     help:
       title: Help
-      welcome: "Welcome to the iD editor for [OpenStreetMap](https://www.openstreetmap.org/). With this editor you can update OpenStreetMap right from your web browser."
+      welcome: "Welcome to BetteriD, an independent editor for [OpenStreetMap](https://www.openstreetmap.org/). With this editor you can update OpenStreetMap right from your web browser."
       open_data_h: "Open Data"
       open_data: "Edits that you make on this map will be visible to everyone who uses OpenStreetMap. Your edits can be based on personal knowledge, on-the-ground surveying, or imagery collected from aerial or street level photos. Copying from commercial sources, like Google Maps, [is strictly forbidden](https://www.openstreetmap.org/copyright)."
       before_start_h: "Before you start"
       before_start: "You should be familiar with OpenStreetMap and this editor before you start editing. iD contains a walkthrough to teach you the basics of editing OpenStreetMap. Press the \"{start_the_walkthrough}\" button on this screen to start the tutorial—it takes only about 15 minutes."
       open_source_h: "Open Source"
-      open_source: "The iD editor is a collaborative open source project, and you are using version {version} now. The source code is available [on GitHub](https://github.com/openstreetmap/iD)."
+      open_source: "BetteriD is an unofficial open source fork of the collaborative iD editor, and you are using version {version}. BetteriD's source code is available [on GitHub](https://github.com/koharachan/BetteriD)."
       open_source_attribution: "This project includes icons from [Maki](https://github.com/mapbox/maki) (CC0), [temaki](https://github.com/ideditor/temaki) (CC0), [Fontawesome](https://github.com/FortAwesome/Font-Awesome) (CC BY 4.0), [Röntgen](https://github.com/enzet/Roentgen) (CC BY 4.0) and [Pinhead](https://pinhead.ink/) (CC0)."
-      open_source_help: "You can help iD by [translating](https://github.com/openstreetmap/iD/blob/develop/CONTRIBUTING.md#translating) or [reporting bugs](https://github.com/openstreetmap/iD/issues)."
+      open_source_help: "You can help BetteriD by [translating](https://github.com/koharachan/BetteriD/blob/develop/CONTRIBUTING.md#translating) or [reporting bugs](https://github.com/koharachan/BetteriD/issues)."
     overview:
       title: Overview
       navigation_h: "Navigation"
@@ -1661,6 +1796,7 @@ en:
         message: '{feature} lists "{value}" as a data source'
       reference:
         amap: "Amap products are proprietary and must not be used as references."
+        tianditu: "Tianditu products are proprietary and must not be used as mapping references."
         baidu: "Baidu products are proprietary and must not be used as references."
         google: "Google products are proprietary and must not be used as references."
     invalid_format:
@@ -1743,6 +1879,10 @@ en:
     suspicious_name:
       title: Suspicious Names
       tip: "Find features with generic or suspicious names"
+    non_local_name:
+      title: Primary name may not use a local language
+      message: 'The name "{name}" of this {feature} does not appear to use a locally official language'
+      reference: "Use a locally common language for the primary name. Put names in other languages in name:xx tags."
     tag_suggests_area:
       message: '{feature} should be a closed area based on the tag "{tag}"'
       reference: "Areas must have connected endpoints."

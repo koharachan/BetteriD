@@ -7,7 +7,10 @@ import { select as d3_select } from 'd3-selection';
 import { zoom as d3_zoom, zoomIdentity as d3_zoomIdentity } from 'd3-zoom';
 
 import { prefs } from '../core/preferences';
-import { geoExtent, geoRawMercator, geoScaleToZoom, geoZoomToScale } from '../geo';
+import {
+    BETTERID_PREFS, betteridBool, experimentalFeatureEnabled, getSnapTolerance
+} from '../core/betterid_preferences';
+import { geoExtent, geoPointInPolygon, geoRawMercator, geoScaleToZoom, geoZoomToScale } from '../geo';
 import { modeBrowse } from '../modes/browse';
 import { svgAreas, svgLabels, svgLayers, svgLines, svgMidpoints, svgPoints, svgVertices } from '../svg';
 import { utilFastMouse, utilFunctor, utilSetTransform, utilEntityAndDeepMemberIDs } from '../util/util';
@@ -24,6 +27,7 @@ var minZoom = 2;
 var maxZoom = 24;
 var kMin = geoZoomToScale(minZoom, TILESIZE);
 var kMax = geoZoomToScale(maxZoom, TILESIZE);
+const NAVIGATION_KEYS = new Set(['w', 'a', 's', 'd']);
 
 
 export function rendererMap(context) {
@@ -58,6 +62,18 @@ export function rendererMap(context) {
     var _getMouseCoords;
     var _lastPointerEvent;
     var _lastWithinEditableZoom;
+    var _mapPointerIDs = new Set();
+    var _rightDrag;
+    var _suppressContextMenuUntil = 0;
+
+    var _navigationKeys = new Set();
+    var _navigationFrame;
+    var _navigationLastTime;
+    var _navigationDirection = '';
+    var _navigationStarted;
+    var _navigationVelocity = [0, 0];
+    var _navigationReleaseStarted;
+    var _navigationReleaseVelocity = [0, 0];
 
     // whether a pointerdown event started the zoom
     var _pointerDown = false;
@@ -78,7 +94,7 @@ export function rendererMap(context) {
                 (d3_event.sourceEvent && d3_event.sourceEvent.type === 'pointerdown'));
         })
         .on('end.map', function() {
-            _pointerDown = false;
+            finishTransform();
         });
     var _doubleUpHandler = utilDoubleUp();
 
@@ -102,6 +118,31 @@ export function rendererMap(context) {
         scheduleRedraw.cancel();
         // isRedrawScheduled = false;
         // window.cancelIdleCallback(pendingRedrawCall);
+    }
+
+
+    function finishTransform() {
+        _pointerDown = false;
+        if (!_isTransformed) return;
+
+        cancelPendingRedraw();
+        resetTransform();
+        redraw();
+    }
+
+
+    function panAnimated(delta) {
+        const transform = projection.transform();
+        const next = d3_zoomIdentity
+            .translate(transform.x + delta[0], transform.y + delta[1])
+            .scale(transform.k);
+
+        if (_zoomerPanner._transform) {
+            _zoomerPanner._transform(next);
+        } else if (!_selection.empty()) {
+            _selection.node().__zoom = next;
+        }
+        zoomPan(undefined, undefined, next);
     }
 
 
@@ -177,14 +218,15 @@ export function rendererMap(context) {
             .on(_pointerPrefix + 'down.zoom', function(d3_event) {
                 _lastPointerEvent = d3_event;
                 if (d3_event.button === 2) {
+                    startRightDrag(d3_event);
                     d3_event.stopPropagation();
+                } else {
+                    _mapPointerIDs.add(d3_event.pointerId || 'mouse');
                 }
             }, true)
             .on(_pointerPrefix + 'up.zoom', function(d3_event) {
                 _lastPointerEvent = d3_event;
-                if (resetTransform()) {
-                    immediateRedraw();
-                }
+                endMapPointer(d3_event);
             })
             .on(_pointerPrefix + 'move.map', function(d3_event) {
                 _lastPointerEvent = d3_event;
@@ -202,7 +244,23 @@ export function rendererMap(context) {
                     surface.call(drawVertices.drawHover, context.graph(), hover, map.extent());
                     dispatch.call('drawn', this, { full: false });
                 }
+            })
+            .on('contextmenu.map-right-drag', function(d3_event) {
+                if (performance.now() <= _suppressContextMenuUntil) {
+                    d3_event.preventDefault();
+                    d3_event.stopImmediatePropagation();
+                    _suppressContextMenuUntil = 0;
+                }
             });
+
+        d3_select(window)
+            .on(_pointerPrefix + 'move.map-right-drag', moveRightDrag, true)
+            .on(_pointerPrefix + 'up.map-right-drag', endRightDrag, true)
+            .on('pointercancel.map-right-drag', cancelRightDrag, true)
+            .on(_pointerPrefix + 'up.map-transform pointercancel.map-transform', endMapPointer)
+            .on('keydown.map-navigation', navigationKeydown)
+            .on('keyup.map-navigation', navigationKeyup)
+            .on('blur.map-navigation', stopNavigation);
 
         var detected = utilDetect();
 
@@ -276,6 +334,8 @@ export function rendererMap(context) {
                 .call(drawAreas, graph, data, filter)
                 .call(drawMidpoints, graph, data, filter, map.trimmedExtent());
 
+            updateIndoorFocus(context.history().intersects(map.extent()), graph);
+
             dispatch.call('drawn', this, { full: false });
 
             // redraw everything else later
@@ -283,6 +343,185 @@ export function rendererMap(context) {
         });
 
         map.dimensions(utilGetDimensions(selection));
+    }
+
+
+    function startRightDrag(d3_event) {
+        if (!betteridBool(BETTERID_PREFS.rightDrag, true)) return;
+        if (d3_event.pointerType && d3_event.pointerType !== 'mouse') return;
+
+        _rightDrag = {
+            pointerId: d3_event.pointerId || 'mouse',
+            start: [d3_event.clientX, d3_event.clientY],
+            last: [d3_event.clientX, d3_event.clientY],
+            moved: false
+        };
+    }
+
+
+    function endMapPointer(d3_event) {
+        _mapPointerIDs.delete(d3_event.pointerId || 'mouse');
+        if (!_mapPointerIDs.size) finishTransform();
+    }
+
+
+    function moveRightDrag(d3_event) {
+        if (!_rightDrag || _rightDrag.pointerId !== (d3_event.pointerId || 'mouse')) return;
+        if ('buttons' in d3_event && !(d3_event.buttons & 2)) {
+            endRightDrag(d3_event);
+            return;
+        }
+
+        const point = [d3_event.clientX, d3_event.clientY];
+        const totalX = point[0] - _rightDrag.start[0];
+        const totalY = point[1] - _rightDrag.start[1];
+        const threshold = Math.max(4, getSnapTolerance() / 2);
+        if (!_rightDrag.moved && Math.hypot(totalX, totalY) < threshold) return;
+
+        _rightDrag.moved = true;
+        d3_event.preventDefault();
+        d3_event.stopImmediatePropagation();
+
+        const delta = [point[0] - _rightDrag.last[0], point[1] - _rightDrag.last[1]];
+        _rightDrag.last = point;
+        panAnimated(delta);
+    }
+
+
+    function endRightDrag(d3_event) {
+        if (!_rightDrag || _rightDrag.pointerId !== (d3_event.pointerId || 'mouse')) return;
+        if (_rightDrag.moved) {
+            d3_event.preventDefault();
+            d3_event.stopImmediatePropagation();
+            _suppressContextMenuUntil = performance.now() + 500;
+            finishTransform();
+        }
+        _rightDrag = null;
+    }
+
+
+    function cancelRightDrag(d3_event) {
+        if (!_rightDrag || _rightDrag.pointerId !== (d3_event.pointerId || 'mouse')) return;
+        if (_rightDrag.moved) finishTransform();
+        _rightDrag = null;
+    }
+
+
+    function navigationEnabled() {
+        return experimentalFeatureEnabled(BETTERID_PREFS.wasdNavigation);
+    }
+
+
+    function isTextEntryTarget(target) {
+        if (!target || target.nodeType !== 1) return false;
+        return target.isContentEditable ||
+            /^(INPUT|SELECT|TEXTAREA)$/.test(target.nodeName) ||
+            Boolean(target.closest?.('[contenteditable="true"]'));
+    }
+
+
+    function navigationKeydown(d3_event) {
+        if (!navigationEnabled() || d3_event.ctrlKey || d3_event.altKey || d3_event.metaKey) return;
+        if (isTextEntryTarget(d3_event.target) || isTextEntryTarget(document.activeElement)) return;
+
+        const key = d3_event.key.toLowerCase();
+        if (!NAVIGATION_KEYS.has(key)) return;
+
+        d3_event.preventDefault();
+        _navigationKeys.add(key);
+        if (!_navigationFrame) {
+            _navigationLastTime = performance.now();
+            _navigationFrame = window.requestAnimationFrame(navigateFrame);
+        }
+    }
+
+
+    function navigationKeyup(d3_event) {
+        const key = d3_event.key.toLowerCase();
+        if (!NAVIGATION_KEYS.has(key)) return;
+        _navigationKeys.delete(key);
+
+        if ((prefs(BETTERID_PREFS.navigationMode) || 'walk') === 'walk' && !_navigationKeys.size) {
+            stopNavigation();
+        }
+    }
+
+
+    function stopNavigation() {
+        _navigationKeys.clear();
+        _navigationDirection = '';
+        _navigationStarted = undefined;
+        _navigationReleaseStarted = undefined;
+        _navigationVelocity = [0, 0];
+        _navigationReleaseVelocity = [0, 0];
+        _navigationLastTime = undefined;
+        if (_navigationFrame) window.cancelAnimationFrame(_navigationFrame);
+        _navigationFrame = undefined;
+        finishTransform();
+    }
+
+
+    function navigationVector() {
+        const x = (_navigationKeys.has('a') ? 1 : 0) - (_navigationKeys.has('d') ? 1 : 0);
+        const y = (_navigationKeys.has('w') ? 1 : 0) - (_navigationKeys.has('s') ? 1 : 0);
+        const length = Math.hypot(x, y) || 1;
+        return [x / length, y / length];
+    }
+
+
+    function navigateFrame(now) {
+        _navigationFrame = undefined;
+        if (!navigationEnabled()) {
+            stopNavigation();
+            return;
+        }
+
+        const elapsed = Math.min(50, Math.max(0, now - (_navigationLastTime || now)));
+        _navigationLastTime = now;
+        const mode = prefs(BETTERID_PREFS.navigationMode) || 'walk';
+        let velocity;
+
+        if (_navigationKeys.size) {
+            const direction = Array.from(_navigationKeys).sort().join('');
+            const vector = navigationVector();
+            if (direction !== _navigationDirection) {
+                _navigationDirection = direction;
+                _navigationStarted = now;
+            }
+
+            if (mode === 'fly') {
+                const t = Math.min(1, (now - _navigationStarted) / 280);
+                const eased = t * t * (3 - 2 * t);  // cubic Bezier-like ease-in-out
+                velocity = [vector[0] * 520 * eased, vector[1] * 520 * eased];
+            } else {
+                velocity = [vector[0] * 320, vector[1] * 320];
+            }
+
+            _navigationVelocity = velocity;
+            _navigationReleaseStarted = undefined;
+        } else if (mode === 'fly' && (_navigationVelocity[0] || _navigationVelocity[1])) {
+            if (_navigationReleaseStarted === undefined) {
+                _navigationReleaseStarted = now;
+                _navigationReleaseVelocity = _navigationVelocity.slice();
+            }
+            const t = Math.min(1, (now - _navigationReleaseStarted) / 420);
+            const eased = 1 - t * t * (3 - 2 * t);
+            velocity = [
+                _navigationReleaseVelocity[0] * eased,
+                _navigationReleaseVelocity[1] * eased
+            ];
+            _navigationVelocity = velocity;
+            if (t === 1) {
+                stopNavigation();
+                return;
+            }
+        } else {
+            stopNavigation();
+            return;
+        }
+
+        panAnimated([velocity[0] * elapsed / 1000, velocity[1] * elapsed / 1000]);
+        _navigationFrame = window.requestAnimationFrame(navigateFrame);
     }
 
 
@@ -387,7 +626,103 @@ export function rendererMap(context) {
             .call(drawPoints, graph, data, filter)
             .call(drawLabels, graph, data, filter, _dimensions, fullRedraw);
 
+        updateIndoorFocus(all, graph);
+
         dispatch.call('drawn', this, {full: true});
+    }
+
+
+    function updateIndoorFocus(data, graph) {
+        const enabled = experimentalFeatureEnabled(BETTERID_PREFS.indoorFocus);
+        const selected = context.selectedIDs()
+            .map(id => graph.hasEntity(id))
+            .filter(Boolean);
+
+        const focusValues = { level: new Set(), layer: new Set() };
+        const focusEntities = new Set();
+        let isIndoorSelection = false;
+
+        function collect(entity) {
+            if (!entity || focusEntities.has(entity.id)) return;
+            focusEntities.add(entity.id);
+            const tags = entity.tags || {};
+            isIndoorSelection ||= Boolean(tags.indoor && tags.indoor !== 'no') ||
+                Boolean(tags.indoormark && tags.indoormark !== 'no') ||
+                tags.level !== undefined;
+            for (const key of ['level', 'layer']) {
+                String(tags[key] || '').split(/[;,]/)
+                    .map(value => value.trim())
+                    .filter(Boolean)
+                    .forEach(value => focusValues[key].add(value));
+            }
+        }
+
+        for (const entity of selected) {
+            collect(entity);
+            graph.parentWays(entity).forEach(collect);
+            graph.parentRelations(entity).forEach(collect);
+        }
+
+        const active = enabled && selected.length && isIndoorSelection;
+        _selection.classed('betterid-indoor-focus', Boolean(active));
+        if (!active) {
+            surface.selectAll('.betterid-indoor-dim').classed('betterid-indoor-dim', false);
+            return;
+        }
+
+        const keep = new Set(focusEntities);
+        for (const entity of selected) {
+            utilEntityAndDeepMemberIDs([entity.id], graph).forEach(id => keep.add(id));
+            if (entity.type === 'way') entity.nodes.forEach(id => keep.add(id));
+        }
+
+        const center = selected[0].extent(graph).center();
+        for (const entity of data) {
+            if (!entity.tags.building) continue;
+            let containsFocus = false;
+            if (entity.type === 'way') {
+                const polygon = entity.nodes
+                    .map(id => graph.hasEntity(id))
+                    .filter(Boolean)
+                    .map(node => node.loc);
+                containsFocus = polygon.length > 3 && geoPointInPolygon(center, polygon);
+            } else if (entity.type === 'relation') {
+                containsFocus = entity.extent(graph).contains(center);
+            }
+            if (!containsFocus) continue;
+
+            utilEntityAndDeepMemberIDs([entity.id], graph).forEach(id => keep.add(id));
+            if (entity.type === 'way') entity.nodes.forEach(id => keep.add(id));
+        }
+
+        function datumEntity(d) {
+            return d?.properties?.entity || d?.entity || (d?.tags && d?.id ? d : null);
+        }
+
+        const focusCache = new Map();
+        function onFocusLevel(entity) {
+            if (!entity) return true;
+            if (keep.has(entity.id)) return true;
+            if (focusCache.has(entity.id)) return focusCache.get(entity.id);
+
+            const candidates = [entity]
+                .concat(graph.parentWays(entity))
+                .concat(graph.parentRelations(entity));
+            const result = candidates.some(candidate => {
+                const tags = candidate.tags || {};
+                return ['level', 'layer'].some(key => {
+                    if (!focusValues[key].size) return false;
+                    return String(tags[key] || '').split(/[;,]/)
+                        .map(value => value.trim())
+                        .some(value => focusValues[key].has(value));
+                });
+            });
+            focusCache.set(entity.id, result);
+            return result;
+        }
+
+        surface.selectAll('.layer-osm *')
+            .classed('betterid-indoor-dim', d => !onFocusLevel(datumEntity(d)));
     }
 
     map.init = function() {
@@ -641,6 +976,8 @@ export function rendererMap(context) {
         if (typeof window === 'undefined') return;
 
         if (surface.empty() || !_redrawEnabled) return;
+
+        _selection.style('--betterid-snap-tolerance', `${getSnapTolerance()}px`);
 
         // If we are in the middle of a zoom/pan, we can't do differenced redraws.
         // It would result in artifacts where differenced entities are redrawn with
@@ -1110,6 +1447,21 @@ export function rendererMap(context) {
 
         map.activeAreaFill(activeFill);
     };
+
+
+    prefs.onChange(BETTERID_PREFS.snapTolerance, function() {
+        if (!_selection.empty()) immediateRedraw();
+    });
+    prefs.onChange(BETTERID_PREFS.experimental, function() {
+        if (!navigationEnabled()) stopNavigation();
+        if (!_selection.empty()) immediateRedraw();
+    });
+    prefs.onChange(BETTERID_PREFS.indoorFocus, function() {
+        if (!_selection.empty()) immediateRedraw();
+    });
+    prefs.onChange(BETTERID_PREFS.wasdNavigation, function() {
+        if (!navigationEnabled()) stopNavigation();
+    });
 
     function updateAreaFill() {
         var activeFill = map.activeAreaFill();

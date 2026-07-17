@@ -5,6 +5,7 @@ import { uiSectionBackgroundDisplayOptions } from '../sections/background_displa
 import { uiSectionBackgroundList } from '../sections/background_list';
 import { uiSectionBackgroundOffset } from '../sections/background_offset';
 import { uiSectionOverlayList } from '../sections/overlay_list';
+import { uiSectionExperimentalBackground } from '../sections/experimental_background';
 
 export function uiPaneBackground(context) {
 
@@ -16,6 +17,7 @@ export function uiPaneBackground(context) {
         .sections([
             uiSectionBackgroundList(context),
             uiSectionOverlayList(context),
+            uiSectionExperimentalBackground(context),
             uiSectionBackgroundDisplayOptions(context),
             uiSectionBackgroundOffset(context)
         ]);
