@@ -7,9 +7,39 @@ import { svgIcon } from '../../svg/icon';
 import { utilArrayIdentical } from '../../util/array';
 import { utilNoAuto, utilRebind } from '../../util';
 import { uiSection } from '../section';
-const BLOCKED_TAG_KEYS = new Set(['source', 'created_by', 'attribution', 'odbl', 'import']);
+const BLOCKED_TAG_KEYS = new Set([
+    'image', 'source', 'created_by', 'attribution', 'odbl', 'import',
+    'timestamp', 'version', 'changeset', 'uid', 'user', 'visible'
+]);
+const BLOCKED_TAG_PREFIXES = ['source:', 'tiger:', 'odbl:', 'metadata:'];
+const MAX_DESCRIPTION_CHARS = 1200;
+const MAX_TAGS = 100;
+const MAX_SUGGESTIONS = 8;
+const MAX_SUGGESTION_CANDIDATES = 64;
+const MAX_SOURCES = 4;
+const MAX_SOURCE_CANDIDATES = 32;
+const MAX_WARNINGS = 4;
+const MAX_WARNING_CANDIDATES = 32;
+const MAX_SUMMARY_CHARS = 300;
+const MAX_REASON_CHARS = 240;
+const MAX_WARNING_CHARS = 160;
+const MAX_SOURCE_TITLE_CHARS = 160;
+const MAX_SOURCE_URL_CHARS = 2048;
+const MAX_SOURCE_SNIPPET_CHARS = 240;
 
 
+function limitedText(value, maxChars) {
+    if (typeof value !== 'string') return '';
+    const chars = Array.from(value.trim());
+    return chars.length > maxChars ? chars.slice(0, maxChars).join('') : chars.join('');
+}
+
+
+function blockedTagKey(key) {
+    const normalized = key.toLowerCase();
+    return BLOCKED_TAG_KEYS.has(normalized) ||
+        BLOCKED_TAG_PREFIXES.some(prefix => normalized.startsWith(prefix));
+}
 
 export function uiSectionAiTagAssistant(context) {
     const dispatch = d3_dispatch('change');
@@ -51,7 +81,7 @@ export function uiSectionAiTagAssistant(context) {
         input.enter()
             .append('textarea')
             .attr('class', 'ai-tag-input')
-            .attr('maxlength', 1200)
+            .attr('maxlength', MAX_DESCRIPTION_CHARS)
             .attr('rows', 4)
             .attr('spellcheck', 'true')
             .call(utilNoAuto)
@@ -93,6 +123,7 @@ export function uiSectionAiTagAssistant(context) {
             .append('span')
             .attr('class', 'ai-tag-web-badge')
             .merge(badge)
+            .classed('hide', shouldHideWebBadge())
             .text(t('ai_tags.web_badge'));
 
         renderStatus(wrap);
@@ -108,9 +139,16 @@ export function uiSectionAiTagAssistant(context) {
     }
 
 
+    function shouldHideWebBadge() {
+        if (!['ready', 'empty', 'applied'].includes(_status)) return false;
+        return !_sources.length && !_suggestions.some(suggestion => suggestion.sources.length);
+    }
+
+
     function requestSuggestions(d3_event) {
         d3_event.preventDefault();
-        if (_status === 'loading' || !_description.trim() || _entityIDs.length !== 1) return;
+        const description = limitedText(_description, MAX_DESCRIPTION_CHARS);
+        if (_status === 'loading' || !description || _entityIDs.length !== 1) return;
 
         const graph = context.graph();
         const entity = context.hasEntity(_entityIDs[0]);
@@ -134,13 +172,14 @@ export function uiSectionAiTagAssistant(context) {
             headers: { 'Content-Type': 'application/json' },
             signal: _abortController.signal,
             body: JSON.stringify({
-                description: _description.trim(),
+                description,
                 tags: singleValueTags(_tags),
                 geometry: graph.geometry(entity.id),
                 location: { lon: center[0], lat: center[1] },
                 locale: localizer.localeCode(),
                 web_search: true,
-                provider_order: getProviderOrder('search')
+                provider_order: getProviderOrder('search'),
+                text_provider_order: getProviderOrder('text')
             })
         })
             .then(async response => {
@@ -154,10 +193,10 @@ export function uiSectionAiTagAssistant(context) {
             })
             .then(data => {
                 if (_entityIDs[0] !== requestID) return;
-                _summary = typeof data.summary === 'string' ? data.summary.trim() : '';
+                _summary = limitedText(data.summary, MAX_SUMMARY_CHARS);
                 _suggestions = normalizeSuggestions(data.suggestions);
                 _sources = normalizeSources(data.sources);
-                _warnings = Array.isArray(data.warnings) ? data.warnings.filter(Boolean).slice(0, 5) : [];
+                _warnings = normalizeWarnings(data.warnings);
                 _status = _suggestions.length ? 'ready' : 'empty';
                 section.reRender();
             })
@@ -172,8 +211,12 @@ export function uiSectionAiTagAssistant(context) {
 
     function singleValueTags(tags) {
         const result = {};
+        let count = 0;
         for (const [key, value] of Object.entries(tags || {})) {
-            if (typeof value === 'string' && key && value) result[key] = value;
+            if (count === MAX_TAGS) break;
+            if (typeof value !== 'string' || !key || !value || key.length > 255 || value.length > 255) continue;
+            result[key] = value;
+            count++;
         }
         return result;
     }
@@ -182,17 +225,20 @@ export function uiSectionAiTagAssistant(context) {
     function normalizeSuggestions(suggestions) {
         if (!Array.isArray(suggestions)) return [];
 
-        return suggestions.slice(0, 20).map((suggestion, index) => {
-            if (!suggestion || typeof suggestion !== 'object') return null;
+        const result = [];
+        const candidates = suggestions.slice(0, MAX_SUGGESTION_CANDIDATES);
+        for (let index = 0; index < candidates.length && result.length < MAX_SUGGESTIONS; index++) {
+            const suggestion = candidates[index];
+            if (!suggestion || typeof suggestion !== 'object') continue;
 
             const key = context.cleanTagKey(String(suggestion.key || '').trim());
-            if (BLOCKED_TAG_KEYS.has(key) || key.startsWith('tiger:')) return null;
+            if (blockedTagKey(key)) continue;
             const action = suggestion.action === 'remove' ? 'remove' : 'set';
             const value = action === 'remove' ? '' : context.cleanTagValue(String(suggestion.value || '').trim());
-            if (!key || key.length > 255 || (action === 'set' && (!value || value.length > 255))) return null;
+            if (!key || key.length > 255 || (action === 'set' && (!value || value.length > 255))) continue;
 
             const current = typeof _tags[key] === 'string' ? _tags[key] : undefined;
-            if ((action === 'set' && current === value) || (action === 'remove' && current === undefined)) return null;
+            if ((action === 'set' && current === value) || (action === 'remove' && current === undefined)) continue;
 
             const confidenceScore = Number(suggestion.confidence);
             const hasNumericConfidence = Number.isFinite(confidenceScore);
@@ -200,18 +246,19 @@ export function uiSectionAiTagAssistant(context) {
                 (confidenceScore >= 0.8 ? 'high' : confidenceScore >= 0.5 ? 'medium' : 'low') :
                 (['high', 'medium', 'low'].includes(suggestion.confidence) ? suggestion.confidence : 'low');
             const shouldSelect = hasNumericConfidence ? confidenceScore >= 0.6 : confidence !== 'low';
-            return {
+            result.push({
                 id: `${index}-${key}-${value}`,
                 key,
                 value,
                 action,
                 current,
                 confidence,
-                reason: typeof suggestion.reason === 'string' ? suggestion.reason.trim() : '',
+                reason: limitedText(suggestion.reason, MAX_REASON_CHARS),
                 sources: normalizeSources(suggestion.sources),
                 selected: suggestion.selected !== false && shouldSelect && action !== 'remove'
-            };
-        }).filter(Boolean);
+            });
+        }
+        return result;
     }
 
 
@@ -219,19 +266,44 @@ export function uiSectionAiTagAssistant(context) {
         if (!Array.isArray(sources)) return [];
 
         const seen = new Set();
-        return sources.map(source => {
-            if (typeof source === 'string') return { title: source, url: source };
-            if (!source || typeof source !== 'object') return null;
-            return {
-                title: String(source.title || source.url || '').trim(),
-                url: String(source.url || '').trim(),
-                snippet: String(source.snippet || '').trim()
-            };
-        }).filter(source => {
-            if (!source || !/^https?:\/\//i.test(source.url) || seen.has(source.url)) return false;
-            seen.add(source.url);
-            return true;
-        }).slice(0, 10);
+        const result = [];
+        const candidates = sources.slice(0, MAX_SOURCE_CANDIDATES);
+        for (const candidate of candidates) {
+            if (result.length >= MAX_SOURCES) break;
+            const source = typeof candidate === 'string' ?
+                { title: candidate, url: candidate } : candidate;
+            if (!source || typeof source !== 'object') continue;
+
+            const rawURL = limitedText(source.url, MAX_SOURCE_URL_CHARS);
+            let url;
+            try {
+                url = new URL(rawURL);
+            } catch {
+                continue;
+            }
+            if (!['http:', 'https:'].includes(url.protocol) || seen.has(url.href)) continue;
+
+            seen.add(url.href);
+            result.push({
+                title: limitedText(source.title, MAX_SOURCE_TITLE_CHARS),
+                url: url.href,
+                snippet: limitedText(source.snippet, MAX_SOURCE_SNIPPET_CHARS)
+            });
+        }
+        return result;
+    }
+
+
+    function normalizeWarnings(warnings) {
+        if (!Array.isArray(warnings)) return [];
+
+        const result = [];
+        for (const warning of warnings.slice(0, MAX_WARNING_CANDIDATES)) {
+            const text = limitedText(warning, MAX_WARNING_CHARS);
+            if (text) result.push(text);
+            if (result.length >= MAX_WARNINGS) break;
+        }
+        return result;
     }
 
 

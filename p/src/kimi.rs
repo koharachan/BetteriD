@@ -35,7 +35,7 @@ Rules:
 - Return suggestions only. Never claim to edit, upload, save, or modify OpenStreetMap data.
 - Base recommendations on the description, current tags, geometry, location, and cited evidence. Do not invent facts or infer sensitive personal information.
 - Compare every suggestion with existing tags. Do not suggest an unchanged key/value pair.
-- Never suggest editing metadata keys: source or source:*, created_by, attribution, tiger:*, odbl or odbl:*.
+- Never suggest editing image or metadata keys: source or source:*, created_by, attribution, tiger:*, odbl or odbl:*.
 - Source URLs belong only in the response's sources fields. Do not turn citation URLs into object tags.
 - Use standard OSM key/value spelling and briefly explain the evidence and tagging rationale.
 - Confidence must be between 0.0 and 1.0. Lower it and add a warning for ambiguous, conflicting, or unverifiable evidence.
@@ -75,6 +75,8 @@ pub struct TagSuggestionRequest {
     pub locale: Option<String>,
     #[serde(default, deserialize_with = "deserialize_optional_provider_order")]
     pub provider_order: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_provider_order")]
+    pub text_provider_order: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -530,6 +532,7 @@ fn forbidden_metadata_key(key: &str) -> bool {
     matches!(
         key.as_str(),
         "source"
+            | "image"
             | "created_by"
             | "attribution"
             | "odbl"
@@ -674,6 +677,7 @@ mod tests {
             }),
             locale: Some("zh-CN".to_string()),
             provider_order: None,
+            text_provider_order: None,
         }
     }
 
@@ -690,6 +694,31 @@ mod tests {
         assert_eq!(payload["tool_choice"], "required");
         assert_eq!(payload["response_format"]["type"], "json_object");
         assert_eq!(payload["max_completion_tokens"], 3_072);
+    }
+
+    #[test]
+    fn request_accepts_independent_text_provider_order_and_old_payloads() {
+        let old_request: TagSuggestionRequest = serde_json::from_value(json!({
+            "description": "A cafe"
+        }))
+        .expect("old request payload");
+        assert!(old_request.provider_order.is_none());
+        assert!(old_request.text_provider_order.is_none());
+
+        let request: TagSuggestionRequest = serde_json::from_value(json!({
+            "description": "A cafe",
+            "provider_order": ["openai", "kimi"],
+            "text_provider_order": ["deepseek", "mimo"]
+        }))
+        .expect("request with independent orders");
+        assert_eq!(
+            request.provider_order.as_deref(),
+            Some(["openai".to_string(), "kimi".to_string()].as_slice())
+        );
+        assert_eq!(
+            request.text_provider_order.as_deref(),
+            Some(["deepseek".to_string(), "mimo".to_string()].as_slice())
+        );
     }
 
     #[test]
@@ -721,6 +750,7 @@ mod tests {
             suggestions: vec![
                 suggestion("building", "yes"),
                 suggestion("source", "survey"),
+                suggestion("image", "File:replacement.jpg"),
                 suggestion("tiger:reviewed", "no"),
                 suggestion("website", "https://example.test/"),
                 suggestion("office", "government"),
