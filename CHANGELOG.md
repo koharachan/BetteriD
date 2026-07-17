@@ -32,6 +32,22 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# BetteriD 0.1.0
+##### 2026-Jul-18
+
+#### :mega: Release Highlights
+* Establish `release` as BetteriD's default stable branch and align the editor, deployment, and GitHub release on version 0.1.0.
+* Refine experimental keyboard navigation so a short `W` release toggles area fill while holding `W` moves north after a brief 220 ms tap window.
+* Add `Shift` / `Space` zoom controls and increase walk/fly navigation speed to 1.6 times the previous default.
+
+#### :sparkles: Usability & Accessibility
+* Keep `A`, `S`, and `D` movement immediate while preventing navigation shortcuts from taking over focused form fields.
+* Prevent mobile map controls from covering a full-width pane and keep touch targets at least 44 by 44 pixels.
+
+#### :hammer: Development
+* Stabilize Panoramax error-path mocking so pending requests do not leak into unrelated frontend tests.
+* Expand renderer tests for W tap/hold disambiguation, navigation speed, and Shift/Space zoom behavior.
+
 # BetteriD 0.0.2
 ##### 2026-Jul-17
 

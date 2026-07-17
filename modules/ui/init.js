@@ -409,11 +409,6 @@ export function uiInit(context) {
                     context.background().baseLayerSource(previousBackground);
                 }
             })
-            .on(t('area_fill.wireframe.key'), function toggleWireframe(d3_event) {
-                d3_event.preventDefault();
-                d3_event.stopPropagation();
-                context.map().toggleWireframe();
-            })
             .on(uiCmd('⌥' + t('area_fill.wireframe.key')), function toggleOsmData(d3_event) {
                 d3_event.preventDefault();
                 d3_event.stopPropagation();

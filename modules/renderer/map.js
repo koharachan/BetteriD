@@ -28,6 +28,10 @@ var maxZoom = 24;
 var kMin = geoZoomToScale(minZoom, TILESIZE);
 var kMax = geoZoomToScale(maxZoom, TILESIZE);
 const NAVIGATION_KEYS = new Set(['w', 'a', 's', 'd']);
+const W_TAP_MAX_MS = 220;
+const NAVIGATION_SPEED_MULTIPLIER = 1.6;
+const WALK_SPEED = 320 * NAVIGATION_SPEED_MULTIPLIER;
+const FLY_SPEED = 520 * NAVIGATION_SPEED_MULTIPLIER;
 
 
 export function rendererMap(context) {
@@ -74,6 +78,10 @@ export function rendererMap(context) {
     var _navigationVelocity = [0, 0];
     var _navigationReleaseStarted;
     var _navigationReleaseVelocity = [0, 0];
+    var _navigationZoomKeys = new Set();
+    var _wPressStarted;
+    var _wHoldTimeout;
+    var _wNavigationStarted = false;
 
     // whether a pointerdown event started the zoom
     var _pointerDown = false;
@@ -258,8 +266,8 @@ export function rendererMap(context) {
             .on(_pointerPrefix + 'up.map-right-drag', endRightDrag, true)
             .on('pointercancel.map-right-drag', cancelRightDrag, true)
             .on(_pointerPrefix + 'up.map-transform pointercancel.map-transform', endMapPointer)
-            .on('keydown.map-navigation', navigationKeydown)
-            .on('keyup.map-navigation', navigationKeyup)
+            .on('keydown.map-navigation', navigationKeydown, true)
+            .on('keyup.map-navigation', navigationKeyup, true)
             .on('blur.map-navigation', stopNavigation);
 
         var detected = utilDetect();
@@ -420,14 +428,15 @@ export function rendererMap(context) {
     }
 
 
-    function navigationKeydown(d3_event) {
-        if (!navigationEnabled() || d3_event.ctrlKey || d3_event.altKey || d3_event.metaKey) return;
-        if (isTextEntryTarget(d3_event.target) || isTextEntryTarget(document.activeElement)) return;
+    function navigationEventKey(d3_event) {
+        if (d3_event.code === 'Space' || d3_event.key === ' ' || d3_event.key === 'Spacebar') {
+            return 'space';
+        }
+        return String(d3_event.key || '').toLowerCase();
+    }
 
-        const key = d3_event.key.toLowerCase();
-        if (!NAVIGATION_KEYS.has(key)) return;
 
-        d3_event.preventDefault();
+    function startNavigationKey(key) {
         _navigationKeys.add(key);
         if (!_navigationFrame) {
             _navigationLastTime = performance.now();
@@ -436,18 +445,7 @@ export function rendererMap(context) {
     }
 
 
-    function navigationKeyup(d3_event) {
-        const key = d3_event.key.toLowerCase();
-        if (!NAVIGATION_KEYS.has(key)) return;
-        _navigationKeys.delete(key);
-
-        if ((prefs(BETTERID_PREFS.navigationMode) || 'walk') === 'walk' && !_navigationKeys.size) {
-            stopNavigation();
-        }
-    }
-
-
-    function stopNavigation() {
+    function stopNavigationMotion() {
         _navigationKeys.clear();
         _navigationDirection = '';
         _navigationStarted = undefined;
@@ -458,6 +456,116 @@ export function rendererMap(context) {
         if (_navigationFrame) window.cancelAnimationFrame(_navigationFrame);
         _navigationFrame = undefined;
         finishTransform();
+    }
+
+
+    function releaseNavigationKey(key) {
+        _navigationKeys.delete(key);
+        if ((prefs(BETTERID_PREFS.navigationMode) || 'walk') === 'walk' && !_navigationKeys.size) {
+            stopNavigationMotion();
+        }
+    }
+
+
+    function clearWPress() {
+        if (_wHoldTimeout) window.clearTimeout(_wHoldTimeout);
+        _wHoldTimeout = undefined;
+        _wPressStarted = undefined;
+        _wNavigationStarted = false;
+    }
+
+
+    function handleWKeydown(d3_event) {
+        if (_wPressStarted !== undefined || d3_event.repeat) return;
+
+        _wPressStarted = performance.now();
+        _wNavigationStarted = false;
+        if (!navigationEnabled()) return;
+
+        d3_event.preventDefault();
+        _wHoldTimeout = window.setTimeout(function() {
+            _wHoldTimeout = undefined;
+            if (_wPressStarted === undefined || !navigationEnabled()) return;
+            _wNavigationStarted = true;
+            startNavigationKey('w');
+        }, W_TAP_MAX_MS);
+    }
+
+
+    function handleWKeyup(d3_event) {
+        if (_wPressStarted === undefined) return;
+
+        const shortTap = performance.now() - _wPressStarted <= W_TAP_MAX_MS;
+        const wasNavigating = _wNavigationStarted;
+        clearWPress();
+
+        d3_event.preventDefault();
+        d3_event.stopImmediatePropagation();
+        if (wasNavigating) {
+            releaseNavigationKey('w');
+        } else if (shortTap) {
+            map.toggleWireframe();
+        }
+    }
+
+
+    function handleZoomKeydown(d3_event, key) {
+        if (!navigationEnabled() || (key !== 'shift' && key !== 'space')) return false;
+
+        d3_event.preventDefault();
+        d3_event.stopImmediatePropagation();
+        if (d3_event.repeat || _navigationZoomKeys.has(key)) return true;
+
+        _navigationZoomKeys.add(key);
+        if (key === 'shift') {
+            map.zoomIn();
+        } else {
+            map.zoomOut();
+        }
+        return true;
+    }
+
+
+    function navigationKeydown(d3_event) {
+        if (isTextEntryTarget(d3_event.target) || isTextEntryTarget(document.activeElement)) return;
+        if (d3_event.ctrlKey || d3_event.altKey || d3_event.metaKey) return;
+
+        const key = navigationEventKey(d3_event);
+        if (handleZoomKeydown(d3_event, key)) return;
+        if (d3_event.shiftKey) return;
+        if (key === 'w') {
+            handleWKeydown(d3_event);
+            return;
+        }
+        if (!navigationEnabled()) return;
+        if (!NAVIGATION_KEYS.has(key)) return;
+
+        d3_event.preventDefault();
+        startNavigationKey(key);
+    }
+
+
+    function navigationKeyup(d3_event) {
+        const key = navigationEventKey(d3_event);
+        if (_navigationZoomKeys.has(key)) {
+            d3_event.preventDefault();
+            d3_event.stopImmediatePropagation();
+            _navigationZoomKeys.delete(key);
+            return;
+        }
+        if (key === 'w') {
+            handleWKeyup(d3_event);
+            return;
+        }
+        if (!NAVIGATION_KEYS.has(key)) return;
+        releaseNavigationKey(key);
+    }
+
+
+    function stopNavigation() {
+        clearWPress();
+        _navigationZoomKeys.clear();
+        stopNavigationMotion();
     }
 
 
@@ -492,9 +600,9 @@ export function rendererMap(context) {
             if (mode === 'fly') {
                 const t = Math.min(1, (now - _navigationStarted) / 280);
                 const eased = t * t * (3 - 2 * t);  // cubic Bezier-like ease-in-out
-                velocity = [vector[0] * 520 * eased, vector[1] * 520 * eased];
+                velocity = [vector[0] * FLY_SPEED * eased, vector[1] * FLY_SPEED * eased];
             } else {
-                velocity = [vector[0] * 320, vector[1] * 320];
+                velocity = [vector[0] * WALK_SPEED, vector[1] * WALK_SPEED];
             }
 
             _navigationVelocity = velocity;

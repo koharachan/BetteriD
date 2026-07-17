@@ -1145,7 +1145,7 @@ en:
       indoor_focus: Indoor focus enhancement
       indoor_focus_description: Keep the current floor and building clear while dimming other floors and the surrounding map.
       wasd_navigation: WASD map navigation
-      wasd_navigation_description: Move the map with WASD when no form field is focused.
+      wasd_navigation_description: Move with WASD. Tap W to toggle area fill; hold W to move. Shift and Space zoom in and out.
       navigation_mode: Navigation mode
       navigation_walk: Walk (linear, stops on release)
       navigation_fly: Fly (eased motion with a short glide)

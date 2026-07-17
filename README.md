@@ -1,6 +1,6 @@
 # BetteriD
 
-[![Build](https://github.com/koharachan/BetteriD/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/koharachan/BetteriD/actions/workflows/build.yml)
+[![Build](https://github.com/koharachan/BetteriD/actions/workflows/build.yml/badge.svg?branch=release)](https://github.com/koharachan/BetteriD/actions/workflows/build.yml)
 [![GitHub release](https://img.shields.io/github/v/release/koharachan/BetteriD)](https://github.com/koharachan/BetteriD/releases)
 [![License: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE.md)
 
@@ -17,16 +17,18 @@ BetteriD 是面向中文 OpenStreetMap 编辑场景的网页编辑器，基于
 > 上传前请逐项核对标签、来源和变更说明，并遵守
 > [OpenStreetMap 贡献条款](https://www.openstreetmap.org/copyright)。
 
-## 0.0.2 更新重点
+## 0.1.0 正式版
 
+- 建立 `release` 默认稳定分支，线上部署、编辑器版本与 GitHub Release 统一为 0.1.0。
 - 新增带来源链接和置信度的 AI 标签助手，支持按偏好顺序在多个服务端提供商间回退。
 - 新增经格式检查、去元数据和 AI 审核的本地照片底图，可定位、缩放、旋转并识别候选 POI 标签。
-- 新增双影像、室内楼层聚焦、WASD 导航、右键拖图、吸附范围和移动端绘制优化。
+- 新增双影像、室内楼层聚焦、右键拖图、吸附范围和移动端绘制优化。
+- 完善 WASD 导航：短按 W 切换区域填充，长按 W 移动；Shift/空格缩放，默认移动速度提升为原来的 1.6 倍。
 - 扩展中文本地化、多语言名称生成、Osmose 翻译、非本地语言名称检查和安全批量修复。
 - Rust 代理新增 AI 路由、Kimi 搜索、OpenAI/MiMo 视觉能力、限流和可信反向代理处理。
 - 前端构建和 CI 从 npm 迁移到 pnpm，稳定版 iD 翻译可在构建时继承。
 
-完整内容见 [0.0.2 changelog](CHANGELOG.md#betterid-002)。
+完整内容见 [0.1.0 changelog](CHANGELOG.md#betterid-010)。
 
 ## 功能
 

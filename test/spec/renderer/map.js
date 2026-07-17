@@ -400,7 +400,7 @@ describe('rendererMap BetteriD interactions', function() {
         expect(context.map().center()).not.toEqual(before);
     });
 
-    it('moves linearly with WASD walk mode and stops on key release', function() {
+    it('moves linearly at 1.6x speed with ASD and stops on key release', function() {
         iD.prefs('betterid.experimental.enabled', 'true');
         iD.prefs('betterid.experimental.wasd_navigation', 'true');
         iD.prefs('betterid.navigation.mode', 'walk');
@@ -412,15 +412,85 @@ describe('rendererMap BetteriD interactions', function() {
             return 1;
         });
 
-        const before = context.map().center();
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', cancelable: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', cancelable: true }));
         expect(frame).toBeTypeOf('function');
-        frame(performance.now() + 16);
-        expect(context.map().center()).not.toEqual(before);
+        const before = context.projection.transform();
+        frame(performance.now() + 100);  // elapsed time is capped at 50ms
+        const after = context.projection.transform();
+        expect(after.x - before.x).toBeCloseTo(25.6, 6);  // 320px/s * 1.6 * 0.05s
 
-        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'a' }));
         expect(cancelFrame).toHaveBeenCalled();
         expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('uses a short W release for wireframe and a held W for movement', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.navigation.mode', 'walk');
+        context.map().activeAreaFill('partial');
+
+        let frame;
+        let holdCallback;
+        vi.spyOn(window, 'setTimeout').mockImplementation(callback => {
+            holdCallback = callback;
+            return 1;
+        });
+        vi.spyOn(window, 'clearTimeout').mockImplementation(() => {});
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+            frame = callback;
+            return 1;
+        });
+
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', cancelable: true }));
+        expect(context.map().activeAreaFill()).toEqual('partial');
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w', cancelable: true }));
+        expect(context.map().activeAreaFill()).toEqual('wireframe');
+        expect(frame).toBeUndefined();
+
+        context.map().activeAreaFill('partial');
+        holdCallback = undefined;
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', cancelable: true }));
+        expect(holdCallback).toBeTypeOf('function');
+        holdCallback();
+        expect(frame).toBeTypeOf('function');
+
+        const before = context.map().center();
+        frame(performance.now() + 100);
+        expect(context.map().center()).not.toEqual(before);
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w', cancelable: true }));
+        expect(context.map().activeAreaFill()).toEqual('partial');
+        expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('zooms once per Shift or Space press while navigation is enabled', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+
+        const zoomIn = vi.spyOn(context.map(), 'zoomIn').mockReturnValue(context.map());
+        const zoomOut = vi.spyOn(context.map(), 'zoomOut').mockReturnValue(context.map());
+
+        const shiftDown = new KeyboardEvent('keydown', {
+            key: 'Shift', shiftKey: true, cancelable: true
+        });
+        window.dispatchEvent(shiftDown);
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Shift', shiftKey: true, repeat: true, cancelable: true
+        }));
+        expect(shiftDown.defaultPrevented).toBe(true);
+        expect(zoomIn).toHaveBeenCalledOnce();
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift', cancelable: true }));
+
+        const spaceDown = new KeyboardEvent('keydown', {
+            key: ' ', code: 'Space', keyCode: 32, cancelable: true
+        });
+        window.dispatchEvent(spaceDown);
+        expect(spaceDown.defaultPrevented).toBe(true);
+        expect(zoomOut).toHaveBeenCalledOnce();
+        window.dispatchEvent(new KeyboardEvent('keyup', {
+            key: ' ', code: 'Space', keyCode: 32, cancelable: true
+        }));
     });
 
     it('eases WASD fly mode and continues briefly after key release', function() {
