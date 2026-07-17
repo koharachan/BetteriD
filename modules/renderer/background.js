@@ -309,7 +309,7 @@ export function rendererBackground(context) {
       imageryUsed.push(_secondarySource.imageryUsed());
     }
     if (_localPhoto) {
-      imageryUsed.push('User-contributed moderated photo');
+      imageryUsed.push('Local photo background');
     }
 
     _overlayLayers

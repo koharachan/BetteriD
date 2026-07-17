@@ -60,89 +60,33 @@ describe('iD.uiSectionExperimentalBackground', function() {
         expect(element.select('.dual-imagery-controls output').text()).toEqual('0%');
     });
 
-    it('uploads, previews, analyzes, and applies bilingual POI suggestions', async function() {
-        const id = 'a'.repeat(64);
-        const publicURL = `/api/osm-ai/photos/${id}.jpg`;
-        fetchMock.mock('/api/osm-ai/photo-upload', {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                approved: true,
-                id,
-                url: publicURL,
-                width: 640,
-                height: 480,
-                moderation: { reason_zh: '可用于核实招牌', reason_en: 'Suitable sign evidence' }
-            })
-        });
-        fetchMock.mock('/api/osm-ai/photo-analyze', {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                summary: { zh: '识别到一家商店', en: 'A shop was identified' },
-                suggestions: [{
-                    key: 'phone',
-                    value: '+86 751 1234 5678',
-                    confidence: 0.92,
-                    reason: { zh: '号码显示在招牌上', en: 'The number is visible on the sign' }
-                }]
-            })
-        });
+    it('opens and previews a local photo without uploading or analyzing it', async function() {
+        chooseFile(new File(['local pixels'], 'survey.png', { type: 'image/png' }));
+        await waitFor(() => expect(context.background().localPhoto()).not.toBeNull());
 
-        const entity = new iD.osmNode({ id: 'n123', loc: [113.6, 24.8], tags: { shop: 'yes' } });
-        context.history().merge([entity]);
-        vi.spyOn(context, 'selectedIDs').mockReturnValue([entity.id]);
+        const photo = context.background().localPhoto();
+        expect(photo.id).toMatch(/^local-/);
+        expect(photo.url).toMatch(/^data:image\/png;base64,/);
+        expect(element.select('.local-photo-preview img').attr('src')).toEqual(photo.url);
+        expect(element.select('.local-photo-background-controls').classed('has-photo')).toBe(true);
+        expect(element.select('.local-photo-preview a').empty()).toBe(true);
+        expect(element.select('.photo-analyze').empty()).toBe(true);
+        expect(fetchMock.calls('/api/osm-ai/photo-upload')).toHaveLength(0);
+        expect(fetchMock.calls('/api/osm-ai/photo-analyze')).toHaveLength(0);
 
-        chooseFile(new File(['not decoded by mocked endpoint'], 'shop.png', { type: 'image/png' }));
-        await waitFor(() => expect(fetchMock.calls('/api/osm-ai/photo-upload')).toHaveLength(1));
-
-        const upload = JSON.parse(fetchMock.calls('/api/osm-ai/photo-upload')[0][1].body);
-        expect(upload.image).toMatch(/^data:image\/png;base64,/);
-        expect(upload.provider_order).toEqual(['openai', 'mimo']);
-        expect(element.select('.local-photo-preview img').attr('src')).toEqual(publicURL);
-        expect(element.select('.local-photo-preview a').attr('href')).toEqual(publicURL);
-        expect(context.background().localPhoto().id).toEqual(id);
-
-        element.select('.photo-analyze').dispatch('click');
-        await waitFor(() => expect(fetchMock.calls('/api/osm-ai/photo-analyze')).toHaveLength(1));
-        await waitFor(() => expect(element.select('.photo-summary-en').text()).toEqual('A shop was identified'));
-
-        const analysisRequest = JSON.parse(fetchMock.calls('/api/osm-ai/photo-analyze')[0][1].body);
-        expect(analysisRequest.photo_id).toEqual(id);
-        expect(analysisRequest.context.location[0]).toBeCloseTo(113.6, 8);
-        expect(analysisRequest.context.location[1]).toBeCloseTo(24.8, 8);
-        expect(analysisRequest.context.selected_tags).toEqual({ shop: 'yes' });
-        expect(element.select('.photo-summary-zh').text()).toEqual('识别到一家商店');
-        expect(element.select('.photo-summary-en').text()).toEqual('A shop was identified');
-        expect(element.select('.reason-zh').text()).toEqual('号码显示在招牌上');
-        expect(element.select('.reason-en').text()).toEqual('The number is visible on the sign');
-
-        element.select('.photo-apply-tags').dispatch('click');
-        expect(context.graph().entity(entity.id).tags.phone).toEqual('+86 751 1234 5678');
+        element.select('.photo-remove').dispatch('click');
+        expect(context.background().localPhoto()).toBeNull();
     });
 
-    it('shows the bilingual moderation reason and does not retain rejected photos', async function() {
-        fetchMock.mock('/api/osm-ai/photo-upload', {
-            status: 422,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                approved: false,
-                error: 'Photo was rejected by the publication review',
-                moderation: {
-                    reason_zh: '图片不符合 OpenStreetMap 实地核实用途',
-                    reason_en: 'The image is not suitable OSM survey evidence'
-                }
-            })
-        });
-
-        chooseFile(new File(['rejected by mocked endpoint'], 'rejected.webp', { type: 'image/webp' }));
-        await waitFor(() => expect(element.select('.local-photo-status').text())
-            .toEqual('图片不符合 OpenStreetMap 实地核实用途'));
+    it('rejects an unsupported local file without contacting photo services', function() {
+        chooseFile(new File(['not a photo'], 'notes.txt', { type: 'text/plain' }));
 
         expect(element.select('.local-photo-status').text())
-            .toEqual('图片不符合 OpenStreetMap 实地核实用途');
+            .toEqual(iD.localizer.t('background.experimental.invalid_photo'));
         expect(element.select('.local-photo-background-controls').classed('has-photo')).toBe(false);
         expect(context.background().localPhoto()).toBeNull();
+        expect(fetchMock.calls('/api/osm-ai/photo-upload')).toHaveLength(0);
+        expect(fetchMock.calls('/api/osm-ai/photo-analyze')).toHaveLength(0);
     });
 
     function chooseFile(file) {

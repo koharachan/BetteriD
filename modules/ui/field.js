@@ -7,7 +7,7 @@ import { svgIcon } from '../svg/icon';
 import { uiTooltip } from './tooltip';
 import { geoExtent } from '../geo/extent';
 import { uiFieldHelp } from './field_help';
-import { uiFields } from './fields';
+import { uiFieldImage, uiFields } from './fields';
 import { LANGUAGE_SUFFIX_REGEX } from './fields/localized';
 import { uiTagReference } from './tag_reference';
 import { utilRebind, utilUniqueDomId } from '../util';
@@ -50,7 +50,7 @@ export function uiField(context, presetField, entityIDs, options) {
     // Creates the field.. This is done lazily,
     // once we know that the field will be shown.
     function createField() {
-        field.impl = uiFields[field.type](field, context)
+        field.impl = fieldImplementation()(field, context)
             .on('change', function(t, onInput) {
                 dispatch.call('change', field, t, onInput);
             });
@@ -62,6 +62,11 @@ export function uiField(context, presetField, entityIDs, options) {
                 field.impl.entityIDs(entityIDs);
             }
         }
+    }
+
+
+    function fieldImplementation() {
+        return field.key === 'image' ? uiFieldImage : uiFields[field.type];
     }
 
 
@@ -343,7 +348,7 @@ export function uiField(context, presetField, entityIDs, options) {
 
         if (entityIDs &&
             entityIDs.length > 1 &&
-            uiFields[field.type].supportsMultiselection === false) return false;
+            fieldImplementation().supportsMultiselection === false) return false;
 
         if (field.geometry && !entityIDs.every(function(entityID) {
             return field.matchGeometry(context.graph().geometry(entityID));
@@ -393,6 +398,14 @@ export function uiField(context, presetField, entityIDs, options) {
         if (field.impl) {
             field.impl.focus();
         }
+    };
+
+
+    field.dispose = function() {
+        if (field.impl?.dispose) {
+            field.impl.dispose();
+        }
+        return field;
     };
 
 

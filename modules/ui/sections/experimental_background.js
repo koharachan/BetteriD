@@ -1,10 +1,8 @@
 import { select as d3_select } from 'd3-selection';
 
-import { actionChangeTags } from '../../actions/change_tags';
 import {
   BETTERID_PREFS,
-  experimentalFeatureEnabled,
-  getProviderOrder
+  experimentalFeatureEnabled
 } from '../../core/betterid_preferences';
 import { t } from '../../core/localizer';
 import { prefs } from '../../core/preferences';
@@ -12,14 +10,10 @@ import { svgIcon } from '../../svg/icon';
 import { uiSection } from '../section';
 
 
-const BLOCKED_TAG_KEYS = new Set(['source', 'created_by', 'attribution', 'odbl', 'import']);
-
-
 export function uiSectionExperimentalBackground(context) {
   let _photo = null;
   let _photoStatus = 'idle';
   let _photoMessage = '';
-  let _analysis = null;
 
   const section = uiSection('background-experimental', context)
     .label(() => t.append('background.experimental.title'))
@@ -136,10 +130,6 @@ export function uiSectionExperimentalBackground(context) {
     wrapEnter.append('p').attr('class', 'local-photo-status');
     const preview = wrapEnter.append('div').attr('class', 'local-photo-preview');
     preview.append('img').attr('alt', t('background.experimental.photo_preview_alt'));
-    preview.append('a')
-      .attr('target', '_blank')
-      .attr('rel', 'noopener noreferrer')
-      .call(t.append('background.experimental.open_public_photo'));
 
     const controls = wrapEnter.append('div').attr('class', 'local-photo-transform-controls');
     addRange(controls, 'opacity', 0.05, 1, 0.01, 'background.experimental.photo_opacity');
@@ -155,20 +145,12 @@ export function uiSectionExperimentalBackground(context) {
       .append('span');
     actions.append('button')
       .attr('type', 'button')
-      .attr('class', 'photo-analyze secondary-action')
-      .on('click', analyzePhoto)
-      .call(svgIcon('#iD-icon-search', 'pre-text'))
-      .append('span')
-      .call(t.append('background.experimental.analyze_photo'));
-    actions.append('button')
-      .attr('type', 'button')
       .attr('class', 'photo-remove secondary-action')
       .on('click', removePhoto)
       .call(svgIcon('#iD-operation-delete', 'pre-text'))
       .append('span')
       .call(t.append('background.experimental.remove_photo'));
 
-    wrapEnter.append('div').attr('class', 'local-photo-analysis');
     wrap = wrapEnter.merge(wrap);
 
     wrap.classed('has-photo', !!_photo);
@@ -176,11 +158,9 @@ export function uiSectionExperimentalBackground(context) {
       .attr('class', `local-photo-status status-${_photoStatus}`)
       .text(statusText());
     wrap.select('.local-photo-preview img').attr('src', _photo?.url || null);
-    wrap.select('.local-photo-preview a')
-      .attr('href', _photo?.url || null);
     wrap.select('.photo-adjust span')
       .text(t(_photo?.adjust ? 'background.experimental.finish_adjusting' : 'background.experimental.adjust_photo'));
-    wrap.selectAll('.photo-adjust,.photo-analyze,.photo-remove').property('disabled', !_photo || _photoStatus === 'analyzing');
+    wrap.selectAll('.photo-adjust,.photo-remove').property('disabled', !_photo);
 
     if (_photo) {
       for (const key of ['opacity', 'scale', 'rotation']) {
@@ -188,8 +168,6 @@ export function uiSectionExperimentalBackground(context) {
         updateRangeOutput(wrap.select(`.photo-control-${key}`), key, _photo[key]);
       }
     }
-    renderAnalysis(wrap.select('.local-photo-analysis'));
-
     if (!photoEnabled() && context.background().localPhoto()) {
       context.background().localPhoto(null);
     }
@@ -232,57 +210,38 @@ export function uiSectionExperimentalBackground(context) {
       return;
     }
 
-    _photoStatus = 'uploading';
+    _photoStatus = 'loading';
     _photoMessage = '';
-    _analysis = null;
     section.reRender();
     const reader = new FileReader();
     reader.onerror = () => failPhoto(t('background.experimental.invalid_photo'));
-    reader.onload = () => uploadPhoto(String(reader.result), file.type);
+    reader.onload = () => useLocalPhoto(String(reader.result));
     reader.readAsDataURL(file);
   }
 
 
-  async function uploadPhoto(image, mimeType) {
-    try {
-      const response = await fetch('/api/osm-ai/photo-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image,
-          mime_type: mimeType,
-          provider_order: getProviderOrder('vision')
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.approved || !data.url) {
-        const reason = data.moderation?.reason_zh || data.moderation?.reason?.zh || data.moderation?.zh || data.error;
-        throw new Error(reason || t('background.experimental.photo_rejected'));
-      }
-      _photo = {
-        id: data.id,
-        url: data.url,
-        anchor: context.map().center(),
-        zoom: context.map().zoom(),
-        width: Math.min(720, Math.max(160, Number(data.width) || 640)),
-        height: Number(data.height) || 480,
-        opacity: 0.7,
-        scale: 1,
-        rotation: 0,
-        adjust: true
-      };
-      _photoStatus = 'approved';
-      context.background().localPhoto(_photo);
-      section.reRender();
-    } catch (error) {
-      failPhoto(error.message);
-    }
+  function useLocalPhoto(image) {
+    _photo = {
+      id: `local-${Date.now()}`,
+      url: image,
+      anchor: context.map().center(),
+      zoom: context.map().zoom(),
+      width: 640,
+      height: 480,
+      opacity: 0.7,
+      scale: 1,
+      rotation: 0,
+      adjust: true
+    };
+    _photoStatus = 'ready';
+    context.background().localPhoto(_photo);
+    section.reRender();
   }
 
 
   function failPhoto(message) {
     _photoStatus = 'error';
-    _photoMessage = message || t('background.experimental.photo_upload_error');
+    _photoMessage = message || t('background.experimental.photo_load_error');
     _photo = null;
     context.background().localPhoto(null);
     section.reRender();
@@ -291,9 +250,8 @@ export function uiSectionExperimentalBackground(context) {
 
   function statusText() {
     if (_photoMessage) return _photoMessage;
-    if (_photoStatus === 'uploading') return t('background.experimental.photo_uploading');
-    if (_photoStatus === 'approved') return t('background.experimental.photo_approved');
-    if (_photoStatus === 'analyzing') return t('background.experimental.photo_analyzing');
+    if (_photoStatus === 'loading') return t('background.experimental.photo_loading');
+    if (_photoStatus === 'ready') return t('background.experimental.photo_ready');
     return '';
   }
 
@@ -310,121 +268,10 @@ export function uiSectionExperimentalBackground(context) {
   function removePhoto(event) {
     event.preventDefault();
     _photo = null;
-    _analysis = null;
     _photoStatus = 'idle';
     _photoMessage = '';
     context.background().localPhoto(null);
     section.reRender();
-  }
-
-
-  /* eslint-disable require-atomic-updates */
-  async function analyzePhoto(event) {
-    event.preventDefault();
-    if (!_photo || _photoStatus === 'analyzing') return;
-    _photoStatus = 'analyzing';
-    _photoMessage = '';
-    section.reRender();
-    try {
-      const response = await fetch('/api/osm-ai/photo-analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          photo_id: _photo.id,
-          url: _photo.url,
-          context: {
-            location: context.map().center(),
-            selected_tags: selectedTags()
-          },
-          provider_order: getProviderOrder('vision')
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || t('background.experimental.photo_analysis_error'));
-      _analysis = normalizeAnalysis(data);
-      _photoStatus = 'approved';
-    } catch (error) {
-      _photoStatus = 'approved';
-      _photoMessage = error.message;
-    }
-    section.reRender();
-  }
-  /* eslint-enable require-atomic-updates */
-
-
-  function selectedTags() {
-    if (context.selectedIDs().length !== 1) return {};
-    return context.hasEntity(context.selectedIDs()[0])?.tags || {};
-  }
-
-
-  function normalizeAnalysis(data) {
-    const suggestions = Array.isArray(data.suggestions) ? data.suggestions.map((item, index) => {
-      const key = context.cleanTagKey(String(item.key || '').trim());
-      const value = context.cleanTagValue(String(item.value || '').trim());
-      if (!key || !value || BLOCKED_TAG_KEYS.has(key) || key.startsWith('source:') || key.startsWith('tiger:')) return null;
-      return {
-        id: `${index}-${key}`,
-        key,
-        value,
-        confidence: Math.max(0, Math.min(1, Number(item.confidence) || 0)),
-        reason: item.reason || {},
-        selected: Number(item.confidence) >= 0.6
-      };
-    }).filter(Boolean).slice(0, 20) : [];
-    return { summary: data.summary || {}, reasons: data.reasons || {}, suggestions };
-  }
-
-
-  function renderAnalysis(selection) {
-    const data = _analysis ? [_analysis] : [];
-    let wrap = selection.selectAll('.photo-analysis-result').data(data);
-    wrap.exit().remove();
-    const enter = wrap.enter().append('div').attr('class', 'photo-analysis-result');
-    enter.append('p').attr('class', 'photo-summary-zh');
-    enter.append('p').attr('class', 'photo-summary-en');
-    enter.append('ul');
-    enter.append('button')
-      .attr('type', 'button')
-      .attr('class', 'photo-apply-tags action')
-      .on('click', applyPhotoTags)
-      .call(svgIcon('#iD-icon-apply', 'pre-text'))
-      .append('span')
-      .call(t.append('background.experimental.apply_photo_tags'));
-    wrap = enter.merge(wrap);
-    wrap.select('.photo-summary-zh').text(d => d.summary.zh || '');
-    wrap.select('.photo-summary-en').text(d => d.summary.en || '');
-    const items = wrap.select('ul').selectAll('li').data(d => d.suggestions, d => d.id);
-    items.exit().remove();
-    const itemEnter = items.enter().append('li');
-    const label = itemEnter.append('label');
-    label.append('input')
-      .attr('type', 'checkbox')
-      .on('change', function(event, item) { item.selected = this.checked; section.reRender(); });
-    const content = label.append('span');
-    content.append('code');
-    content.append('small').attr('class', 'reason-zh');
-    content.append('small').attr('class', 'reason-en');
-    const merged = itemEnter.merge(items);
-    merged.select('input').property('checked', d => d.selected);
-    merged.select('code').text(d => `${d.key}=${d.value}`);
-    merged.select('.reason-zh').text(d => d.reason.zh || '');
-    merged.select('.reason-en').text(d => d.reason.en || '');
-    wrap.select('.photo-apply-tags').property('disabled', context.selectedIDs().length !== 1 || !_analysis?.suggestions.some(item => item.selected));
-  }
-
-
-  function applyPhotoTags(event) {
-    event.preventDefault();
-    if (!_analysis || context.selectedIDs().length !== 1) return;
-    const entity = context.hasEntity(context.selectedIDs()[0]);
-    if (!entity) return;
-    const tags = { ...entity.tags };
-    for (const suggestion of _analysis.suggestions) {
-      if (suggestion.selected) tags[suggestion.key] = suggestion.value;
-    }
-    context.perform(actionChangeTags(entity.id, tags), t('operations.change_tags.annotation'));
-    context.validator().validate();
   }
 
 

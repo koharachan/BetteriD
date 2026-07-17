@@ -727,6 +727,20 @@ en:
     locating: "Locating, please wait..."
     location_unavailable: Your location is unavailable.
   inspector:
+    image_upload:
+      description: "Upload a photo to host publicly and save its URL in image=*. Photos are reviewed for OSM suitability and safety before publication. Optional POI recognition never changes image=* itself."
+      choose: Upload photo
+      preview_alt: Approved uploaded photo preview
+      open: Open public photo
+      analyze: Recognize POI details
+      invalid: Choose a JPEG, PNG, or WebP image no larger than 12 MB.
+      rejected: The image was not published because it did not pass review.
+      upload_error: The image could not be uploaded.
+      uploading: Uploading and reviewing the image...
+      approved: "The photo is public and its URL has been saved in image=*."
+      analyzing: Recognizing POI details...
+      analysis_error: POI details could not be recognized.
+      apply_tags: Apply selected POI tags
     zoom_to:
       key: Z
       title: Zoom To Selection
@@ -882,25 +896,19 @@ en:
       second_source: Second source
       second_opacity: Second-source opacity
       photo_title: Local photo background
-      photo_instructions: Photos are uploaded for safety and OSM suitability review before they can be shown. Approved uploads receive a public read-only URL.
+      photo_instructions: Choose a photo from this device and use it as a temporary background. The file stays in this browser and is never uploaded, reviewed, or used to recognize POIs.
       choose_photo: Choose photo
-      photo_preview_alt: Approved local photo preview
-      open_public_photo: Open public photo
+      photo_preview_alt: Local photo background preview
       photo_opacity: Photo opacity
       photo_scale: Photo scale
       photo_rotation: Photo rotation
       adjust_photo: Adjust on map
       finish_adjusting: Finish adjusting
-      analyze_photo: Recognize POI
       remove_photo: Remove from map
       invalid_photo: Choose a JPEG, PNG, or WebP image no larger than 12 MB.
-      photo_rejected: The image was rejected by the safety and OSM suitability review.
-      photo_upload_error: The image could not be uploaded.
-      photo_uploading: Uploading and reviewing the image...
-      photo_approved: The image was approved. Drag it on the map or use the controls below.
-      photo_analyzing: Recognizing POI information...
-      photo_analysis_error: The image could not be analyzed.
-      apply_photo_tags: Apply selected tags
+      photo_load_error: The photo could not be opened in this browser.
+      photo_loading: Opening the photo locally...
+      photo_ready: The photo is ready. Drag it on the map or use the controls below.
     backgrounds: Backgrounds
     none: None
     best_imagery: Best known imagery source for this location
@@ -1141,7 +1149,7 @@ en:
       dual_imagery: Overlay two imagery sources
       dual_imagery_description: Select a second background and adjust its opacity independently.
       local_photo: Local photo background
-      local_photo_description: Upload, moderate, position, scale, rotate, and inspect a local photo as a temporary mapping background.
+      local_photo_description: Use a photo from this device as a temporary background that stays in the browser and is never uploaded, reviewed, or used to recognize POIs.
       indoor_focus: Indoor focus enhancement
       indoor_focus_description: Keep the current floor and building clear while dimming other floors and the surrounding map.
       wasd_navigation: WASD map navigation
@@ -1269,7 +1277,7 @@ en:
       ignore: Remove (False Positive)
   ai_tags:
     title: AI Tag Assistant
-    description: Describe a feature to get researched OSM tag suggestions. Search and generation providers fall back silently in your preferred order.
+    description: Describe a feature to get researched OSM tag suggestions. Web search defaults to GPT first with Kimi as fallback; you can change the order in Preferences.
     placeholder: Describe the feature, location, or facts you know...
     search: Get suggestions
     searching: Searching...
@@ -1443,7 +1451,7 @@ en:
       open_source_h: "Open Source"
       open_source: "BetteriD is an unofficial open source fork of the collaborative iD editor, and you are using version {version}. BetteriD's source code is available [on GitHub](https://github.com/koharachan/BetteriD)."
       open_source_attribution: "This project includes icons from [Maki](https://github.com/mapbox/maki) (CC0), [temaki](https://github.com/ideditor/temaki) (CC0), [Fontawesome](https://github.com/FortAwesome/Font-Awesome) (CC BY 4.0), [Röntgen](https://github.com/enzet/Roentgen) (CC BY 4.0) and [Pinhead](https://pinhead.ink/) (CC0)."
-      open_source_help: "You can help BetteriD by [translating](https://github.com/koharachan/BetteriD/blob/develop/CONTRIBUTING.md#translating) or [reporting bugs](https://github.com/koharachan/BetteriD/issues)."
+      open_source_help: "You can help BetteriD by [translating](https://github.com/koharachan/BetteriD/blob/release/CONTRIBUTING.md#translating) or [reporting bugs](https://github.com/koharachan/BetteriD/issues)."
     overview:
       title: Overview
       navigation_h: "Navigation"

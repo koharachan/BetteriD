@@ -1,12 +1,11 @@
 import { fn } from '@vitest/spy';
-import { setTimeout } from 'node:timers/promises';
 import { select as d3_select } from 'd3-selection';
 import { dispatch as d3_dispatch } from 'd3-dispatch';
 
 describe('iD.svgData', function () {
     var context;
     var surface;
-    var dispatch = d3_dispatch('change');
+    var dispatch;
     var projection = iD.geoRawMercator()
         .translate([6934098.868981334, 4092682.5519805425])
         .scale(iD.geoZoomToScale(17))
@@ -88,6 +87,7 @@ describe('iD.svgData', function () {
     }
 
     beforeEach(function () {
+        dispatch = d3_dispatch('change');
         context = iD.coreContext().assetPath('../dist/').init();
         d3_select(document.createElement('div'))
             .attr('class', 'main-map')
@@ -126,8 +126,7 @@ describe('iD.svgData', function () {
             dispatch.on('change', spy);
             render.fileList(files);
 
-            await setTimeout(200);
-            expect(spy).toHaveBeenCalledOnce();
+            await vi.waitFor(() => expect(spy).toHaveBeenCalledOnce());
             surface.call(render);
             var path;
             path = surface.selectAll('path.shadow');
@@ -145,8 +144,7 @@ describe('iD.svgData', function () {
             dispatch.on('change', spy);
             render.fileList(files);
 
-            await setTimeout(200);
-            expect(spy).toHaveBeenCalledOnce();
+            await vi.waitFor(() => expect(spy).toHaveBeenCalledOnce());
             surface.call(render);
             var path;
             path = surface.selectAll('path.shadow');
@@ -164,8 +162,7 @@ describe('iD.svgData', function () {
             dispatch.on('change', spy);
             render.fileList(files);
 
-            await setTimeout(200);
-            expect(spy).toHaveBeenCalledOnce();
+            await vi.waitFor(() => expect(spy).toHaveBeenCalledOnce());
             surface.call(render);
             var path;
             path = surface.selectAll('path.shadow');

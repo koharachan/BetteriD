@@ -4,6 +4,7 @@ export * from './input';
 export * from './access';
 export * from './address';
 export * from './directional_combo';
+export * from './image';
 export * from './lanes';
 export * from './localized';
 export * from './roadheight';

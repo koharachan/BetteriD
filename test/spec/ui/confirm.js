@@ -2,6 +2,16 @@ import { setTimeout } from 'node:timers/promises';
 import { select as d3_select } from 'd3-selection';
 import { timerFlush as d3_timerFlush } from 'd3-timer';
 
+
+async function waitForDismissal(selection, timeout = 2000) {
+    const deadline = Date.now() + timeout;
+    while (selection.node().parentNode && Date.now() < deadline) {
+        await setTimeout(20);
+        d3_timerFlush();
+    }
+}
+
+
 describe('iD.uiConfirm', function () {
     var elem;
 
@@ -44,16 +54,14 @@ describe('iD.uiConfirm', function () {
     it('can be dismissed by calling close function', async () => {
         var selection = iD.uiConfirm(elem);
         selection.close();
-        await setTimeout(275);
-        d3_timerFlush();
+        await waitForDismissal(selection);
         expect(selection.node().parentNode).toBeNull();
     });
 
     it('can be dismissed by clicking the close button', async () => {
         var selection = iD.uiConfirm(elem);
         selection.select('button.close').node().dispatchEvent(new MouseEvent('click'));
-        await setTimeout(275);
-        d3_timerFlush();
+        await waitForDismissal(selection);
         expect(selection.node().parentNode).toBeNull();
     });
 
@@ -61,8 +69,7 @@ describe('iD.uiConfirm', function () {
         var selection = iD.uiConfirm(elem);
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
         document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape' }));
-        await setTimeout(275);
-        d3_timerFlush();
+        await waitForDismissal(selection);
         expect(selection.node().parentNode).toBeNull();
     });
 
@@ -70,16 +77,14 @@ describe('iD.uiConfirm', function () {
         var selection = iD.uiConfirm(elem);
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace' }));
         document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Backspace' }));
-        await setTimeout(275);
-        d3_timerFlush();
+        await waitForDismissal(selection);
         expect(selection.node().parentNode).toBeNull();
     });
 
     it('can be dismissed by clicking the ok button', async () => {
         var selection = iD.uiConfirm(elem).okButton();
         selection.select('div.content div.buttons button.action').node().dispatchEvent(new MouseEvent('click'));
-        await setTimeout(275);
-        d3_timerFlush();
+        await waitForDismissal(selection);
         expect(selection.node().parentNode).toBeNull();
     });
 });

@@ -104,6 +104,8 @@ The legacy aliases `/api/osm-ai/photos/upload` and
 
 ## Photo safety model
 
+The experimental local-photo background stays in the browser and never calls these APIs. The endpoints below support public photos attached through the editor's `image=*` field.
+
 `photo-upload` accepts JSON containing a base64 string or data URL in `image`.
 The proxy:
 

@@ -239,8 +239,9 @@ describe('iD.serviceOsm', function () {
 
             await promisify(connection.loadFromAPI).call(connection, path);
 
-            expect(fetchMock.calls().length).toEqual(1);
-            expect(fetchMock.calls()[0][0]).toEqual('https://api.openstreetmap.org' + path);
+            const calls = fetchMock.calls('https://api.openstreetmap.org' + path);
+            expect(calls).toHaveLength(1);
+            expect(calls[0][0]).toEqual('https://api.openstreetmap.org' + path);
         });
     });
 

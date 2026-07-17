@@ -23,6 +23,13 @@ export function uiSectionPresetFields(context) {
     var _tags;
     var _entityIDs;
 
+    function disposeFields() {
+        if (_fieldsArr) {
+            _fieldsArr.forEach(field => field.dispose());
+        }
+        _fieldsArr = null;
+    }
+
     function renderDisclosureContent(selection) {
         if (!_fieldsArr) {
 
@@ -99,9 +106,10 @@ export function uiSectionPresetFields(context) {
             });
 
             _fieldsArr.forEach(function(field) {
+                const fieldEntityIDs = _entityIDs.slice();
                 field
                     .on('change', function(t, onInput) {
-                        dispatch.call('change', field, _entityIDs, t, onInput);
+                        dispatch.call('change', field, fieldEntityIDs, t, onInput);
                     })
                     .on('revert', function(keys) {
                         dispatch.call('revert', field, keys);
@@ -128,7 +136,7 @@ export function uiSectionPresetFields(context) {
         if (!arguments.length) return _presets;
         if (!_presets || !val || !utilArrayIdentical(_presets, val)) {
             _presets = val;
-            _fieldsArr = null;
+            disposeFields();
         }
         return section;
     };
@@ -149,8 +157,8 @@ export function uiSectionPresetFields(context) {
     section.entityIDs = function(val) {
         if (!arguments.length) return _entityIDs;
         if (!val || !_entityIDs || !utilArrayIdentical(_entityIDs, val)) {
+            disposeFields();
             _entityIDs = val;
-            _fieldsArr = null;
         }
         return section;
     };
