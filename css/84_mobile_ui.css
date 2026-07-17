@@ -24,15 +24,26 @@
         padding: 0 12px;
     }
 
+    .map-controls {
+        width: 44px;
+    }
+
     .sidebar {
         max-width: 100% !important;
         width: 100% !important;
     }
 
     .preset-list-button,
+    .map-controls button,
     .pane-heading button,
     .sidebar .header button {
+        min-width: 44px;
         min-height: 44px;
+    }
+
+    .over-map:has(.map-pane.shown) .map-controls-wrap {
+        visibility: hidden;
+        pointer-events: none;
     }
 
     .mobile-sidebar-close {
