@@ -2,6 +2,20 @@ import fetchMock from 'fetch-mock';
 import { setTimeout } from 'node:timers/promises';
 import { select as d3_select, selectAll as d3_selectAll } from 'd3-selection';
 
+async function waitFor(check, timeout = 2000) {
+    const deadline = Date.now() + timeout;
+    let lastError;
+    while (Date.now() < deadline) {
+        try {
+            return check();
+        } catch (error) {
+            lastError = error;
+        }
+        await setTimeout(10);
+    }
+    throw lastError;
+}
+
 
 describe('iD.uiSectionExperimentalBackground', function() {
     let container, context, element, section;
@@ -80,7 +94,7 @@ describe('iD.uiSectionExperimentalBackground', function() {
         vi.spyOn(context, 'selectedIDs').mockReturnValue([entity.id]);
 
         chooseFile(new File(['not decoded by mocked endpoint'], 'shop.png', { type: 'image/png' }));
-        await setTimeout(30);
+        await waitFor(() => expect(fetchMock.calls('/api/osm-ai/photo-upload')).toHaveLength(1));
 
         const upload = JSON.parse(fetchMock.calls('/api/osm-ai/photo-upload')[0][1].body);
         expect(upload.image).toMatch(/^data:image\/png;base64,/);
@@ -90,7 +104,8 @@ describe('iD.uiSectionExperimentalBackground', function() {
         expect(context.background().localPhoto().id).toEqual(id);
 
         element.select('.photo-analyze').dispatch('click');
-        await setTimeout(30);
+        await waitFor(() => expect(fetchMock.calls('/api/osm-ai/photo-analyze')).toHaveLength(1));
+        await waitFor(() => expect(element.select('.photo-summary-en').text()).toEqual('A shop was identified'));
 
         const analysisRequest = JSON.parse(fetchMock.calls('/api/osm-ai/photo-analyze')[0][1].body);
         expect(analysisRequest.photo_id).toEqual(id);
@@ -121,7 +136,8 @@ describe('iD.uiSectionExperimentalBackground', function() {
         });
 
         chooseFile(new File(['rejected by mocked endpoint'], 'rejected.webp', { type: 'image/webp' }));
-        await setTimeout(30);
+        await waitFor(() => expect(element.select('.local-photo-status').text())
+            .toEqual('图片不符合 OpenStreetMap 实地核实用途'));
 
         expect(element.select('.local-photo-status').text())
             .toEqual('图片不符合 OpenStreetMap 实地核实用途');
