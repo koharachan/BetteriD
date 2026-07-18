@@ -1365,6 +1365,15 @@ impl OsmProxy {
                         }
                         continue;
                     }
+                    if key_lower == "content-security-policy" {
+                        if let Ok(policy) = value.to_str() {
+                            builder = builder.header(
+                                key.as_str(),
+                                Self::rewrite_content_security_policy(policy),
+                            );
+                        }
+                        continue;
+                    }
                     builder = builder.header(key.as_str(), value.as_bytes());
                 }
 
@@ -1384,6 +1393,25 @@ impl OsmProxy {
                 ))
             }
         }
+    }
+
+    fn rewrite_content_security_policy(policy: &str) -> String {
+        policy
+            .split(';')
+            .map(|directive| {
+                let directive = directive.trim();
+                if directive.starts_with("img-src ")
+                    && !directive
+                        .split_ascii_whitespace()
+                        .any(|source| source == "https://osm.asia")
+                {
+                    format!("{directive} https://osm.asia")
+                } else {
+                    directive.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("; ")
     }
 
     fn clean_cookie_domain(cookie: &str) -> String {
@@ -1793,6 +1821,20 @@ mod tests {
         assert_eq!(
             url.as_str(),
             "https://query.openstreetmap.org/query-features?lat=1&lon=2"
+        );
+    }
+
+    #[test]
+    fn test_csp_allows_osm_asia_logo_without_weakening_scripts() {
+        let policy = "default-src 'self'; img-src 'self' data:; script-src 'self' 'nonce-test'; style-src 'self' 'nonce-test'";
+        let rewritten = OsmProxy::rewrite_content_security_policy(policy);
+
+        assert!(rewritten.contains("img-src 'self' data: https://osm.asia"));
+        assert!(rewritten.contains("script-src 'self' 'nonce-test'"));
+        assert!(rewritten.contains("style-src 'self' 'nonce-test'"));
+        assert_eq!(
+            OsmProxy::rewrite_content_security_policy(&rewritten),
+            rewritten
         );
     }
 
