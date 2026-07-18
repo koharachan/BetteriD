@@ -32,6 +32,25 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# BetteriD 0.1.1
+##### 2026-Jul-19
+
+#### :shield: Security
+* Always block Google, Baidu, Amap/Autonavi, and Tencent/QQ imagery endpoints whose terms do not permit OpenStreetMap tracing, while retaining blocklists supplied by the OSM capabilities API.
+* Allow the OSM.asia header logo through the proxied Content Security Policy without weakening script or style directives.
+
+#### :sparkles: Usability & Accessibility
+* Resolve keyboard conflicts with tap/hold behavior: short `A` keeps the Continue shortcut, held `A` moves west, short `W` toggles area fill, and held `W` moves north.
+* Make a short `Shift` press zoom in while a held `Shift` retains its original modifier behavior; keep `Space` as zoom out.
+* Allow generated changeset tags to be edited, renamed, or removed without derived-tag refreshes overwriting the user's choice.
+
+#### :bug: Bugfixes
+* Brand the mirrored OSM header as OSM.asia and keep the external logo compatible with the upstream CSP.
+* Preserve server-side AI configuration across atomic releases and keep OAuth authorization on the official OpenStreetMap origin while API requests remain same-origin.
+
+#### :hammer: Development
+* Add regression coverage for BAT imagery blocking, navigation tap/hold conflicts, editable derived changeset tags, mirror branding, CSP rewriting, and OAuth runtime configuration.
+
 # BetteriD 0.1.0
 ##### 2026-Jul-18
 
