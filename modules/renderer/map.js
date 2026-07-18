@@ -28,7 +28,8 @@ var maxZoom = 24;
 var kMin = geoZoomToScale(minZoom, TILESIZE);
 var kMax = geoZoomToScale(maxZoom, TILESIZE);
 const NAVIGATION_KEYS = new Set(['w', 'a', 's', 'd']);
-const W_TAP_MAX_MS = 220;
+const NAVIGATION_TAP_MAX_MS = 220;
+const DELAYED_NAVIGATION_KEYS = new Set(['w', 'a']);
 const NAVIGATION_SPEED_MULTIPLIER = 1.6;
 const WALK_SPEED = 320 * NAVIGATION_SPEED_MULTIPLIER;
 const FLY_SPEED = 520 * NAVIGATION_SPEED_MULTIPLIER;
@@ -79,9 +80,8 @@ export function rendererMap(context) {
     var _navigationReleaseStarted;
     var _navigationReleaseVelocity = [0, 0];
     var _navigationZoomKeys = new Set();
-    var _wPressStarted;
-    var _wHoldTimeout;
-    var _wNavigationStarted = false;
+    var _delayedNavigationPresses = new Map();
+    var _shiftPress;
 
     // whether a pointerdown event started the zoom
     var _pointerDown = false;
@@ -467,74 +467,133 @@ export function rendererMap(context) {
     }
 
 
-    function clearWPress() {
-        if (_wHoldTimeout) window.clearTimeout(_wHoldTimeout);
-        _wHoldTimeout = undefined;
-        _wPressStarted = undefined;
-        _wNavigationStarted = false;
+    function clearDelayedNavigationPress(key) {
+        const press = _delayedNavigationPresses.get(key);
+        if (!press) return;
+        if (press.timeout) window.clearTimeout(press.timeout);
+        _delayedNavigationPresses.delete(key);
     }
 
 
-    function handleWKeydown(d3_event) {
-        if (_wPressStarted !== undefined || d3_event.repeat) return;
+    function replayShortcut(d3_event) {
+        const shortcutEvent = new KeyboardEvent('keydown', {
+            key: d3_event.key,
+            code: d3_event.code,
+            keyCode: d3_event.keyCode,
+            shiftKey: d3_event.shiftKey,
+            ctrlKey: d3_event.ctrlKey,
+            altKey: d3_event.altKey,
+            metaKey: d3_event.metaKey,
+            bubbles: true,
+            cancelable: true
+        });
+        Object.defineProperty(shortcutEvent, 'betteridNavigationReplay', { value: true });
+        document.dispatchEvent(shortcutEvent);
+    }
 
-        _wPressStarted = performance.now();
-        _wNavigationStarted = false;
+
+    function handleDelayedNavigationKeydown(d3_event, key) {
+        if (_delayedNavigationPresses.has(key) || d3_event.repeat) return;
+
         if (!navigationEnabled()) return;
 
         d3_event.preventDefault();
-        _wHoldTimeout = window.setTimeout(function() {
-            _wHoldTimeout = undefined;
-            if (_wPressStarted === undefined || !navigationEnabled()) return;
-            _wNavigationStarted = true;
-            startNavigationKey('w');
-        }, W_TAP_MAX_MS);
+        d3_event.stopImmediatePropagation();
+        const press = { started: performance.now(), navigating: false, event: d3_event };
+        press.timeout = window.setTimeout(function() {
+            press.timeout = undefined;
+            if (!_delayedNavigationPresses.has(key) || !navigationEnabled()) return;
+            press.navigating = true;
+            startNavigationKey(key);
+        }, NAVIGATION_TAP_MAX_MS);
+        _delayedNavigationPresses.set(key, press);
     }
 
 
-    function handleWKeyup(d3_event) {
-        if (_wPressStarted === undefined) return;
+    function handleDelayedNavigationKeyup(d3_event, key) {
+        const press = _delayedNavigationPresses.get(key);
+        if (!press) return;
 
-        const shortTap = performance.now() - _wPressStarted <= W_TAP_MAX_MS;
-        const wasNavigating = _wNavigationStarted;
-        clearWPress();
+        const shortTap = performance.now() - press.started <= NAVIGATION_TAP_MAX_MS;
+        clearDelayedNavigationPress(key);
 
         d3_event.preventDefault();
         d3_event.stopImmediatePropagation();
-        if (wasNavigating) {
-            releaseNavigationKey('w');
-        } else if (shortTap) {
+        if (press.navigating) {
+            releaseNavigationKey(key);
+        } else if (shortTap && key === 'w') {
             map.toggleWireframe();
+        } else if (shortTap && key === 'a') {
+            replayShortcut(press.event);
         }
     }
 
 
+    function clearShiftPress() {
+        if (!_shiftPress) return;
+        if (_shiftPress.timeout) window.clearTimeout(_shiftPress.timeout);
+        _shiftPress = undefined;
+    }
+
+
+    function handleShiftKeydown(d3_event) {
+        if (!navigationEnabled()) return false;
+
+        d3_event.preventDefault();
+        d3_event.stopImmediatePropagation();
+        if (_shiftPress || d3_event.repeat) return true;
+
+        const press = { started: performance.now(), event: d3_event, replayed: false };
+        press.timeout = window.setTimeout(function() {
+            press.timeout = undefined;
+            if (_shiftPress !== press || !navigationEnabled()) return;
+            press.replayed = true;
+            replayShortcut(d3_event);
+        }, NAVIGATION_TAP_MAX_MS);
+        _shiftPress = press;
+        return true;
+    }
+
+
+    function handleShiftKeyup(d3_event) {
+        if (!_shiftPress) return false;
+
+        const press = _shiftPress;
+        const shortTap = performance.now() - press.started <= NAVIGATION_TAP_MAX_MS;
+        clearShiftPress();
+        if (press.replayed) return false;
+
+        d3_event.preventDefault();
+        d3_event.stopImmediatePropagation();
+        if (shortTap) map.zoomIn();
+        return true;
+    }
+
+
     function handleZoomKeydown(d3_event, key) {
-        if (!navigationEnabled() || (key !== 'shift' && key !== 'space')) return false;
+        if (!navigationEnabled() || key !== 'space') return false;
 
         d3_event.preventDefault();
         d3_event.stopImmediatePropagation();
         if (d3_event.repeat || _navigationZoomKeys.has(key)) return true;
 
         _navigationZoomKeys.add(key);
-        if (key === 'shift') {
-            map.zoomIn();
-        } else {
-            map.zoomOut();
-        }
+        map.zoomOut();
         return true;
     }
 
 
     function navigationKeydown(d3_event) {
+        if (d3_event.betteridNavigationReplay) return;
         if (isTextEntryTarget(d3_event.target) || isTextEntryTarget(document.activeElement)) return;
         if (d3_event.ctrlKey || d3_event.altKey || d3_event.metaKey) return;
 
         const key = navigationEventKey(d3_event);
+        if (key === 'shift' && handleShiftKeydown(d3_event)) return;
         if (handleZoomKeydown(d3_event, key)) return;
         if (d3_event.shiftKey) return;
-        if (key === 'w') {
-            handleWKeydown(d3_event);
+        if (DELAYED_NAVIGATION_KEYS.has(key)) {
+            handleDelayedNavigationKeydown(d3_event, key);
             return;
         }
         if (!navigationEnabled()) return;
@@ -547,14 +606,15 @@ export function rendererMap(context) {
 
     function navigationKeyup(d3_event) {
         const key = navigationEventKey(d3_event);
+        if (key === 'shift' && handleShiftKeyup(d3_event)) return;
         if (_navigationZoomKeys.has(key)) {
             d3_event.preventDefault();
             d3_event.stopImmediatePropagation();
             _navigationZoomKeys.delete(key);
             return;
         }
-        if (key === 'w') {
-            handleWKeyup(d3_event);
+        if (DELAYED_NAVIGATION_KEYS.has(key)) {
+            handleDelayedNavigationKeyup(d3_event, key);
             return;
         }
         if (!NAVIGATION_KEYS.has(key)) return;
@@ -563,7 +623,10 @@ export function rendererMap(context) {
 
 
     function stopNavigation() {
-        clearWPress();
+        for (const key of _delayedNavigationPresses.keys()) {
+            clearDelayedNavigationPress(key);
+        }
+        clearShiftPress();
         _navigationZoomKeys.clear();
         stopNavigationMotion();
     }

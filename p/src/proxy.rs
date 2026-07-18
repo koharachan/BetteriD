@@ -38,6 +38,9 @@ const PHOTO_CONTEXT_MAX_BYTES: usize = 4 * 1024;
 const LOGIN_MODAL_CSS: &str = include_str!("../web/login-modal.css");
 const LOGIN_MODAL_JS: &str = include_str!("../web/login-modal.js");
 const LOGIN_MODAL_TEMPLATE: &str = include_str!("../web/login-modal.html");
+const MIRROR_NOTICE_CSS: &str = include_str!("../web/mirror-notice.css");
+const MIRROR_NOTICE_JS: &str = include_str!("../web/mirror-notice.js");
+const MIRROR_NOTICE_TEMPLATE: &str = include_str!("../web/mirror-notice.html");
 const OAUTH_START_TEMPLATE: &str = include_str!("../web/oauth-start.html");
 
 #[derive(Clone)]
@@ -149,6 +152,20 @@ impl OsmProxy {
                 &method,
                 "application/javascript; charset=utf-8",
                 LOGIN_MODAL_JS,
+            ));
+        }
+        if path == "/betterid/mirror-notice.css" {
+            return Ok(Self::serve_embedded_asset(
+                &method,
+                "text/css; charset=utf-8",
+                MIRROR_NOTICE_CSS,
+            ));
+        }
+        if path == "/betterid/mirror-notice.js" {
+            return Ok(Self::serve_embedded_asset(
+                &method,
+                "application/javascript; charset=utf-8",
+                MIRROR_NOTICE_JS,
             ));
         }
         if path == "/id/oauth/start" {
@@ -977,13 +994,7 @@ impl OsmProxy {
             .map_or(0, |duration| duration.as_secs());
         html = html.replace("__BETTERID_ASSET_VERSION__", &asset_version.to_string());
         html = html.replace("dist/iD.js?v=", "dist/iD.min.js?v=");
-        let client_id =
-            serde_json::to_string(&self.oauth_client_id).unwrap_or_else(|_| "\"\"".to_string());
-        let redirect_uri =
-            serde_json::to_string(&self.oauth_redirect_uri).unwrap_or_else(|_| "null".to_string());
-        let runtime_config = format!(
-            "<script>window.OSM_PROXY_CONFIG={{assetVersion:{asset_version},osmApiConnection:{{url:window.location.origin,apiUrl:window.location.origin,client_id:{client_id},redirect_uri:{redirect_uri}}}}};</script>"
-        );
+        let runtime_config = self.id_runtime_config(asset_version);
         html = html.replace("</head>", &format!("{runtime_config}</head>"));
         Self::file_response(
             StatusCode::OK,
@@ -994,6 +1005,19 @@ impl OsmProxy {
                 html.into_bytes()
             },
             "no-cache",
+        )
+    }
+
+    fn id_runtime_config(&self, asset_version: u64) -> String {
+        let oauth_origin = serde_json::to_string(self.upstream_url.trim_end_matches('/'))
+            .unwrap_or_else(|_| "\"https://www.openstreetmap.org\"".to_string());
+        let client_id =
+            serde_json::to_string(&self.oauth_client_id).unwrap_or_else(|_| "\"\"".to_string());
+        let redirect_uri =
+            serde_json::to_string(&self.oauth_redirect_uri).unwrap_or_else(|_| "null".to_string());
+
+        format!(
+            "<script>window.OSM_PROXY_CONFIG={{assetVersion:{asset_version},osmApiConnection:{{url:{oauth_origin},apiUrl:window.location.origin,client_id:{client_id},redirect_uri:{redirect_uri}}}}};</script>"
         )
     }
 
@@ -1446,7 +1470,61 @@ impl OsmProxy {
         };
 
         let rewritten = self.inject_login_options(&rewritten, path, query);
-        self.inject_root_login_modal(&rewritten, path).into_bytes()
+        let rewritten = Self::rewrite_root_branding(&rewritten, path);
+        let rewritten = self.inject_root_login_modal(&rewritten, path);
+        Self::inject_mirror_notice(&rewritten, path).into_bytes()
+    }
+
+    fn rewrite_root_branding(html: &str, path: &str) -> String {
+        const BRAND_LINK_CLASS: &str =
+            "class=\"icon-link gap-1 me-auto text-body-emphasis text-decoration-none geolink\"";
+
+        if path != "/" {
+            return html.to_string();
+        }
+        let Some(class_start) = html.find(BRAND_LINK_CLASS) else {
+            return html.to_string();
+        };
+        let Some(content_start) = html[class_start..].find('>').map(|i| class_start + i + 1) else {
+            return html.to_string();
+        };
+        let Some(content_end) = html[content_start..]
+            .find("</a>")
+            .map(|i| content_start + i)
+        else {
+            return html.to_string();
+        };
+
+        let mut rewritten = String::with_capacity(html.len());
+        rewritten.push_str(&html[..content_start]);
+        rewritten.push_str(
+            "\n      <img alt=\"OSM.asia 标志\" src=\"https://osm.asia/logo.jpg\" width=\"30\" height=\"30\">\n      OSM.asia\n    ",
+        );
+        rewritten.push_str(&html[content_end..]);
+        rewritten
+    }
+
+    fn inject_mirror_notice(html: &str, path: &str) -> String {
+        if path != "/"
+            || html.contains("betterid-mirror-notice")
+            || !html.contains("</head>")
+            || !html.contains("</body>")
+        {
+            return html.to_string();
+        }
+
+        let with_styles = html.replacen(
+            "</head>",
+            "<link rel=\"stylesheet\" href=\"/betterid/mirror-notice.css\"></head>",
+            1,
+        );
+        with_styles.replacen(
+            "</body>",
+            &format!(
+                "{MIRROR_NOTICE_TEMPLATE}<script defer src=\"/betterid/mirror-notice.js\"></script></body>"
+            ),
+            1,
+        )
     }
 
     fn inject_root_login_modal(&self, html: &str, path: &str) -> String {
@@ -1977,6 +2055,35 @@ mod tests {
     }
 
     #[test]
+    fn test_root_page_uses_osm_asia_branding() {
+        let proxy = test_proxy();
+        let source = br#"<html><body><a href="/#map=17/24/113" class="icon-link gap-1 me-auto text-body-emphasis text-decoration-none geolink"><img alt="OpenStreetMap logo" src="/assets/osm_logo-digest.svg" width="30" height="30">OpenStreetMap</a></body></html>"#;
+        let html = String::from_utf8(proxy.rewrite_urls(source, "text/html", "/", None))
+            .expect("valid UTF-8");
+
+        assert!(html.contains("src=\"https://osm.asia/logo.jpg\""));
+        assert!(html.contains("alt=\"OSM.asia 标志\""));
+        assert!(html.contains("OSM.asia"));
+        assert!(!html.contains("osm_logo-digest.svg"));
+        assert!(!html.contains(">OpenStreetMap</a>"));
+        assert_eq!(OsmProxy::rewrite_root_branding(&html, "/login"), html);
+    }
+
+    #[test]
+    fn test_root_page_adds_mirror_notice() {
+        let source = "<html><head></head><body>Map</body></html>";
+        let html = OsmProxy::inject_mirror_notice(source, "/");
+
+        assert!(html.contains("id=\"betterid-mirror-notice\""));
+        assert!(html.contains("map.osm.asia 是 OpenStreetMap 的第三方镜像服务"));
+        assert!(html.contains("href=\"https://www.openstreetmap.org/\""));
+        assert!(html.contains("/betterid/mirror-notice.css"));
+        assert!(html.contains("/betterid/mirror-notice.js"));
+        assert_eq!(OsmProxy::inject_mirror_notice(&html, "/"), html);
+        assert_eq!(OsmProxy::inject_mirror_notice(source, "/login"), source);
+    }
+
+    #[test]
     fn test_oauth_start_uses_pkce_without_client_secret() {
         let html = test_proxy().oauth_start_html();
         assert!(html.contains("test-client"));
@@ -1986,5 +2093,14 @@ mod tests {
         assert!(html.contains("betterid.oauth.root"));
         assert!(html.contains("https://map.osm.asia/callback"));
         assert!(!html.contains("client_secret"));
+    }
+
+    #[test]
+    fn test_editor_uses_official_site_for_oauth_and_proxy_for_api() {
+        let config = test_proxy().id_runtime_config(123);
+
+        assert!(config.contains("url:\"https://www.openstreetmap.org\""));
+        assert!(config.contains("apiUrl:window.location.origin"));
+        assert!(!config.contains("url:window.location.origin"));
     }
 }

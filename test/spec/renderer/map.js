@@ -400,7 +400,7 @@ describe('rendererMap BetteriD interactions', function() {
         expect(context.map().center()).not.toEqual(before);
     });
 
-    it('moves linearly at 1.6x speed with ASD and stops on key release', function() {
+    it('moves linearly at 1.6x speed with SD and stops on key release', function() {
         iD.prefs('betterid.experimental.enabled', 'true');
         iD.prefs('betterid.experimental.wasd_navigation', 'true');
         iD.prefs('betterid.navigation.mode', 'walk');
@@ -412,15 +412,54 @@ describe('rendererMap BetteriD interactions', function() {
             return 1;
         });
 
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', cancelable: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', cancelable: true }));
         expect(frame).toBeTypeOf('function');
         const before = context.projection.transform();
         frame(performance.now() + 100);  // elapsed time is capped at 50ms
         const after = context.projection.transform();
-        expect(after.x - before.x).toBeCloseTo(25.6, 6);  // 320px/s * 1.6 * 0.05s
+        expect(after.x - before.x).toBeCloseTo(-25.6, 6);  // 320px/s * 1.6 * 0.05s
 
-        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'a' }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'd' }));
         expect(cancelFrame).toHaveBeenCalled();
+        expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('uses a short A release for shortcuts and a held A for movement', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.navigation.mode', 'walk');
+
+        let frame;
+        let holdCallback;
+        const shortcut = vi.fn();
+        context.keybinding().on('A', shortcut);
+        vi.spyOn(window, 'setTimeout').mockImplementation(callback => {
+            holdCallback = callback;
+            return 1;
+        });
+        vi.spyOn(window, 'clearTimeout').mockImplementation(() => {});
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+            frame = callback;
+            return 1;
+        });
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+        document.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true, cancelable: true }));
+        expect(shortcut).toHaveBeenCalledOnce();
+        expect(frame).toBeUndefined();
+
+        holdCallback = undefined;
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+        expect(holdCallback).toBeTypeOf('function');
+        holdCallback();
+        expect(frame).toBeTypeOf('function');
+
+        const before = context.projection.transform();
+        frame(performance.now() + 100);
+        expect(context.projection.transform().x).toBeGreaterThan(before.x);
+        document.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true, cancelable: true }));
+        expect(shortcut).toHaveBeenCalledOnce();
         expect(context.map().isTransformed()).toBe(false);
     });
 
@@ -464,24 +503,53 @@ describe('rendererMap BetteriD interactions', function() {
         expect(context.map().isTransformed()).toBe(false);
     });
 
-    it('zooms once per Shift or Space press while navigation is enabled', function() {
+    it('zooms on a short Shift press and preserves a held Shift', function() {
         iD.prefs('betterid.experimental.enabled', 'true');
         iD.prefs('betterid.experimental.wasd_navigation', 'true');
 
         const zoomIn = vi.spyOn(context.map(), 'zoomIn').mockReturnValue(context.map());
-        const zoomOut = vi.spyOn(context.map(), 'zoomOut').mockReturnValue(context.map());
+        const shiftKeydown = vi.fn();
+        document.addEventListener('keydown', shiftKeydown);
+        let holdCallback;
+        vi.spyOn(window, 'setTimeout').mockImplementation(callback => {
+            holdCallback = callback;
+            return 1;
+        });
+        vi.spyOn(window, 'clearTimeout').mockImplementation(() => {});
 
         const shiftDown = new KeyboardEvent('keydown', {
-            key: 'Shift', shiftKey: true, cancelable: true
+            key: 'Shift', shiftKey: true, bubbles: true, cancelable: true
         });
-        window.dispatchEvent(shiftDown);
-        window.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'Shift', shiftKey: true, repeat: true, cancelable: true
-        }));
+        document.dispatchEvent(shiftDown);
         expect(shiftDown.defaultPrevented).toBe(true);
+        expect(zoomIn).not.toHaveBeenCalled();
+        document.dispatchEvent(new KeyboardEvent('keyup', {
+            key: 'Shift', bubbles: true, cancelable: true
+        }));
         expect(zoomIn).toHaveBeenCalledOnce();
-        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift', cancelable: true }));
+        expect(shiftKeydown).not.toHaveBeenCalled();
 
+        holdCallback = undefined;
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Shift', shiftKey: true, bubbles: true, cancelable: true
+        }));
+        expect(holdCallback).toBeTypeOf('function');
+        holdCallback();
+        expect(shiftKeydown).toHaveBeenCalledOnce();
+        expect(shiftKeydown.mock.calls[0][0].shiftKey).toBe(true);
+        document.dispatchEvent(new KeyboardEvent('keyup', {
+            key: 'Shift', bubbles: true, cancelable: true
+        }));
+        expect(zoomIn).toHaveBeenCalledOnce();
+
+        document.removeEventListener('keydown', shiftKeydown);
+    });
+
+    it('zooms out once per Space press while navigation is enabled', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+
+        const zoomOut = vi.spyOn(context.map(), 'zoomOut').mockReturnValue(context.map());
         const spaceDown = new KeyboardEvent('keydown', {
             key: ' ', code: 'Space', keyCode: 32, cancelable: true
         });
