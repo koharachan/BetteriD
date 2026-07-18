@@ -730,7 +730,7 @@ describe('iD.serviceOsm', function () {
         });
 
         describe('#imageryBlocklists', function() {
-            it('updates imagery blocklists', async () => {
+            it('merges API and default imagery blocklists', async () => {
                 fetchMock.mock('https://www.openstreetmap.org/api/capabilities.json', {
                     body: JSON.stringify(capabilitiesJSON),
                     status: 200,
@@ -740,7 +740,19 @@ describe('iD.serviceOsm', function () {
 
                 await promisify(connection.status).call(connection);
                 var blocklists = connection.imageryBlocklists();
-                expect(blocklists).toEqual([new RegExp('\.foo\.com', 'i'), new RegExp('\.bar\.org', 'i')]);
+                var blockedTemplates = [
+                    'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                    'https://online0.map.bdimg.com/tile/?x={x}&y={y}&z={z}',
+                    'https://webst01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}',
+                    'https://rt0.map.gtimg.com/tile?x={x}&y={y}&z={z}',
+                    'https://tiles.foo.com/{z}/{x}/{y}.png',
+                    'https://tiles.bar.org/{z}/{x}/{y}.png'
+                ];
+
+                blockedTemplates.forEach(template => {
+                    expect(blocklists.some(regex => regex.test(template))).toBe(true);
+                });
+                expect(blocklists.some(regex => regex.test('https://tile.openstreetmap.org/{z}/{x}/{y}.png'))).toBe(false);
             });
         });
 

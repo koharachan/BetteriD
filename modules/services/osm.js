@@ -32,8 +32,14 @@ var oauth = new osmAuth({
 });
 var _apiConnections = osmApiConnections;
 
-// hardcode default block of Google Maps
-var _imageryBlocklists = [/.*\.google(apis)?\..*\/(vt|kh)[\?\/].*([xyz]=.*){3}.*/];
+// Always block imagery providers whose terms do not permit OSM tracing.
+const _defaultImageryBlocklists = [
+    /.*\.google(apis)?\..*\/(vt|kh)[?\/].*([xyz]=.*){3}.*/i,
+    /^https?:\/\/(?:[^/?#]+\.)?(?:baidu\.com|bdimg\.com|bdstatic\.com)(?:[/?#:]|$)/i,
+    /^https?:\/\/(?:[^/?#]+\.)?(?:amap\.com|autonavi\.com)(?:[/?#:]|$)/i,
+    /^https?:\/\/(?:[^/?#]+\.)?(?:qq\.com|gtimg\.com)(?:[/?#:]|$)/i
+];
+var _imageryBlocklists = _defaultImageryBlocklists.slice();
 var _tileCache = { toLoad: {}, loaded: {}, inflight: {}, seen: {}, rtree: new RBush() };
 var _noteCache = { toLoad: {}, loaded: {}, inflight: {}, inflightPost: {}, note: {}, closed: {}, rtree: new RBush() };
 var _userCache = { toLoad: {}, user: {} };
@@ -806,7 +812,8 @@ export default {
             } else {
                 _maxWayNodes = payload.api.waynodes.maximum;
 
-                _imageryBlocklists = payload.policy.imagery.blacklist.map(item => new RegExp(item.regex, 'i'));
+                const apiBlocklists = payload.policy.imagery.blacklist.map(item => new RegExp(item.regex, 'i'));
+                _imageryBlocklists = _defaultImageryBlocklists.concat(apiBlocklists);
 
                 const maxChangesetElements = payload.api.changesets.maximum_elements;
                 if (!Number.isNaN(maxChangesetElements)) _maxChangesetElements = maxChangesetElements;
