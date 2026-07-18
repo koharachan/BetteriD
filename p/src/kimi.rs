@@ -332,7 +332,7 @@ fn build_completion_payload(model: &str, messages: &[KimiMessage], tool_choice: 
         "model": model,
         "messages": messages,
         "max_completion_tokens": 3_072,
-        "temperature": 0.2,
+        "temperature": 0.6,
         "thinking": { "type": "disabled" },
         "tools": [{
             "type": "builtin_function",
@@ -694,6 +694,7 @@ mod tests {
         assert_eq!(payload["tool_choice"], "required");
         assert_eq!(payload["response_format"]["type"], "json_object");
         assert_eq!(payload["max_completion_tokens"], 3_072);
+        assert_eq!(payload["temperature"], 0.6);
     }
 
     #[test]
