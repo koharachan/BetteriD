@@ -18,34 +18,29 @@ import { utilDetect } from '../util/detect';
 import { getIncompatibleSources } from '../validations/incompatible_source';
 
 
-var readOnlyTags = [
-    /^changesets_count$/,
-    /^created_by$/,
-    /^ideditor:/,
-    /^imagery_used$/,
-    /^host$/,
-    /^locale$/,
-    /^warnings:/,
-    /^resolved:/,
-    /^closed:note$/,
-    /^closed:osmose:/
-];
-
 // treat most punctuation (except -, _, +, &) as hashtag delimiters - #4398
 // from https://stackoverflow.com/a/25575009
 var hashtagRegex = /([#＃][^\u2000-\u206F\u2E00-\u2E7F\s\\'!"#$%()*,.\/:;<=>?@\[\]^`{|}~]+)/g;
+
+
+var userEditedTagKeys = new WeakMap();
 
 
 export function uiCommit(context) {
     var dispatch = d3_dispatch('cancel');
     var _userDetails;
     var _selection;
+    var _userEditedTagKeys = userEditedTagKeys.get(context);
+    if (!_userEditedTagKeys) {
+        _userEditedTagKeys = new Set();
+        userEditedTagKeys.set(context, _userEditedTagKeys);
+    }
 
     var changesetEditor = uiChangesetEditor(context)
         .on('change', changeTags);
     var rawTagEditor = uiSectionRawTagEditor('changeset-tag-editor', context)
-        .on('change', changeTags)
-        .readOnlyTags(readOnlyTags);
+        .on('change', changeRawTags)
+        .expandedByDefault(true);
     var commitChanges = uiSectionChanges(context);
     var commitWarnings = uiCommitWarnings(context);
 
@@ -60,6 +55,7 @@ export function uiCommit(context) {
     }
 
     function initChangeset() {
+        _userEditedTagKeys.clear();
 
         // expire stored comment, hashtags, source after cutoff datetime - #3947 #4899
         var commentDate = +prefs('commentDate') || 0;
@@ -139,24 +135,25 @@ export function uiCommit(context) {
 
         // assign tags for imagery used
         var imageryUsed = context.cleanTagValue(context.history().imageryUsed().join(';'));
-        tags.imagery_used = imageryUsed || 'None';
+        setDerivedTag(tags, 'imagery_used', imageryUsed || 'None');
 
         // assign tags for closed issues and notes
         var osmClosed = osm.getClosedIDs();
         var itemType;
         if (osmClosed.length) {
-            tags['closed:note'] = context.cleanTagValue(osmClosed.join(';'));
+            setDerivedTag(tags, 'closed:note', context.cleanTagValue(osmClosed.join(';')));
         }
         if (services.osmose) {
             var osmoseClosed = services.osmose.getClosedCounts();
             for (itemType in osmoseClosed) {
-                tags['closed:osmose:' + itemType] = context.cleanTagValue(osmoseClosed[itemType].toString());
+                const key = 'closed:osmose:' + itemType;
+                setDerivedTag(tags, key, context.cleanTagValue(osmoseClosed[itemType].toString()));
             }
         }
 
         // remove existing issue counts
         for (var key in tags) {
-            if (key.match(/(^warnings:)|(^resolved:)/)) {
+            if (key.match(/(^warnings:)|(^resolved:)/) && !_userEditedTagKeys.has(key)) {
                 delete tags[key];
             }
         }
@@ -169,10 +166,12 @@ export function uiCommit(context) {
                     var issuesBySubtype = utilArrayGroupBy(issuesOfType, 'subtype');
                     for (var issueSubtype in issuesBySubtype) {
                         var issuesOfSubtype = issuesBySubtype[issueSubtype];
-                        tags[prefix + ':' + issueType + ':' + issueSubtype] = context.cleanTagValue(issuesOfSubtype.length.toString());
+                        const key = prefix + ':' + issueType + ':' + issueSubtype;
+                        setDerivedTag(tags, key, context.cleanTagValue(issuesOfSubtype.length.toString()));
                     }
                 } else {
-                    tags[prefix + ':' + issueType] = context.cleanTagValue(issuesOfType.length.toString());
+                    const key = prefix + ':' + issueType;
+                    setDerivedTag(tags, key, context.cleanTagValue(issuesOfType.length.toString()));
                 }
             }
         }
@@ -197,6 +196,13 @@ export function uiCommit(context) {
         addIssueCounts(resolvedIssues, 'resolved');
 
         context.changeset = context.changeset.update({ tags: tags });
+    }
+
+
+    function setDerivedTag(tags, key, value) {
+        if (!_userEditedTagKeys.has(key)) {
+            tags[key] = value;
+        }
     }
 
     function render(selection) {
@@ -633,6 +639,20 @@ export function uiCommit(context) {
     }
 
 
+    function changeRawTags(entityIDs, changed, onInput) {
+        Object.keys(changed).forEach(function(key) {
+            _userEditedTagKeys.add(context.cleanTagKey(key));
+
+            var value = changed[key];
+            if (value && typeof value === 'object' && value.oldKey) {
+                _userEditedTagKeys.add(context.cleanTagKey(value.oldKey));
+            }
+        });
+
+        changeTags(entityIDs, changed, onInput);
+    }
+
+
     function findHashtags(tags, commentOnly) {
         var detectedHashtags = commentHashtags();
 
@@ -696,6 +716,11 @@ export function uiCommit(context) {
 
             if (v === undefined) {
                 delete tags[k];
+            } else if (v && typeof v === 'object' && v.oldKey) {
+                var oldKey = context.cleanTagKey(v.oldKey);
+                if (tags.hasOwnProperty(oldKey)) {
+                    tags[k] = tags[oldKey];
+                }
             } else if (onInput) {
                 tags[k] = v;
             } else {
@@ -719,27 +744,27 @@ export function uiCommit(context) {
         // always update userdetails, just in case user reauthenticates as someone else
         if (_userDetails && _userDetails.changesets_count !== undefined) {
             var changesetsCount = parseInt(_userDetails.changesets_count, 10) + 1;  // #4283
-            tags.changesets_count = String(changesetsCount);
+            setDerivedTag(tags, 'changesets_count', String(changesetsCount));
 
             // first 100 edits - new user
             if (changesetsCount <= 100) {
                 var s;
                 s = prefs('walkthrough_completed');
                 if (s) {
-                    tags['ideditor:walkthrough_completed'] = s;
+                    setDerivedTag(tags, 'ideditor:walkthrough_completed', s);
                 }
 
                 s = prefs('walkthrough_progress');
                 if (s) {
-                    tags['ideditor:walkthrough_progress'] = s;
+                    setDerivedTag(tags, 'ideditor:walkthrough_progress', s);
                 }
 
                 s = prefs('walkthrough_started');
                 if (s) {
-                    tags['ideditor:walkthrough_started'] = s;
+                    setDerivedTag(tags, 'ideditor:walkthrough_started', s);
                 }
             }
-        } else {
+        } else if (!_userEditedTagKeys.has('changesets_count')) {
             delete tags.changesets_count;
         }
 
@@ -751,6 +776,7 @@ export function uiCommit(context) {
 
     commit.reset = function() {
         context.changeset = null;
+        _userEditedTagKeys.clear();
     };
 
 
