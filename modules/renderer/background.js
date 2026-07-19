@@ -369,6 +369,7 @@ export function rendererBackground(context) {
 
     return _imageryIndex.backgrounds.filter(source => {
       if (includeCurrent && currSource === source) return true;  // optionally always include the current imagery
+      if (source.id === 'custom') return true;                   // keep the editor available for replacing a blocked URL
       if (source.isBlocked) return false;                        // even bundled sources may be blocked - #7905
       if (!source.polygon) return true;                          // always include imagery with worldwide coverage
       if (zoom && zoom < 6) return false;                        // optionally exclude local imagery at low zooms

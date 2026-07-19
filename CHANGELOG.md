@@ -32,6 +32,23 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# BetteriD 0.1.2
+##### 2026-Jul-19
+
+#### :mega: Release Highlights
+* Merge the latest upstream iD `develop`, including Mapillary unsafe photo ID
+  handling, Amap geographic suffix false-positive fixes, grouped yearly
+  background variants, and `*:wikidata` links in outdated-tag suggestions.
+
+#### :bug: Bugfixes
+* Keep the custom background editor visible even when its saved URL is blocked.
+
+#### :hammer: Development
+* Complete the upstream TypeScript migrations across actions, the file fetcher,
+  SVG rendering, QA items, and related globals.
+* Add and refresh regression coverage for the merged imagery, validation, and
+  fetcher paths.
+
 # BetteriD 0.1.1
 ##### 2026-Jul-19
 

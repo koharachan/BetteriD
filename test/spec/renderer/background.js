@@ -41,6 +41,19 @@ describe('iD.rendererBackground BetteriD layers', function() {
         expect(background.secondaryOpacity()).toEqual(0.35);
     });
 
+    it('keeps the custom editor visible when its saved URL is blocked', function() {
+        const custom = background.findSource('custom');
+        const none = background.findSource('none');
+        custom.template('https://online0.map.bdimg.com/tile/?x={x}&y={y}&z={z}');
+        context.connection = () => ({ imageryBlocklists: () => [/\.map\.bdimg\.com\//i] });
+
+        const sources = background.sources(iD.geoExtent([-180, -90], [180, 90]));
+        expect(sources).toContain(custom);
+
+        background.baseLayerSource(custom);
+        expect(background.baseLayerSource()).toBe(none);
+    });
+
     it('moves, scales, and rotates an adjustable local photo', function() {
         const photo = {
             url: 'data:image/jpeg;base64,AA==',

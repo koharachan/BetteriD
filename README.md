@@ -17,6 +17,14 @@ BetteriD 是面向中文 OpenStreetMap 编辑场景的网页编辑器，基于
 > 上传前请逐项核对标签、来源和变更说明，并遵守
 > [OpenStreetMap 贡献条款](https://www.openstreetmap.org/copyright)。
 
+## 0.1.2 正式版
+
+- 合并上游 iD 最新 develop，带来 Mapillary 非安全照片 ID 处理修复、高德地名后缀误判修复、年度影像分组，以及旧标签建议里的 `*:wikidata` 链接。
+- 保留被屏蔽底图的自定义编辑入口，方便直接替换保存过的地址。
+- 完成上游前端 TypeScript 迁移，并补上影像、校验和数据获取路径的回归测试。
+
+完整内容见 [0.1.2 changelog](CHANGELOG.md#betterid-012)。
+
 ## 0.1.1 正式版
 
 - 默认屏蔽 Google、百度、高德/Autonavi、腾讯/QQ 等不允许用于 OSM 描绘的影像地址，同时保留 OSM API 下发的屏蔽规则。
