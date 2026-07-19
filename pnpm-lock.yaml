@@ -101,7 +101,7 @@ importers:
         version: 8.2.0
       '@openstreetmap/editor-layer-index':
         specifier: github:osmlab/editor-layer-index#gh-pages
-        version: https://codeload.github.com/osmlab/editor-layer-index/tar.gz/cffac1b35d5dd0368d0c0ab3deefef0bf4ef5734
+        version: https://codeload.github.com/osmlab/editor-layer-index/tar.gz/36a181eaccfe3db93aa286340dc099a2aef8f483
       '@openstreetmap/id-tagging-schema':
         specifier: 7.0.1
         version: 7.0.1
@@ -136,7 +136,7 @@ importers:
         specifier: ^4.1.4
         version: 4.1.10(vitest@4.1.10)
       '@vitest/eslint-plugin':
-        specifier: ^1.6.16
+        specifier: ^1.6.23
         version: 1.6.23(@typescript-eslint/eslint-plugin@8.64.0(@typescript-eslint/parser@8.64.0(@typescript/typescript6@6.0.2)(eslint@10.7.0))(@typescript/typescript6@6.0.2)(eslint@10.7.0))(@typescript/typescript6@6.0.2)(eslint@10.7.0)(vitest@4.1.10)
       '@waysidemapping/pinhead':
         specifier: ^15.23.0
@@ -714,8 +714,8 @@ packages:
   '@octokit/types@16.0.0':
     resolution: {integrity: sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg==}
 
-  '@openstreetmap/editor-layer-index@https://codeload.github.com/osmlab/editor-layer-index/tar.gz/cffac1b35d5dd0368d0c0ab3deefef0bf4ef5734':
-    resolution: {tarball: https://codeload.github.com/osmlab/editor-layer-index/tar.gz/cffac1b35d5dd0368d0c0ab3deefef0bf4ef5734}
+  '@openstreetmap/editor-layer-index@https://codeload.github.com/osmlab/editor-layer-index/tar.gz/36a181eaccfe3db93aa286340dc099a2aef8f483':
+    resolution: {tarball: https://codeload.github.com/osmlab/editor-layer-index/tar.gz/36a181eaccfe3db93aa286340dc099a2aef8f483}
     version: 0.0.0
 
   '@openstreetmap/id-tagging-schema@7.0.1':
@@ -3941,7 +3941,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 27.0.0
 
-  '@openstreetmap/editor-layer-index@https://codeload.github.com/osmlab/editor-layer-index/tar.gz/cffac1b35d5dd0368d0c0ab3deefef0bf4ef5734': {}
+  '@openstreetmap/editor-layer-index@https://codeload.github.com/osmlab/editor-layer-index/tar.gz/36a181eaccfe3db93aa286340dc099a2aef8f483': {}
 
   '@openstreetmap/id-tagging-schema@7.0.1': {}
 
