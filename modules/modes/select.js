@@ -1,5 +1,6 @@
 import { select as d3_select } from 'd3-selection';
 
+import { BETTERID_PREFS, betteridBool } from '../core/betterid_preferences';
 import { t } from '../core/localizer';
 
 import { actionAddMidpoint } from '../actions/add_midpoint';
@@ -50,6 +51,7 @@ export function modeSelect(context, selectedIDs) {
     // parents, and we want to remember which parent line we started on.
     var _focusedParentWayId;
     var _focusedVertexIds;
+    var _pointerPrefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
 
 
     function singular() {
@@ -242,6 +244,71 @@ export function modeSelect(context, selectedIDs) {
     };
 
 
+    function josmShortcutsEnabled() {
+        return betteridBool(BETTERID_PREFS.josmShortcuts, true);
+    }
+
+
+    function behaviorJOSMRotateGesture() {
+        function behavior(selection) {
+            selection.on(_pointerPrefix + 'down.josm-rotate', pointerdown);
+        }
+
+        behavior.off = function(selection) {
+            selection.on(_pointerPrefix + 'down.josm-rotate', null);
+        };
+
+        function pointerdown(d3_event) {
+            if (!josmShortcutsEnabled()) return;
+            if (d3_event.button !== 0) return;
+            if (!d3_event.shiftKey || (!d3_event.ctrlKey && !d3_event.metaKey) || d3_event.altKey) return;
+            if (!context.map().withinEditableZoom()) return;
+            if (!isSelectedTarget(d3_event.target)) return;
+
+            var rotate = Operations.operationRotate(context, selectedIDs);
+            if (!rotate.available()) return;
+
+            d3_event.preventDefault();
+            if (d3_event.stopImmediatePropagation) {
+                d3_event.stopImmediatePropagation();
+            } else {
+                d3_event.stopPropagation();
+            }
+
+            var disabled = rotate.disabled();
+            if (disabled) {
+                context.ui().flash
+                    .duration(4000)
+                    .iconName('#iD-operation-rotate')
+                    .iconClass('operation disabled')
+                    .label(rotate.tooltip())();
+                return;
+            }
+
+            rotate(d3_event);
+        }
+
+        function isSelectedTarget(target) {
+            var surfaceNode = context.surface().node();
+            for (var node = target; node && node !== surfaceNode; node = node.parentNode) {
+                var datum = node.__data__;
+                var entity = (datum && datum.properties && datum.properties.entity) || datum;
+                if (entity && entity.id && selectedIDs.indexOf(entity.id) !== -1) return true;
+
+                if (node.classList && (
+                    node.classList.contains('selected') ||
+                    node.classList.contains('selected-member')
+                )) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return behavior;
+    }
+
+
     mode.enter = function() {
         if (!checkSelectedIDs()) return;
 
@@ -258,6 +325,7 @@ export function modeSelect(context, selectedIDs) {
                 behaviorPaste(context),
                 _breatheBehavior,
                 behaviorHover(context).on('hover', context.ui().sidebar.hoverModeSelect),
+                behaviorJOSMRotateGesture(),
                 _selectBehavior,
                 behaviorLasso(context),
                 _modeDragNode.behavior,

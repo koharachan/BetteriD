@@ -463,6 +463,113 @@ describe('rendererMap BetteriD interactions', function() {
         expect(context.map().isTransformed()).toBe(false);
     });
 
+    it('uses a short selected D release for shortcuts and a held D for movement', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.navigation.mode', 'walk');
+
+        const node = new iD.osmNode({ id: 'n-nav-d', loc: [0, 0] });
+        context.perform(iD.actionAddEntity(node));
+        context.enter(iD.modeSelect(context, [node.id]));
+
+        let frame;
+        let holdCallback;
+        const shortcut = vi.fn();
+        context.keybinding().on('D', shortcut);
+        vi.spyOn(window, 'setTimeout').mockImplementation(callback => {
+            holdCallback = callback;
+            return 1;
+        });
+        vi.spyOn(window, 'clearTimeout').mockImplementation(() => {});
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+            frame = callback;
+            return 1;
+        });
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true, cancelable: true }));
+        document.dispatchEvent(new KeyboardEvent('keyup', { key: 'd', bubbles: true, cancelable: true }));
+        expect(shortcut).toHaveBeenCalledOnce();
+        expect(frame).toBeUndefined();
+
+        holdCallback = undefined;
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true, cancelable: true }));
+        expect(holdCallback).toBeTypeOf('function');
+        holdCallback();
+        expect(frame).toBeTypeOf('function');
+
+        const before = context.projection.transform();
+        frame(performance.now() + 100);
+        expect(context.projection.transform().x).toBeLessThan(before.x);
+        document.dispatchEvent(new KeyboardEvent('keyup', { key: 'd', bubbles: true, cancelable: true }));
+        expect(shortcut).toHaveBeenCalledOnce();
+        expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('moves immediately with Ctrl+Shift+WASD', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.navigation.mode', 'walk');
+
+        let frame;
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+            frame = callback;
+            return 1;
+        });
+
+        const event = new KeyboardEvent('keydown', {
+            key: 'd',
+            ctrlKey: true,
+            shiftKey: true,
+            cancelable: true
+        });
+        window.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(frame).toBeTypeOf('function');
+
+        const before = context.projection.transform();
+        frame(performance.now() + 100);
+        expect(context.projection.transform().x).toBeLessThan(before.x);
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'd', cancelable: true }));
+        expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('delays S when JOSM shortcuts are enabled', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.editing.josm_shortcuts', 'true');
+
+        let frame;
+        let holdCallback;
+        vi.spyOn(window, 'setTimeout').mockImplementation(callback => {
+            holdCallback = callback;
+            return 1;
+        });
+        vi.spyOn(window, 'clearTimeout').mockImplementation(() => {});
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+            frame = callback;
+            return 1;
+        });
+
+        const before = context.projection.transform();
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 's',
+            cancelable: true
+        }));
+
+        expect(holdCallback).toBeTypeOf('function');
+        window.dispatchEvent(new KeyboardEvent('keyup', {
+            key: 's',
+            cancelable: true
+        }));
+
+        expect(frame).toBeUndefined();
+        expect(context.projection.transform()).toEqual(before);
+    });
+
     it('uses a short W release for wireframe and a held W for movement', function() {
         iD.prefs('betterid.experimental.enabled', 'true');
         iD.prefs('betterid.experimental.wasd_navigation', 'true');
@@ -586,8 +693,8 @@ describe('rendererMap BetteriD interactions', function() {
         frame(start + 600);
         expect(context.map().isTransformed()).toBe(false);
     });
-    it('dims entities outside the selected indoor level while preserving its building', function() {
-        iD.prefs('betterid.experimental.enabled', 'true');
+    it('keeps the active indoor level above other floors without the experimental master switch', function() {
+        iD.prefs('betterid.experimental.enabled', 'false');
         iD.prefs('betterid.experimental.indoor_focus', 'true');
         context.map().centerZoom([0, 0], 20);
 
@@ -617,7 +724,19 @@ describe('rendererMap BetteriD interactions', function() {
             nodes: corners.map(node => node.id).concat(corners[0].id),
             tags: { building: 'yes' }
         });
-        context.history().merge([selected, sameLevel, otherLevel, ...corners, building]);
+        const focusedFloor = new iD.osmWay({
+            id: 'w-indoor-focused-floor',
+            nodes: building.nodes,
+            tags: { area: 'yes', indoor: 'level', level: '1' }
+        });
+        const otherFloor = new iD.osmWay({
+            id: 'w-indoor-other-floor',
+            nodes: building.nodes,
+            tags: { area: 'yes', indoor: 'level', level: '2' }
+        });
+        context.history().merge([
+            selected, sameLevel, otherLevel, ...corners, building, focusedFloor, otherFloor
+        ]);
         vi.spyOn(context, 'selectedIDs').mockReturnValue([selected.id]);
 
         const layer = d3_select(surface).select('.layer-osm');
@@ -630,11 +749,29 @@ describe('rendererMap BetteriD interactions', function() {
         context.map().redrawEnable(true);
         context.map().pan([0, 0]);
 
+        const areaFill = d3_select(surface).select('.layer-osm.areas .area-fill');
+        areaFill.append('path')
+            .attr('class', `way area fill ${focusedFloor.id}`)
+            .datum(focusedFloor);
+        areaFill.append('path')
+            .attr('class', `way area fill ${otherFloor.id}`)
+            .datum(otherFloor);
+        context.enter(iD.modeSelect(context, [selected.id]));
+
+        expect(container.classed('betterid-indoor-focus')).toBe(true);
         expect(container.select('.main-map').classed('betterid-indoor-focus')).toBe(true);
         expect(selectedMark.classed('betterid-indoor-dim')).toBe(false);
         expect(sameLevelMark.classed('betterid-indoor-dim')).toBe(false);
         expect(buildingMark.classed('betterid-indoor-dim')).toBe(false);
         expect(otherLevelMark.classed('betterid-indoor-dim')).toBe(true);
+        const floorOrder = areaFill.selectAll('path.area').nodes()
+            .map(node => node.__data__.id)
+            .filter(id => id === focusedFloor.id || id === otherFloor.id);
+        expect(floorOrder).toEqual([otherFloor.id, focusedFloor.id]);
+
+        iD.prefs('betterid.experimental.indoor_focus', 'false');
+        expect(container.classed('betterid-indoor-focus')).toBe(false);
+        expect(container.select('.main-map').classed('betterid-indoor-focus')).toBe(false);
         context.map().redrawEnable(false);
     });
 });

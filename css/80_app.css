@@ -6061,6 +6061,10 @@ li.hide + li.version .badge .tooltip .popover-arrow {
     flex-direction: column;
     background: var(--bg-color);
     border-radius: 4px;
+    z-index: 200;
+    max-height: calc(100% - 16px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     /* padding is set in edit_menu.js */
 }
 

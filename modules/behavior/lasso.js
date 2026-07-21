@@ -18,7 +18,8 @@ export function behaviorLasso(context) {
 
         function pointerdown(d3_event) {
             var button = 0;  // left
-            if (d3_event.button === button && d3_event.shiftKey === true) {
+            if (d3_event.button === button && d3_event.shiftKey === true &&
+                !d3_event.ctrlKey && !d3_event.metaKey) {
                 lasso = null;
 
                 d3_select(window)

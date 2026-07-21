@@ -280,7 +280,7 @@ export function uiSidebar(context) {
             if (ids && ids.length) {
 
                 var entity = ids.length === 1 && context.entity(ids[0]);
-                if (entity && (newFeature || isMobileViewport()) && selection.classed('collapsed')) {
+                if (entity && newFeature && selection.classed('collapsed')) {
                     // uncollapse the sidebar
                     var extent = entity.extent(context.graph());
                     sidebar.expand(!isMobileViewport() && sidebar.intersects(extent));
@@ -301,8 +301,10 @@ export function uiSidebar(context) {
                     .newFeature(newFeature)
                     .presetGeometries(presetGeometries);
 
-                inspectorWrap
-                    .call(inspector);
+                if (!(isMobileViewport() && selection.classed('collapsed') && !newFeature)) {
+                    inspectorWrap
+                        .call(inspector);
+                }
 
             } else {
                 inspector

@@ -3,14 +3,21 @@ import { select as d3_select } from 'd3-selection';
 
 describe('iD.behaviorSelect', function() {
     var a, b, context, behavior, container;
+    var originalMatchMedia = window.matchMedia;
 
     function simulateClick(el, o) {
         // clicks need to appear wherever the map is
         var mapNode = context.container().select('.main-map').node();
         var rect = mapNode.getBoundingClientRect();
         var click = { clientX: rect.left, clientY: rect.top };
-        el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, view: jsdom.window, ...click, ...o }));
-        el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, view: jsdom.window, ...click, ...o }));
+        var down = new MouseEvent('mousedown', { bubbles: true, view: jsdom.window, ...click, ...o });
+        var up = new MouseEvent('mouseup', { bubbles: true, view: jsdom.window, ...click, ...o });
+        if (o && o.pointerType) {
+            down.pointerType = o.pointerType;
+            up.pointerType = o.pointerType;
+        }
+        el.dispatchEvent(down);
+        el.dispatchEvent(up);
     }
 
     beforeEach(function() {
@@ -41,6 +48,7 @@ describe('iD.behaviorSelect', function() {
     });
 
     afterEach(function() {
+        window.matchMedia = originalMatchMedia;
         context.uninstall(behavior);
         context.mode().exit();
         container.remove();
@@ -103,5 +111,42 @@ describe('iD.behaviorSelect', function() {
         simulateClick(el, { shiftKey: true });
         await setTimeout(50);
         expect(context.selectedIDs()).toEqual([a.id]);
+    });
+
+    it('adds to the selection on a mobile tap', async () => {
+        window.matchMedia = () => ({ matches: true });
+        context.enter(iD.modeSelect(context, [a.id]));
+
+        var el = context.surface().selectAll('.' + b.id).node();
+        simulateClick(el, { pointerType: 'touch' });
+        await setTimeout(50);
+        expect(context.selectedIDs()).toEqual([a.id, b.id]);
+    });
+
+    it('starts rotate mode on Ctrl+Shift drag from a selected feature', function() {
+        context.map().dimensions([1000, 1000]);
+        context.map().centerZoom([0, 0], 20);
+        context.enter(iD.modeSelect(context, [a.id, b.id]));
+
+        var el = context.surface().selectAll('.' + a.id).node();
+        var prefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
+        var event = prefix === 'pointer' ?
+            new PointerEvent('pointerdown', {
+                bubbles: true,
+                cancelable: true,
+                button: 0,
+                ctrlKey: true,
+                shiftKey: true
+            }) :
+            new MouseEvent('mousedown', {
+                bubbles: true,
+                cancelable: true,
+                button: 0,
+                ctrlKey: true,
+                shiftKey: true
+            });
+
+        el.dispatchEvent(event);
+        expect(context.mode().id).toEqual('rotate');
     });
 });

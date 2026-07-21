@@ -49,8 +49,15 @@ export function uiSectionRawMembershipEditor(context) {
     var _entityIDs = [];
     var _showBlank;
     var _maxMemberships = 1000;
+    var _acceptingEntity = false;
     /** @type {Set<string>} relations that were added after this panel was opened */
     const recentlyAdded = new Set();
+
+    function isNarrowViewport() {
+        return typeof window.matchMedia === 'function' ?
+            window.matchMedia('(max-width: 767px)').matches :
+            window.innerWidth <= 767;
+    }
 
     function getSharedParentRelations() {
         var parents = [];
@@ -620,13 +627,25 @@ export function uiSectionRawMembershipEditor(context) {
             .merge(newMembershipEnter);
 
         newMembership.selectAll('.member-entity-input')
-            .on('blur', cancelEntity)   // if it wasn't accepted normally, cancel it
+            .on('blur', function() {
+                window.setTimeout(function() {
+                    if (_acceptingEntity) return;
+                    cancelEntity();
+                }, isNarrowViewport() ? 450 : 0);
+            })
             .call(nearbyCombo
                 .on('accept', function(d) {
+                    _acceptingEntity = true;
+                    window.setTimeout(function() {
+                        _acceptingEntity = false;
+                    }, 500);
                     this.blur(); // always blurs the triggering element
                     acceptEntity.call(this, d);
                 })
-                .on('cancel', cancelEntity)
+                .on('cancel', function() {
+                    _acceptingEntity = false;
+                    cancelEntity();
+                })
             );
 
 
@@ -685,6 +704,7 @@ export function uiSectionRawMembershipEditor(context) {
 
 
         function cancelEntity() {
+            if (_acceptingEntity) return;
             var input = newMembership.selectAll('.member-entity-input');
             input.property('value', '');
 

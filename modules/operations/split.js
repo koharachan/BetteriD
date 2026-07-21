@@ -1,4 +1,5 @@
 import { t } from '../core/localizer';
+import { BETTERID_PREFS, betteridBool } from '../core/betterid_preferences';
 import { actionSplit } from '../actions/split';
 import { behaviorOperation } from '../behavior/operation';
 import { modeSelect } from '../modes/select';
@@ -53,6 +54,12 @@ export function operationSplit(context, selectedIDs) {
 
 
     operation.available = function() {
+        return _isAvailable;
+    };
+
+
+    operation.availableForKeypress = function() {
+        if (!betteridBool(BETTERID_PREFS.josmShortcuts, true)) return true;
         return _isAvailable;
     };
 

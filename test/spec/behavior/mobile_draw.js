@@ -111,8 +111,67 @@ describe('mobile drawing gestures', function() {
         down.call(surface.node(), { ...event, timeStamp: 2, type: `${prefix}down` });
         up.call(window, { ...event, timeStamp: 2 });
 
+        return delay(400).then(() => {
+            expect(clicks).toBe(0);
+            expect(finishes).toBe(1);
+
+            surface.call(draw.off).remove();
+        });
+    });
+
+    it('adds a mobile draw point after the tap settles', async function() {
+        window.matchMedia = () => ({ matches: true });
+
+        const surface = d3_select(document.body).append('div');
+        const map = {
+            dblclickZoomEnable: () => map,
+            minzoom: () => map
+        };
+        const hover = () => {};
+        hover.cancel = () => {};
+        const projection = loc => loc;
+        projection.invert = point => point;
+
+        const context = {
+            activeID: () => null,
+            graph: () => ({ childNodes: () => [] }),
+            install: behavior => surface.call(behavior),
+            minEditableZoom: () => 16,
+            mode: () => ({ id: 'draw-line' }),
+            map: () => map,
+            projection,
+            ui: () => ({ sidebar: { hover } }),
+            uninstall: behavior => surface.call(behavior.off)
+        };
+
+        let clicks = 0;
+        const draw = behaviorDraw(context)
+            .on('click.test', () => clicks++);
+        surface.call(draw);
+
+        const prefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
+        const down = surface.on(`${prefix}down.draw`);
+        const up = d3_select(window).on(`${prefix}up.draw`);
+        const event = {
+            altKey: false,
+            buttons: 0,
+            clientX: 20,
+            clientY: 20,
+            pointerId: 1,
+            pointerType: 'touch',
+            preventDefault: () => {},
+            stopPropagation: () => {},
+            target: surface.node(),
+            timeStamp: 1,
+            type: `${prefix}up`
+        };
+
+        down.call(surface.node(), { ...event, type: `${prefix}down` });
+        up.call(window, event);
+
+        await delay(400);
+
         expect(clicks).toBe(1);
-        expect(finishes).toBe(1);
 
         surface.call(draw.off).remove();
     });

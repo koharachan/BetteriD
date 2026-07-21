@@ -23,6 +23,14 @@ export function behaviorSelect(context) {
     // use pointer events on supported platforms; fallback to mouse events
     var _pointerPrefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
 
+    function isMobileTouchSelection(d3_event) {
+        return d3_event &&
+            d3_event.pointerType &&
+            d3_event.pointerType !== 'mouse' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(max-width: 767px)').matches;
+    }
+
 
     function keydown(d3_event) {
 
@@ -220,8 +228,16 @@ export function behaviorSelect(context) {
             // layers) have the data bound to the parent node
             targetDatum = lastEvent.target.parentNode.__data__;
         }
+        var targetEntity = targetDatum && targetDatum.properties && targetDatum.properties.entity;
+        if (targetEntity) targetDatum = targetEntity;
 
         var multiselectEntityId;
+        var selectedIDs = context.mode().id === 'select' ? context.selectedIDs() : [];
+        var mobileAddToSelection = context.mode().id === 'select' &&
+            isMobileTouchSelection(lastEvent) &&
+            targetDatum instanceof OsmAbstractEntity &&
+            selectedIDs.length &&
+            selectedIDs.indexOf(targetDatum.id) === -1;
 
         if (!_multiselectionPointerId) {
             // If a different pointer than the one triggering this click is down on a
@@ -243,7 +259,8 @@ export function behaviorSelect(context) {
             // or we're lasso-selecting
             context.surface().select('.lasso').node() ||
             // or a pointer is down over a selected feature
-            (_multiselectionPointerId && !multiselectEntityId)
+            (_multiselectionPointerId && !multiselectEntityId) ||
+            mobileAddToSelection
         );
 
         processClick(targetDatum, isMultiselect, p2, multiselectEntityId);

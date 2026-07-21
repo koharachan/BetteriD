@@ -7,7 +7,9 @@
         "general": {
           "title": "常规",
           "remember_location": "记住上次地图位置",
-          "remember_location_description": "再次打开 BetteriD 时回到上次浏览的位置。"
+          "remember_location_description": "再次打开 BetteriD 时回到上次浏览的位置。",
+          "indoor_focus": "室内模式",
+          "indoor_focus_description": "保持当前楼层和所在建筑清晰，压暗其他楼层和周边地图。"
         },
         "editing": {
           "title": "编辑",
@@ -52,8 +54,6 @@
           "dual_imagery_description": "选择第二种底图并单独调整透明度。",
           "local_photo": "本地照片底图",
           "local_photo_description": "使用本设备中的照片作为临时底图。文件只留在浏览器内，不会上传、审核或用于识别 POI。",
-          "indoor_focus": "室内聚焦增强",
-          "indoor_focus_description": "保持当前楼层和所在建筑清晰，压暗其他楼层和周边地图。",
           "wasd_navigation": "WASD 地图移动",
           "wasd_navigation_description": "使用 WASD 移动；短按 W 切换区域填充，长按 W 向上移动；Shift 和空格分别放大、缩小。",
           "navigation_mode": "移动模式",
@@ -145,12 +145,12 @@
       "preferences": {
         "move_up": "上移",
         "move_down": "下移",
-        "general": { "title": "一般", "remember_location": "記住上次地圖位置", "remember_location_description": "再次開啟 BetteriD 時回到上次瀏覽的位置。" },
+        "general": { "title": "一般", "remember_location": "記住上次地圖位置", "remember_location_description": "再次開啟 BetteriD 時回到上次瀏覽的位置。", "indoor_focus": "室內模式", "indoor_focus_description": "保持目前樓層和所在建築清晰，壓暗其他樓層和周邊地圖。" },
         "editing": { "title": "編輯", "right_drag": "按住右鍵拖曳地圖", "right_drag_description": "拖曳時平移地圖；短按右鍵仍會開啟編輯選單。", "josm_shortcuts": "相容 JOSM 快捷鍵", "josm_shortcuts_description": "只加入不會取代 iD 原快捷鍵的相容按鍵。", "snap_tolerance": "吸附範圍（像素）", "smart_split": "智慧拆分上傳", "smart_split_description": "依下面設定的依據拆分較大的上傳。" },
         "language": { "title": "語言與翻譯", "description": "選擇並排序自動產生多語言名稱時使用的目標語言，最多八種。", "add": "加入語言" },
         "validation": { "title": "檢查", "non_local_name": "檢查非本地語言的主要名稱", "non_local_name_description": "主要名稱未使用所在地法定語言文字時顯示黃色警告。" },
         "ai": { "title": "AI", "search_order": "網路搜尋順序", "text_order": "長文字產生順序", "vision_order": "視覺任務順序", "free_notice": "AI 功能目前對使用者免費，但伺服器和維護並不是免費的。你可以{donate}，也可以加入{qq}。", "donate": "贊助 BetteriD", "qq_group": "BetteriD QQ 交流群", "providers": { "openai": "GPT", "deepseek": "DeepSeek", "kimi": "Kimi 搜尋", "mimo": "MiMo" } },
-        "experimental": { "title": "實驗性功能", "enabled": "啟用實驗性功能", "enabled_description": "實驗工具預設關閉，在測試過程中可能會發生變化。", "dual_imagery": "疊加兩種底圖", "dual_imagery_description": "選擇第二種底圖並單獨調整透明度。", "local_photo": "本地照片底圖", "local_photo_description": "使用本裝置中的照片作為臨時底圖。檔案只留在瀏覽器內，不會上傳、審核或用於辨識 POI。", "indoor_focus": "室內聚焦增強", "indoor_focus_description": "保持目前樓層和所在建築清晰，壓暗其他樓層和周邊地圖。", "wasd_navigation": "WASD 地圖移動", "wasd_navigation_description": "使用 WASD 移動；短按 W 切換區域填充，長按 W 向上移動；Shift 和空格分別放大、縮小。", "navigation_mode": "移動模式", "navigation_walk": "行走（線性，放開即停）", "navigation_fly": "飛行（緩入緩出並短暫滑行）" }
+        "experimental": { "title": "實驗性功能", "enabled": "啟用實驗性功能", "enabled_description": "實驗工具預設關閉，在測試過程中可能會發生變化。", "dual_imagery": "疊加兩種底圖", "dual_imagery_description": "選擇第二種底圖並單獨調整透明度。", "local_photo": "本地照片底圖", "local_photo_description": "使用本裝置中的照片作為臨時底圖。檔案只留在瀏覽器內，不會上傳、審核或用於辨識 POI。", "wasd_navigation": "WASD 地圖移動", "wasd_navigation_description": "使用 WASD 移動；短按 W 切換區域填充，長按 W 向上移動；Shift 和空格分別放大、縮小。", "navigation_mode": "移動模式", "navigation_walk": "行走（線性，放開即停）", "navigation_fly": "飛行（緩入緩出並短暫滑行）" }
       },
       "splash": { "betterid_welcome": "歡迎使用 BetteriD", "unofficial_notice": "這是一個獨立部署的非官方 OpenStreetMap 編輯器，並非由 OpenStreetMap 基金會營運或認可。上傳前請仔細檢查每一項修改。" },
       "issues": { "incompatible_source": { "reference": { "tianditu": "天地圖產品屬於專有來源，不得作為 OpenStreetMap 繪圖參考。" } } },

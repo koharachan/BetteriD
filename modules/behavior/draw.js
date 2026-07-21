@@ -29,10 +29,12 @@ export function behaviorDraw(context) {
     var _edit = behaviorEdit(context);
 
     var _tolerance = 12;
+    var _mobileDoubleTapDelay = 350;
+    var _mobileDoubleTapTolerance = 24;
     var _mouseLeave = false;
     var _lastMouse = null;
     var _lastPointerUpEvent;
-    var _lastMobileTap;
+    var _pendingMobileTaps = [];
 
     var _downPointer;
 
@@ -92,32 +94,26 @@ export function behaviorDraw(context) {
 
         if (isMobileDrawEvent(d3_event) && context.mode().id === 'draw-line') {
             const now = performance.now();
-            const isDoubleTap = _lastMobileTap && now - _lastMobileTap.time <= 350 &&
-                geoVecLength(_lastMobileTap.loc, p2) <= 24;
-            _lastMobileTap = { loc: p2, time: now };
-            if (isDoubleTap) {
-                _lastMobileTap = null;
+            const previousTap = _pendingMobileTaps[_pendingMobileTaps.length - 1];
+            if (previousTap &&
+                now - previousTap.time <= _mobileDoubleTapDelay &&
+                geoVecLength(previousTap.loc, p2) <= _mobileDoubleTapTolerance) {
+
+                window.clearTimeout(previousTap.timer);
+                _pendingMobileTaps.pop();
                 d3_event.preventDefault();
                 dispatch.call('finish', this);
                 return;
             }
+
+            d3_event.preventDefault();
+            queueMobileTap(d3_event, p2);
+            return;
         }
 
         if (dist < getSnapTolerance() / 2 ||
             (dist < _tolerance && (t2 - downPointer.downTime) < 500)) {
-            // Prevent a quick second click
-            d3_select(window).on('click.draw-block', function() {
-                d3_event.stopPropagation();
-            }, true);
-
-            context.map().dblclickZoomEnable(false);
-
-            window.setTimeout(function() {
-                context.map().dblclickZoomEnable(true);
-                d3_select(window).on('click.draw-block', null);
-            }, 500);
-
-            click(d3_event, p2);
+            performClick(d3_event, p2);
         }
     }
 
@@ -202,6 +198,43 @@ export function behaviorDraw(context) {
 
     }
 
+    function performClick(d3_event, p2) {
+        // Prevent a quick second click
+        d3_select(window).on('click.draw-block', function() {
+            d3_event.stopPropagation();
+        }, true);
+
+        context.map().dblclickZoomEnable(false);
+
+        window.setTimeout(function() {
+            context.map().dblclickZoomEnable(true);
+            d3_select(window).on('click.draw-block', null);
+        }, 500);
+
+        click(d3_event, p2);
+    }
+
+    function queueMobileTap(d3_event, p2) {
+        const tap = {
+            event: d3_event,
+            loc: p2,
+            time: performance.now(),
+            timer: null
+        };
+
+        tap.timer = window.setTimeout(function() {
+            const index = _pendingMobileTaps.indexOf(tap);
+            if (index === -1) return;
+            _pendingMobileTaps.splice(index, 1);
+
+            const isEditable = typeof context.editable === 'function' ? context.editable() : true;
+            if (context.mode().id !== 'draw-line' || !isEditable) return;
+            performClick(tap.event, tap.loc);
+        }, _mobileDoubleTapDelay);
+
+        _pendingMobileTaps.push(tap);
+    }
+
     // treat a spacebar press like a click
     function space(d3_event) {
         d3_event.preventDefault();
@@ -282,6 +315,10 @@ export function behaviorDraw(context) {
         context.ui().sidebar.hover.cancel();
         context.uninstall(_hover);
         context.uninstall(_edit);
+        _pendingMobileTaps.forEach(function(tap) {
+            window.clearTimeout(tap.timer);
+        });
+        _pendingMobileTaps = [];
 
         selection
             .on('mouseenter.draw', null)

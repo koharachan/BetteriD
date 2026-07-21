@@ -54,6 +54,7 @@ export function uiSectionAiTagAssistant(context) {
     let _sources = [];
     let _warnings = [];
     let _abortController;
+    let _dismissOutsideHandler = null;
 
     const section = uiSection('ai-tag-assistant', context)
         .classes('ai-tag-assistant-section')
@@ -129,6 +130,41 @@ export function uiSectionAiTagAssistant(context) {
         renderStatus(wrap);
         renderSuggestions(wrap);
         renderSources(wrap);
+        syncOutsideDismiss(wrap);
+    }
+
+
+    function clearResults() {
+        if (_abortController) {
+            _abortController.abort();
+            _abortController = undefined;
+        }
+        _status = 'idle';
+        _error = '';
+        _summary = '';
+        _suggestions = [];
+        _sources = [];
+        _warnings = [];
+    }
+
+
+    function syncOutsideDismiss(wrap) {
+        const node = wrap.node();
+        if (_dismissOutsideHandler) {
+            d3_select(document).on('pointerdown.ai-tag-assistant-dismiss', null);
+            _dismissOutsideHandler = null;
+        }
+
+        if (!node) return;
+        if (_status === 'idle' && !_summary && !_suggestions.length && !_sources.length && !_warnings.length) return;
+
+        _dismissOutsideHandler = function(d3_event) {
+            if (node.contains(d3_event.target)) return;
+            clearResults();
+            section.reRender();
+        };
+
+        d3_select(document).on('pointerdown.ai-tag-assistant-dismiss', _dismissOutsideHandler);
     }
 
 
@@ -480,12 +516,9 @@ export function uiSectionAiTagAssistant(context) {
             if (_abortController) _abortController.abort();
             _entityIDs = val || [];
             _description = '';
-            _status = 'idle';
-            _error = '';
-            _summary = '';
-            _suggestions = [];
-            _sources = [];
-            _warnings = [];
+            clearResults();
+            d3_select(document).on('pointerdown.ai-tag-assistant-dismiss', null);
+            _dismissOutsideHandler = null;
         }
         return section;
     };

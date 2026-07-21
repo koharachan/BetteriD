@@ -28,14 +28,14 @@
                     const detail = document.createElement('p');
                     detail.textContent = message;
                     const link = document.createElement('a');
-                    link.href = '/';
+                    link.href = '/id/oauth/start';
                     link.textContent = '返回 OpenStreetMap';
                     document.body.replaceChildren(title, detail, link);
                 }
 
                 try {
                     const flow = JSON.parse(storedFlow);
-                    if (Date.now() - Number(flow.createdAt) > 10 * 60 * 1000) {
+                    if (Date.now() - Number(flow.createdAt) > 30 * 60 * 1000) {
                         throw new Error('授权请求已过期，请返回后重新登录。');
                     }
                     if (!params.get('state') || params.get('state') !== flow.state) {

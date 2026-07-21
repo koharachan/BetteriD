@@ -82,6 +82,7 @@ export function rendererMap(context) {
     var _navigationZoomKeys = new Set();
     var _delayedNavigationPresses = new Map();
     var _shiftPress;
+    var _indoorFocusActive = false;
 
     // whether a pointerdown event started the zoom
     var _pointerDown = false;
@@ -420,6 +421,36 @@ export function rendererMap(context) {
     }
 
 
+    function josmShortcutsEnabled() {
+        return betteridBool(BETTERID_PREFS.josmShortcuts, true);
+    }
+
+
+    function shouldDelayNavigationKey(key) {
+        if (DELAYED_NAVIGATION_KEYS.has(key)) return true;
+        if (!josmShortcutsEnabled()) return false;
+
+        if (key === 's') {
+            return true;
+        }
+        if (key === 'd') {
+            return context.selectedIDs().length > 0;
+        }
+        return false;
+    }
+
+
+    function handleInstantNavigationKeydown(d3_event, key) {
+        if (!navigationEnabled() || !NAVIGATION_KEYS.has(key)) return false;
+        if (!d3_event.ctrlKey || !d3_event.shiftKey || d3_event.altKey || d3_event.metaKey) return false;
+
+        d3_event.preventDefault();
+        d3_event.stopImmediatePropagation();
+        startNavigationKey(key);
+        return true;
+    }
+
+
     function isTextEntryTarget(target) {
         if (!target || target.nodeType !== 1) return false;
         return target.isContentEditable ||
@@ -523,7 +554,7 @@ export function rendererMap(context) {
             releaseNavigationKey(key);
         } else if (shortTap && key === 'w') {
             map.toggleWireframe();
-        } else if (shortTap && key === 'a') {
+        } else if (shortTap) {
             replayShortcut(press.event);
         }
     }
@@ -586,13 +617,14 @@ export function rendererMap(context) {
     function navigationKeydown(d3_event) {
         if (d3_event.betteridNavigationReplay) return;
         if (isTextEntryTarget(d3_event.target) || isTextEntryTarget(document.activeElement)) return;
+        const key = navigationEventKey(d3_event);
+        if (handleInstantNavigationKeydown(d3_event, key)) return;
         if (d3_event.ctrlKey || d3_event.altKey || d3_event.metaKey) return;
 
-        const key = navigationEventKey(d3_event);
         if (key === 'shift' && handleShiftKeydown(d3_event)) return;
         if (handleZoomKeydown(d3_event, key)) return;
         if (d3_event.shiftKey) return;
-        if (DELAYED_NAVIGATION_KEYS.has(key)) {
+        if (shouldDelayNavigationKey(key)) {
             handleDelayedNavigationKeydown(d3_event, key);
             return;
         }
@@ -613,7 +645,7 @@ export function rendererMap(context) {
             _navigationZoomKeys.delete(key);
             return;
         }
-        if (DELAYED_NAVIGATION_KEYS.has(key)) {
+        if (_delayedNavigationPresses.has(key) || shouldDelayNavigationKey(key)) {
             handleDelayedNavigationKeyup(d3_event, key);
             return;
         }
@@ -804,7 +836,7 @@ export function rendererMap(context) {
 
 
     function updateIndoorFocus(data, graph) {
-        const enabled = experimentalFeatureEnabled(BETTERID_PREFS.indoorFocus);
+        const enabled = betteridBool(BETTERID_PREFS.indoorFocus, false);
         const selected = context.selectedIDs()
             .map(id => graph.hasEntity(id))
             .filter(Boolean);
@@ -834,10 +866,35 @@ export function rendererMap(context) {
             graph.parentRelations(entity).forEach(collect);
         }
 
-        const active = enabled && selected.length && isIndoorSelection;
-        _selection.classed('betterid-indoor-focus', Boolean(active));
+        function datumEntity(d) {
+            return d?.properties?.entity || d?.entity || (d?.tags && d?.id ? d : null);
+        }
+
+        function sortAreaPaths(focusTest) {
+            surface.selectAll('.layer-osm.areas .areagroup')
+                .selectAll('path.area')
+                .sort((a, b) => {
+                    const entityA = datumEntity(a);
+                    const entityB = datumEntity(b);
+                    if (focusTest) {
+                        const focusedA = focusTest(entityA);
+                        const focusedB = focusTest(entityB);
+                        if (focusedA !== focusedB) return focusedA ? 1 : -1;
+                    }
+                    const areaA = entityA?.area ? Math.abs(entityA.area(graph)) : 0;
+                    const areaB = entityB?.area ? Math.abs(entityB.area(graph)) : 0;
+                    return areaB - areaA;
+                });
+        }
+
+        const active = Boolean(enabled && selected.length && isIndoorSelection);
+        const wasActive = _indoorFocusActive;
+        _indoorFocusActive = active;
+        _selection.classed('betterid-indoor-focus', active);
+        context.container().classed('betterid-indoor-focus', active);
         if (!active) {
             surface.selectAll('.betterid-indoor-dim').classed('betterid-indoor-dim', false);
+            if (wasActive) sortAreaPaths();
             return;
         }
 
@@ -866,10 +923,6 @@ export function rendererMap(context) {
             if (entity.type === 'way') entity.nodes.forEach(id => keep.add(id));
         }
 
-        function datumEntity(d) {
-            return d?.properties?.entity || d?.entity || (d?.tags && d?.id ? d : null);
-        }
-
         const focusCache = new Map();
         function onFocusLevel(entity) {
             if (!entity) return true;
@@ -894,6 +947,7 @@ export function rendererMap(context) {
 
         surface.selectAll('.layer-osm *')
             .classed('betterid-indoor-dim', d => !onFocusLevel(datumEntity(d)));
+        sortAreaPaths(onFocusLevel);
     }
 
     map.init = function() {

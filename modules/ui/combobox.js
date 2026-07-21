@@ -15,6 +15,12 @@ import { utilEditDistance, utilGetSetValue, utilRebind, utilTriggerEvent } from 
 
 var _comboHideTimerID;
 
+function isNarrowViewport() {
+    return typeof window.matchMedia === 'function' ?
+        window.matchMedia('(max-width: 767px)').matches :
+        window.innerWidth <= 767;
+}
+
 export function fuzzyMatch(search, string) {
     const numAllowedTypos = Math.floor(search.length / 5);
     if (utilEditDistance(search, string, {substring: true}) <= numAllowedTypos) {
@@ -78,6 +84,11 @@ export function uiCombobox(context, klass) {
                     .enter()
                     .insert('div', function() { return sibling; })
                     .attr('class', 'combobox-caret')
+                    .on('pointerdown.combo-caret', function(d3_event) {
+                        if (d3_event.button !== undefined && d3_event.button !== 0) return;
+                        d3_event.preventDefault();
+                        input.node().focus();
+                    })
                     .on('mousedown.combo-caret', function(d3_event) {
                         d3_event.preventDefault(); // don't steal focus from input
                         input.node().focus(); // focus the input as if it was clicked
@@ -142,7 +153,7 @@ export function uiCombobox(context, klass) {
 
 
         function blur() {
-            _comboHideTimerID = window.setTimeout(hide, 75);
+            _comboHideTimerID = window.setTimeout(hide, isNarrowViewport() ? 400 : 75);
         }
 
 
@@ -156,6 +167,10 @@ export function uiCombobox(context, klass) {
                 .style('position', 'absolute')
                 .style('display', 'block')
                 .style('left', '0px')
+                .on('pointerdown.combo-container', function (d3_event) {
+                    if (d3_event.button !== undefined && d3_event.button !== 0) return;
+                    d3_event.preventDefault();
+                })
                 .on('mousedown.combo-container', function (d3_event) {
                     // prevent moving focus out of the input field
                     d3_event.preventDefault();

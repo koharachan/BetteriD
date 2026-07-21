@@ -11,8 +11,12 @@ export function operationRotate(context, selectedIDs) {
     var extent = utilTotalExtent(selectedIDs, context.graph());
 
 
-    var operation = function() {
-        context.enter(modeRotate(context, selectedIDs));
+    var operation = function(d3_event) {
+        var rotateMode = modeRotate(context, selectedIDs);
+        if (d3_event && /^(mouse|pointer)/.test(d3_event.type)) {
+            rotateMode.startEvent(d3_event);
+        }
+        context.enter(rotateMode);
     };
 
 

@@ -377,6 +377,32 @@ export function uiInit(context) {
 
 
         var panPixels = 80;
+
+        function isTextEntryTarget(target) {
+            if (!target || target.nodeType !== 1) return false;
+            return target.isContentEditable ||
+                /^(INPUT|SELECT|TEXTAREA)$/.test(target.nodeName) ||
+                Boolean(target.closest?.('[contenteditable="true"]'));
+        }
+
+        d3_select(document)
+            .on('keydown.josm-select-mode', function josmSelectModeAlias(d3_event) {
+                if (!betteridBool(BETTERID_PREFS.josmShortcuts, true)) return;
+                if (isTextEntryTarget(d3_event.target) || isTextEntryTarget(document.activeElement)) return;
+                if (d3_event.ctrlKey || d3_event.altKey || d3_event.metaKey || d3_event.shiftKey) return;
+                if (String(d3_event.key || '').toLowerCase() !== 's') return;
+
+                var mode = context.mode();
+                if (!mode || mode.id === 'select') return;
+
+                d3_event.preventDefault();
+                d3_event.stopImmediatePropagation();
+
+                if (/^(add|draw)/.test(mode.id)) {
+                    context.enter(modeBrowse(context));
+                }
+            }, true);
+
         context.keybinding()
             .on('f1', function josmHelpAlias(d3_event) {
                 if (!betteridBool(BETTERID_PREFS.josmShortcuts, true)) return;

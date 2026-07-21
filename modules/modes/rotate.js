@@ -51,6 +51,7 @@ export function modeRotate(context, entityIDs) {
     var _prevAngle;
     var _prevTransform;
     var _pivot;
+    var _startEvent;
 
     // use pointer events on supported platforms; fallback to mouse events
     var _pointerPrefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
@@ -134,7 +135,8 @@ export function modeRotate(context, entityIDs) {
 
         behaviors.forEach(context.install);
 
-        var downEvent;
+        var downEvent = _startEvent;
+        _startEvent = null;
 
         context.surface()
             .on(_pointerPrefix + 'down.modeRotate', function(d3_event) {
@@ -190,6 +192,13 @@ export function modeRotate(context, entityIDs) {
     mode.selectedIDs = function() {
         if (!arguments.length) return entityIDs;
         // no assign
+        return mode;
+    };
+
+
+    mode.startEvent = function(_) {
+        if (!arguments.length) return _startEvent;
+        _startEvent = _;
         return mode;
     };
 

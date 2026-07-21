@@ -32,6 +32,30 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# BetteriD 0.1.3
+##### 2026-Jul-21
+
+#### :tada: New Features
+* Add a dedicated split tool and improve split behavior for selected ways.
+* Expand mobile drawing, selection, lasso, rotation, and membership editing
+  interactions with clearer touch feedback and safer gesture handling.
+
+#### :sparkles: Usability & Accessibility
+* Coordinate JOSM-compatible shortcuts with WASD navigation, including tap or
+  hold handling and explicit `Ctrl+Shift+WASD` movement.
+* Keep the selected indoor level above overlapping floors and improve sidebar,
+  toolbar, combobox, and AI tag assistant interactions.
+
+#### :bug: Bugfixes
+* Preserve official OpenStreetMap OAuth navigation through login and callback
+  flows, including browsers that restrict opener access.
+* Improve map hover, selection, rotation, and split cleanup across pointer and
+  touch workflows.
+
+#### :hammer: Development
+* Extend regression coverage for mobile drawing, selection, splitting, indoor
+  focus, keyboard navigation, and the split toolbar.
+
 # BetteriD 0.1.2
 ##### 2026-Jul-19
 

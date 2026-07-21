@@ -1112,6 +1112,8 @@ en:
       title: General
       remember_location: Remember the last map location
       remember_location_description: Reopen BetteriD at the map location you last viewed.
+      indoor_focus: Indoor mode
+      indoor_focus_description: Keep the current floor and building clear while dimming other floors and the surrounding map.
     editing:
       title: Editing
       right_drag: Pan with right-button drag
@@ -1150,8 +1152,6 @@ en:
       dual_imagery_description: Select a second background and adjust its opacity independently.
       local_photo: Local photo background
       local_photo_description: Use a photo from this device as a temporary background that stays in the browser and is never uploaded, reviewed, or used to recognize POIs.
-      indoor_focus: Indoor focus enhancement
-      indoor_focus_description: Keep the current floor and building clear while dimming other floors and the surrounding map.
       wasd_navigation: WASD map navigation
       wasd_navigation_description: Move with WASD. Tap W to toggle area fill; hold W to move. Shift and Space zoom in and out.
       navigation_mode: Navigation mode

@@ -74,6 +74,14 @@ export const uiSectionBetteridGeneral = makeSimpleSection(
         section.reRender();
       }
     });
+    renderCheckbox(selection, {
+      className: 'preference-indoor-focus',
+      pref: BETTERID_PREFS.indoorFocus,
+      defaultValue: false,
+      label: 'preferences.general.indoor_focus',
+      description: 'preferences.general.indoor_focus_description',
+      onChange: section.reRender
+    });
   }
 );
 
@@ -379,15 +387,6 @@ export const uiSectionBetteridExperimental = makeSimpleSection(
       disabled: !enabled,
       label: 'preferences.experimental.local_photo',
       description: 'preferences.experimental.local_photo_description',
-      onChange: section.reRender
-    });
-    renderCheckbox(selection, {
-      className: 'preference-indoor-focus',
-      pref: BETTERID_PREFS.indoorFocus,
-      defaultValue: false,
-      disabled: !enabled,
-      label: 'preferences.experimental.indoor_focus',
-      description: 'preferences.experimental.indoor_focus_description',
       onChange: section.reRender
     });
     renderCheckbox(selection, {

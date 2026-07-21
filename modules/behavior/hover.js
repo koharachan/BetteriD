@@ -29,6 +29,14 @@ export function behaviorHover(context) {
     // use pointer events on supported platforms; fallback to mouse events
     var _pointerPrefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
 
+    function isTouchViewportHover(d3_event) {
+        return d3_event &&
+            d3_event.pointerType &&
+            d3_event.pointerType !== 'mouse' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(max-width: 767px)').matches;
+    }
+
 
     function keydown(d3_event) {
         if (_altDisables && d3_event.keyCode === utilKeybinding.modifierCodes.alt) {
@@ -92,6 +100,8 @@ export function behaviorHover(context) {
         }
 
         function pointerover(d3_event) {
+            if (isTouchViewportHover(d3_event)) return;
+
             // ignore mouse hovers with buttons pressed unless dragging
             if (context.mode().id.indexOf('drag') === -1 &&
                 (!d3_event.pointerType || d3_event.pointerType === 'mouse') &&
