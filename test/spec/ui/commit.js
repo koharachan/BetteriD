@@ -99,4 +99,11 @@ describe('iD.uiCommit', function() {
         expect(context.changeset.tags.created_by).toBeUndefined();
         expect(context.changeset.tags.editor).toBe(originalValue);
     });
+
+
+    it('does not require a changeset comment to enable saving', function() {
+        var saveButton = element.select('.save-button');
+
+        expect(saveButton.classed('disabled')).toBe(false);
+    });
 });
