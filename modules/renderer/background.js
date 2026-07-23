@@ -348,7 +348,7 @@ export function rendererBackground(context) {
   background.sources = (extent, zoom, includeCurrent) => {
     if (!_imageryIndex) return [];   // called before init()?
 
-    let visible = {};
+    const visible = {};
     (_imageryIndex.query.bbox(extent.rectangle(), true) || [])
       .forEach(d => visible[d.id] = true);
 
@@ -356,7 +356,7 @@ export function rendererBackground(context) {
 
     // Recheck blocked sources only if we detect new blocklists pulled from the OSM API.
     const osm = context.connection();
-    const blocklists = (osm && osm.imageryBlocklists()) || [];
+    const blocklists = osm?.imageryBlocklists?.() ?? [];
     const blocklistChanged = (blocklists.length !== _checkedBlocklists.length) ||
       blocklists.some((regex, index) => String(regex) !== _checkedBlocklists[index]);
 
@@ -511,7 +511,7 @@ export function rendererBackground(context) {
   background.offset = function(d) {
     const currSource = baseLayer.source();
     if (!arguments.length) {
-      return (currSource && currSource.offset()) || [0, 0];
+      return currSource?.offset() ?? [0, 0];
     }
     if (currSource) {
       currSource.offset(d);
