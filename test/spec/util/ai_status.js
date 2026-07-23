@@ -3,6 +3,11 @@ import fetchMock from 'fetch-mock';
 import { utilAIStatus, utilResetAIStatus } from '../../../modules/util/ai_status';
 
 describe('utilAIStatus', function() {
+    beforeEach(function() {
+        fetchMock.reset();
+        utilResetAIStatus();
+    });
+
     afterEach(function() {
         fetchMock.reset();
         utilResetAIStatus();
@@ -22,7 +27,7 @@ describe('utilAIStatus', function() {
             ai: true,
             translate: false
         });
-        expect(fetchMock.calls()).toHaveLength(1);
+        expect(fetchMock.calls('/api/osm-ai/status')).toHaveLength(1);
     });
 
     it('disables AI features when the status request fails', async function() {
