@@ -1,13 +1,24 @@
 import { select as d3_select } from 'd3-selection';
 
 import {
+  BETTERID_DEFAULTS,
+  BETTERID_LEGACY_PREFS,
+  BETTERID_LIMITS,
+  BETTERID_NAVIGATION_MODES,
   BETTERID_PREFS,
+  BETTERID_PROVIDER_GROUPS,
+  BETTERID_SPLIT_TYPES,
   betteridBool,
   getProviderOrder,
   getSnapTolerance,
+  getSplitFixedCount,
+  getSplitType,
   getTranslationLanguages,
   setBetteridBool,
   setProviderOrder,
+  setSnapTolerance,
+  setSplitFixedCount,
+  setSplitType,
   setTranslationLanguages
 } from '../../core/betterid_preferences';
 import { localizer, t } from '../../core/localizer';
@@ -46,6 +57,36 @@ function renderCheckbox(selection, options) {
   row.select('input')
     .property('checked', checked)
     .property('disabled', !!options.disabled);
+}
+
+
+function renderNumberPreference(selection, options) {
+  let row = selection.selectAll(`.${options.className}`)
+    .data([options.value()]);
+  const rowEnter = row.enter()
+    .append('label')
+    .attr('class', `${options.className} betterid-number-preference`);
+  rowEnter.append('span').call(t.append(options.label));
+  rowEnter.append('input')
+    .attr('type', 'number')
+    .attr('min', options.min)
+    .attr('max', options.max)
+    .attr('step', options.step || 1)
+    .on('change', function() {
+      options.onChange(this.value);
+    });
+  row = rowEnter.merge(row);
+  row.select('input').property('value', options.value());
+}
+
+
+function moveOrderedValue(values, value, offset) {
+  const index = values.indexOf(value);
+  const target = index + offset;
+  if (index < 0 || target < 0 || target >= values.length) return null;
+  const result = values.slice();
+  [result[index], result[target]] = [result[target], result[index]];
+  return result;
 }
 
 
@@ -107,34 +148,28 @@ export const uiSectionBetteridEditing = makeSimpleSection(
       onChange: section.reRender
     });
 
-    let snap = selection.selectAll('.preference-snap-tolerance')
-      .data([getSnapTolerance()]);
-    const snapEnter = snap.enter()
-      .append('label')
-      .attr('class', 'preference-snap-tolerance betterid-number-preference');
-    snapEnter.append('span').call(t.append('preferences.editing.snap_tolerance'));
-    snapEnter.append('input')
-      .attr('type', 'number')
-      .attr('min', 2)
-      .attr('max', 30)
-      .attr('step', 1)
-      .on('change', function() {
-        prefs(BETTERID_PREFS.snapTolerance, String(Math.max(2, Math.min(30, Number(this.value) || 8))));
+    renderNumberPreference(selection, {
+      className: 'preference-snap-tolerance',
+      label: 'preferences.editing.snap_tolerance',
+      min: BETTERID_LIMITS.snapTolerance.min,
+      max: BETTERID_LIMITS.snapTolerance.max,
+      value: getSnapTolerance,
+      onChange: value => {
+        setSnapTolerance(value);
         section.reRender();
-      });
-    snap = snapEnter.merge(snap);
-    snap.select('input').property('value', getSnapTolerance());
+      }
+    });
 
     renderCheckbox(selection, {
       className: 'preference-smart-split',
-      pref: 'smartSplit',
+      pref: BETTERID_LEGACY_PREFS.smartSplit,
       defaultValue: false,
       label: 'preferences.editing.smart_split',
       description: 'preferences.editing.smart_split_description',
       onChange: section.reRender
     });
 
-    const splitEnabled = prefs('smartSplit') === 'true';
+    const splitEnabled = prefs(BETTERID_LEGACY_PREFS.smartSplit) === 'true';
     let split = selection.selectAll('.preference-split-settings')
       .data([0]);
     const splitEnter = split.enter()
@@ -145,9 +180,9 @@ export const uiSectionBetteridEditing = makeSimpleSection(
       .call(t.append('commit.split_type'));
     splitEnter.select('label')
       .append('select')
-      .on('change', function() { prefs('splitType', this.value); section.reRender(); })
+      .on('change', function() { setSplitType(this.value); section.reRender(); })
       .selectAll('option')
-      .data(['auto', 'fixed', 'area'])
+      .data(BETTERID_SPLIT_TYPES)
       .enter()
       .append('option')
       .attr('value', d => d)
@@ -159,16 +194,17 @@ export const uiSectionBetteridEditing = makeSimpleSection(
     splitEnter.select('.preference-split-count')
       .append('input')
       .attr('type', 'number')
-      .attr('min', 1)
-      .attr('max', 500)
+      .attr('min', BETTERID_LIMITS.splitFixedCount.min)
+      .attr('max', BETTERID_LIMITS.splitFixedCount.max)
       .on('change', function() {
-        prefs('splitFixedCount', String(Math.max(1, Math.min(500, Number(this.value) || 50))));
+        setSplitFixedCount(this.value);
+        section.reRender();
       });
     split = splitEnter.merge(split);
     split.classed('disabled', !splitEnabled);
     split.selectAll('select,input').property('disabled', !splitEnabled);
-    split.select('select').property('value', prefs('splitType') || 'auto');
-    split.select('input').property('value', prefs('splitFixedCount') || '50');
+    split.select('select').property('value', getSplitType());
+    split.select('input').property('value', getSplitFixedCount());
   }
 );
 
@@ -236,15 +272,14 @@ export const uiSectionBetteridLanguage = makeSimpleSection(
       .merge(options)
       .attr('value', d => d)
       .text(code => `${localizer.languageName(code) || languageData[code].nativeName} (${code})`);
-    add.selectAll('select,button').property('disabled', languages.length >= 8 || !available.length);
+    add.selectAll('select,button')
+      .property('disabled', languages.length >= BETTERID_LIMITS.translationLanguages.max || !available.length);
 
     function moveLanguage(event, code, offset) {
       event.preventDefault();
-      const index = languages.indexOf(code);
-      const target = index + offset;
-      if (index < 0 || target < 0 || target >= languages.length) return;
-      [languages[index], languages[target]] = [languages[target], languages[index]];
-      setTranslationLanguages(languages);
+      const ordered = moveOrderedValue(languages, code, offset);
+      if (!ordered) return;
+      setTranslationLanguages(ordered);
       section.reRender();
     }
 
@@ -258,7 +293,9 @@ export const uiSectionBetteridLanguage = makeSimpleSection(
     function addLanguage(event) {
       event.preventDefault();
       const code = d3_select(event.currentTarget.parentNode).select('select').property('value');
-      if (code && languages.length < 8) setTranslationLanguages([...languages, code]);
+      if (code && languages.length < BETTERID_LIMITS.translationLanguages.max) {
+        setTranslationLanguages([...languages, code]);
+      }
       section.reRender();
     }
   }
@@ -285,14 +322,8 @@ export const uiSectionBetteridAI = makeSimpleSection(
   'preferences-betterid-ai',
   'preferences.ai.title',
   (selection, section) => {
-    const groups = [
-      { kind: 'search', label: 'preferences.ai.search_order' },
-      { kind: 'text', label: 'preferences.ai.text_order' },
-      { kind: 'vision', label: 'preferences.ai.vision_order' }
-    ];
-
     let groupRows = selection.selectAll('.betterid-provider-group')
-      .data(groups, d => d.kind);
+      .data(BETTERID_PROVIDER_GROUPS, d => d.kind);
     const groupEnter = groupRows.enter()
       .append('div')
       .attr('class', 'betterid-provider-group betterid-preference-subgroup');
@@ -347,11 +378,9 @@ export const uiSectionBetteridAI = makeSimpleSection(
     function moveProvider(event, kind, provider, offset) {
       event.preventDefault();
       const order = getProviderOrder(kind);
-      const index = order.indexOf(provider);
-      const target = index + offset;
-      if (index < 0 || target < 0 || target >= order.length) return;
-      [order[index], order[target]] = [order[target], order[index]];
-      setProviderOrder(kind, order);
+      const ordered = moveOrderedValue(order, provider, offset);
+      if (!ordered) return;
+      setProviderOrder(kind, ordered);
       section.reRender();
     }
   }
@@ -409,7 +438,7 @@ export const uiSectionBetteridExperimental = makeSimpleSection(
     navigationModeEnter.append('select')
       .on('change', function() { prefs(BETTERID_PREFS.navigationMode, this.value); });
     navigationModeEnter.select('select').selectAll('option')
-      .data(['walk', 'fly'])
+      .data(BETTERID_NAVIGATION_MODES)
       .enter()
       .append('option')
       .attr('value', d => d)
@@ -418,6 +447,6 @@ export const uiSectionBetteridExperimental = makeSimpleSection(
     navigationMode.classed('disabled', !wasdEnabled);
     navigationMode.select('select')
       .property('disabled', !wasdEnabled)
-      .property('value', prefs(BETTERID_PREFS.navigationMode) || 'walk');
+      .property('value', prefs(BETTERID_PREFS.navigationMode) || BETTERID_DEFAULTS.navigationMode);
   }
 );

@@ -1,10 +1,15 @@
 import {
     BETTERID_PREFS,
     experimentalFeatureEnabled,
+    getSecondaryBackgroundOpacity,
     getProviderOrder,
+    getSplitFixedCount,
     getSnapTolerance,
     getTranslationLanguages,
+    setSecondaryBackgroundOpacity,
     setProviderOrder,
+    setSplitFixedCount,
+    setSnapTolerance,
     setTranslationLanguages
 } from '../../../modules/core/betterid_preferences';
 import { prefs } from '../../../modules/core/preferences';
@@ -33,6 +38,16 @@ describe('BetteriD preferences', function() {
 
         prefs(BETTERID_PREFS.snapTolerance, '999');
         expect(getSnapTolerance()).toEqual(30);
+    });
+
+    it('clamps numeric preferences through their setters', function() {
+        setSnapTolerance(0);
+        setSplitFixedCount(0);
+        setSecondaryBackgroundOpacity(0);
+
+        expect(getSnapTolerance()).toEqual(2);
+        expect(getSplitFixedCount()).toEqual(1);
+        expect(getSecondaryBackgroundOpacity()).toEqual(0);
     });
 
     it('sanitizes translation languages and limits them to eight', function() {

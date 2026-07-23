@@ -278,12 +278,12 @@ export function uiSidebar(context) {
             sidebar.hide();
 
             if (ids && ids.length) {
-
+                const mobile = isMobileViewport();
                 var entity = ids.length === 1 && context.entity(ids[0]);
-                if (entity && newFeature && selection.classed('collapsed')) {
+                if (selection.classed('collapsed') && (newFeature || mobile)) {
                     // uncollapse the sidebar
-                    var extent = entity.extent(context.graph());
-                    sidebar.expand(!isMobileViewport() && sidebar.intersects(extent));
+                    var extent = entity && entity.extent(context.graph());
+                    sidebar.expand(!mobile && extent && sidebar.intersects(extent));
                 }
 
                 featureListWrap
@@ -301,10 +301,8 @@ export function uiSidebar(context) {
                     .newFeature(newFeature)
                     .presetGeometries(presetGeometries);
 
-                if (!(isMobileViewport() && selection.classed('collapsed') && !newFeature)) {
-                    inspectorWrap
-                        .call(inspector);
-                }
+                inspectorWrap
+                    .call(inspector);
 
             } else {
                 inspector

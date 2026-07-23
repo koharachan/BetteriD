@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--border-color-2);
   cursor: pointer;
 }
 
@@ -13,7 +13,7 @@
 .betterid-preference-row small {
   grid-column: 2;
   margin-top: 3px;
-  color: #666;
+  color: var(--passive-text-color);
   line-height: 1.35;
 }
 
@@ -24,7 +24,7 @@
 
 .betterid-preference-subgroup {
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--border-color-2);
 }
 
 .betterid-number-preference {
@@ -33,15 +33,16 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--border-color-2);
 }
 
 .betterid-number-preference input,
 .betterid-number-preference select {
   width: 100%;
   min-height: 30px;
-  border: 1px solid #ccc;
-  background: #fff;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-color);
 }
 
 .betterid-preference-subgroup > label {
@@ -61,16 +62,17 @@
 .translation-language-add select {
   width: 100%;
   min-height: 30px;
-  border: 1px solid #ccc;
-  background: #fff;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-color);
 }
 
 .translation-language-intro,
 .betterid-ai-support {
   margin: 0;
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e5e5;
-  color: #555;
+  border-bottom: 1px solid var(--border-color-2);
+  color: var(--passive-text-color);
   line-height: 1.45;
 }
 
@@ -87,8 +89,8 @@
   justify-content: space-between;
   gap: 8px;
   padding: 5px 8px 5px 12px;
-  border-bottom: 1px solid #eee;
-  background: #fff;
+  border-bottom: 1px solid var(--border-color-2);
+  background: var(--bg-color);
 }
 
 .betterid-order-name {
@@ -111,7 +113,7 @@
 }
 
 .betterid-order-controls button:hover:not(:disabled) {
-  background: #e8f2e8;
+  background: var(--active-bg-color);
 }
 
 .translation-language-add {
@@ -127,7 +129,7 @@
 }
 
 .betterid-provider-group .betterid-order-list {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color-2);
 }
 
 .betterid-provider-group .betterid-order-list li:last-child {
@@ -137,8 +139,8 @@
 .modal-splash .betterid-unofficial-notice {
   margin: 0 0 12px;
   padding: 9px 10px;
-  border-left: 4px solid #d6a100;
-  background: #fff8d8;
-  color: #4a430f;
+  border-left: 4px solid var(--warning-border-color);
+  background: var(--warning-bg-color);
+  color: var(--warning-text-color);
   line-height: 1.45;
 }

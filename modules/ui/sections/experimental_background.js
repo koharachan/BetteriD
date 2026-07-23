@@ -2,12 +2,23 @@ import { select as d3_select } from 'd3-selection';
 
 import {
   BETTERID_PREFS,
-  experimentalFeatureEnabled
+  experimentalFeatureEnabled,
+  getSecondaryBackgroundOpacity,
+  setSecondaryBackgroundOpacity
 } from '../../core/betterid_preferences';
 import { t } from '../../core/localizer';
 import { prefs } from '../../core/preferences';
 import { svgIcon } from '../../svg/icon';
 import { uiSection } from '../section';
+
+const LOCAL_PHOTO_FILE_INPUT_ID = 'betterid-background-photo';
+const LOCAL_PHOTO_FILE_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/webp']);
+const LOCAL_PHOTO_MAX_BYTES = 12 * 1024 * 1024;
+const PHOTO_TRANSFORM_CONTROLS = Object.freeze([
+  Object.freeze({ key: 'opacity', min: 0.05, max: 1, step: 0.01, label: 'background.experimental.photo_opacity' }),
+  Object.freeze({ key: 'scale', min: 0.1, max: 3, step: 0.01, label: 'background.experimental.photo_scale' }),
+  Object.freeze({ key: 'rotation', min: -180, max: 180, step: 1, label: 'background.experimental.photo_rotation' })
+]);
 
 
 export function uiSectionExperimentalBackground(context) {
@@ -57,7 +68,7 @@ export function uiSectionExperimentalBackground(context) {
       .attr('step', 0.01)
       .on('input', function() {
         const value = Number(this.value);
-        prefs('betterid.background.secondary_opacity', String(value));
+        setSecondaryBackgroundOpacity(value);
         context.background().secondaryOpacity(value);
         d3_select(this.parentNode).select('output').text(`${Math.round(value * 100)}%`);
       });
@@ -70,7 +81,7 @@ export function uiSectionExperimentalBackground(context) {
       const sources = background.sources(context.map().extent(), context.map().zoom(), true)
         .filter(source => !source.overlay && !source.isHidden() && source.id !== current?.id && source.id !== 'none')
         .sort((a, b) => a.name().localeCompare(b.name()));
-      const selectedID = prefs('betterid.background.secondary_source') || '';
+      const selectedID = prefs(BETTERID_PREFS.backgroundSecondarySource) || '';
       const options = wrap.select('select').selectAll('option')
         .data([{ id: '', name: () => t('background.none') }, ...sources], d => d.id);
       options.exit().remove();
@@ -82,9 +93,7 @@ export function uiSectionExperimentalBackground(context) {
 
       const selected = sources.find(source => source.id === selectedID) || null;
       if (background.secondaryLayerSource() !== selected) background.secondaryLayerSource(selected);
-      const storedOpacity = Number.parseFloat(prefs('betterid.background.secondary_opacity'));
-      const opacity = Number.isFinite(storedOpacity) ?
-        Math.max(0, Math.min(1, storedOpacity)) : 0.5;
+      const opacity = getSecondaryBackgroundOpacity();
       background.secondaryOpacity(opacity);
       wrap.select('input[type="range"]').property('value', opacity);
       wrap.select('output').text(`${Math.round(opacity * 100)}%`);
@@ -96,7 +105,7 @@ export function uiSectionExperimentalBackground(context) {
 
   function changeSecondarySource() {
     const id = this.value;
-    prefs('betterid.background.secondary_source', id || null);
+    prefs(BETTERID_PREFS.backgroundSecondarySource, id || null);
     context.background().secondaryLayerSource(id ? context.background().findSource(id) : null);
     section.reRender();
   }
@@ -117,11 +126,11 @@ export function uiSectionExperimentalBackground(context) {
     const picker = wrapEnter.append('div').attr('class', 'local-photo-picker');
     picker.append('input')
       .attr('type', 'file')
-      .attr('accept', 'image/jpeg,image/png,image/webp')
-      .attr('id', 'betterid-background-photo')
+      .attr('accept', LOCAL_PHOTO_FILE_TYPES.join(','))
+      .attr('id', LOCAL_PHOTO_FILE_INPUT_ID)
       .on('change', choosePhoto);
     picker.append('label')
-      .attr('for', 'betterid-background-photo')
+      .attr('for', LOCAL_PHOTO_FILE_INPUT_ID)
       .attr('class', 'button secondary-action')
       .call(svgIcon('#iD-icon-load', 'pre-text'))
       .append('span')
@@ -132,9 +141,9 @@ export function uiSectionExperimentalBackground(context) {
     preview.append('img').attr('alt', t('background.experimental.photo_preview_alt'));
 
     const controls = wrapEnter.append('div').attr('class', 'local-photo-transform-controls');
-    addRange(controls, 'opacity', 0.05, 1, 0.01, 'background.experimental.photo_opacity');
-    addRange(controls, 'scale', 0.1, 3, 0.01, 'background.experimental.photo_scale');
-    addRange(controls, 'rotation', -180, 180, 1, 'background.experimental.photo_rotation');
+    for (const control of PHOTO_TRANSFORM_CONTROLS) {
+      addRange(controls, control);
+    }
 
     const actions = wrapEnter.append('div').attr('class', 'local-photo-actions');
     actions.append('button')
@@ -174,19 +183,19 @@ export function uiSectionExperimentalBackground(context) {
   }
 
 
-  function addRange(container, key, min, max, step, label) {
-    const row = container.append('label').attr('class', `photo-control-${key}`);
-    row.append('span').call(t.append(label));
+  function addRange(container, control) {
+    const row = container.append('label').attr('class', `photo-control-${control.key}`);
+    row.append('span').call(t.append(control.label));
     row.append('input')
       .attr('type', 'range')
-      .attr('min', min)
-      .attr('max', max)
-      .attr('step', step)
+      .attr('min', control.min)
+      .attr('max', control.max)
+      .attr('step', control.step)
       .on('input', function() {
         if (!_photo) return;
-        _photo[key] = Number(this.value);
+        _photo[control.key] = Number(this.value);
         context.background().localPhoto(_photo);
-        updateRangeOutput(d3_select(this.parentNode), key, _photo[key]);
+        updateRangeOutput(d3_select(this.parentNode), control.key, _photo[control.key]);
       });
     row.append('output');
   }
@@ -203,7 +212,7 @@ export function uiSectionExperimentalBackground(context) {
     const file = event.target.files?.[0];
     event.target.value = null;
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 12 * 1024 * 1024) {
+    if (!LOCAL_PHOTO_FILE_TYPES.includes(file.type) || file.size > LOCAL_PHOTO_MAX_BYTES) {
       _photoStatus = 'error';
       _photoMessage = t('background.experimental.invalid_photo');
       section.reRender();

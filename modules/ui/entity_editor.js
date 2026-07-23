@@ -19,6 +19,12 @@ import { uiSectionRawMembershipEditor } from './sections/raw_membership_editor';
 import { uiSectionRawTagEditor } from './sections/raw_tag_editor';
 import { uiSectionSelectionList } from './sections/selection_list';
 
+function isMobileViewport() {
+    return typeof window.matchMedia === 'function' ?
+        window.matchMedia('(max-width: 767px)').matches :
+        window.innerWidth <= 767;
+}
+
 export function uiEntityEditor(context) {
     var dispatch = d3_dispatch('choose');
     var _state = 'select';
@@ -56,7 +62,10 @@ export function uiEntityEditor(context) {
             .append('button')
             .attr('class', 'close')
             .attr('title', t('icons.close'))
-            .on('click', function() { context.enter(modeBrowse(context)); })
+            .on('click', function() {
+                context.enter(modeBrowse(context));
+                if (isMobileViewport()) context.ui().sidebar.collapse();
+            })
             .call(svgIcon(_modified ? '#iD-icon-apply' : '#iD-icon-close'));
 
         headerEnter

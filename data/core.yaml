@@ -625,7 +625,7 @@ en:
     save: Upload
     cancel: Cancel
     changes: Changes
-    ai_summary: Generate changeset comment with DeepSeek AI
+    ai_summary: Generate changeset comment with AI
     smart_split: Smart split commits
     split_type: Split method
     split_auto: Auto-detect (by value and fixed changes)
@@ -633,8 +633,8 @@ en:
     split_area: By area
     split_fixed_count: Items per batch
     split_preview: "Planned batches: {count}. Objects per batch: {sizes}"
-    ai_summary_unavailable: DeepSeek AI is not configured
-    ai_summary_error: DeepSeek AI generation failed. Try again later.
+    ai_summary_unavailable: AI comment generation is not configured
+    ai_summary_error: AI comment generation failed. Try again later.
     download_changes: Download osmChange file
     errors: Errors
     warnings: Warnings
@@ -1277,7 +1277,7 @@ en:
       ignore: Remove (False Positive)
   ai_tags:
     title: AI Tag Assistant
-    description: Describe a feature to get researched OSM tag suggestions. Web search defaults to GPT first with Kimi as fallback; you can change the order in Preferences.
+    description: Describe a feature to get researched OSM tag suggestions. Provider order can be changed in Preferences.
     placeholder: Describe the feature, location, or facts you know...
     search: Get suggestions
     searching: Searching...
