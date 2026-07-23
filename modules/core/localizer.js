@@ -16,6 +16,25 @@ export {
     _t as t
 };
 
+/** @typedef {{
+    [localeCode: string]: {
+        base?: string;
+        script?: string;
+        nativeName?: string;
+    };
+}} LanguagesJSON */
+
+/** @typedef {{
+    [localeCode: string]: {
+        rtl: boolean;
+        pct?: number;
+    }
+}} LocalesJSON */
+
+/** @typedef {unknown} Translations */
+
+/** @typedef {any} LocalizedTextRenderer */
+
 //
 // coreLocalizer manages language and locale parameters including translated strings
 //

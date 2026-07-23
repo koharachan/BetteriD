@@ -1426,6 +1426,7 @@ export function rendererMap(context) {
     };
 
 
+    /** @type {GetSet<typeof map, geoExtent>} */
     map.extent = function(val) {
         if (!arguments.length) {
             return new geoExtent(

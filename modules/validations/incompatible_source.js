@@ -5,7 +5,8 @@ import { validationIssue, validationIssueFix } from '../core/validation';
 const incompatibleRules = [
   {
     id: 'amap',
-    regex: /(^amap$|(?:^|\W)amap\.com|autonavi|mapabc|高德(?:地图|导航|影像|卫星|街景)?(?=$|[\s;,_/()\-]))/i
+    regex: /(^amap$|(?:^|\W)amap\.com|autonavi|mapabc|高德(?:地图|导航|影像|卫星|街景)?(?=$|[\s;,_/()\-]))/i,
+    exceptRegex: /高德([路山桥街巷]|大道)/i
   },
   {
     id: 'tianditu',
