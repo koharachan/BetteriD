@@ -562,11 +562,11 @@ describe('rendererMap BetteriD interactions', function() {
         context.map().redrawEnable(true);
         context.map().pan([0, 0]);
 
-        expect(container.select('.main-map').classed('betterid-indoor-focus')).toBe(true);
-        expect(selectedMark.classed('betterid-indoor-dim')).toBe(false);
-        expect(sameLevelMark.classed('betterid-indoor-dim')).toBe(false);
-        expect(buildingMark.classed('betterid-indoor-dim')).toBe(false);
-        expect(otherLevelMark.classed('betterid-indoor-dim')).toBe(true);
+        expect(container.select('.main-map').classed('indoor-focus')).toBe(true);
+        expect(selectedMark.classed('indoor-dim')).toBe(false);
+        expect(sameLevelMark.classed('indoor-dim')).toBe(false);
+        expect(buildingMark.classed('indoor-dim')).toBe(false);
+        expect(otherLevelMark.classed('indoor-dim')).toBe(true);
         context.map().redrawEnable(false);
     });
 });
