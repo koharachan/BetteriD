@@ -604,12 +604,8 @@ export function uiCommit(context) {
 
         if (errors.length) {
             return t.append('commit.outstanding_errors_message', { count: errors.length });
-        } else {
-            var hasChangesetComment = context.changeset && context.changeset.tags.comment && context.changeset.tags.comment.trim().length;
-            if (!hasChangesetComment) {
-                return t.append('commit.comment_needed_message');
-            }
         }
+
         return null;
     }
 
