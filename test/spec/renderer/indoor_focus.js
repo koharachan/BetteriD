@@ -7,6 +7,8 @@ describe('iD.rendererMap indoor focus', function() {
     let surface;
 
     beforeEach(function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.indoor_focus', 'true');
         content = d3_select('body').append('div');
         context = iD.coreContext().assetPath('../dist/').init().container(content);
         content.call(context.map());
@@ -17,6 +19,8 @@ describe('iD.rendererMap indoor focus', function() {
     });
 
     afterEach(function() {
+        iD.prefs('betterid.experimental.enabled', null);
+        iD.prefs('betterid.experimental.indoor_focus', null);
         content.remove();
     });
 

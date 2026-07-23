@@ -26,6 +26,10 @@ import type { EntityId } from '../osm/id_manager.js';
 import type { OsmEntity } from '../osm/abstract-entity.js';
 import packageJSON from '../../package.json';
 
+declare global {
+    var OSM_PROXY_CONFIG: { assetVersion?: string } | undefined;
+}
+
 
 interface Definitions {
   address_formats: AddressFormatsJSON;
@@ -33,6 +37,8 @@ interface Definitions {
   intro_graph: Record<EntityId, OsmEntity>;
   languages: LanguagesJSON;
   locales: LocalesJSON;
+  locale_overrides: Record<string, Translations>;
+  betterid_locale_overrides: Record<string, Translations>;
   phone_formats: Record<string, string>;
   qa_data: QAData;
   shortcuts: ShortcutsJSON;
