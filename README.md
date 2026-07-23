@@ -17,6 +17,14 @@ BetteriD 是面向中文 OpenStreetMap 编辑场景的网页编辑器，基于
 > 上传前请逐项核对标签、来源和变更说明，并遵守
 > [OpenStreetMap 贡献条款](https://www.openstreetmap.org/copyright)。
 
+## 0.1.4 Release
+
+- Extracting an address-only building now moves its `addr:*` tags onto a new
+  address node. Buildings that also contain POI tags keep the existing Extract
+  behavior.
+
+Full notes: [0.1.4 changelog](CHANGELOG.md#betterid-014).
+
 ## 0.1.3 正式版
 
 - 新增独立拆分工具，完善道路拆分、成员关系编辑和旋转操作。

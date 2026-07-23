@@ -32,6 +32,14 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# BetteriD 0.1.4
+##### 2026-Jul-23
+
+#### :bug: Bugfixes
+* Allow the Extract operation to move `addr:*` tags from address-only building
+  areas onto a new address node, while preserving the existing behavior for
+  buildings that also carry point or POI tags.
+
 # BetteriD 0.1.3
 ##### 2026-Jul-21
 
