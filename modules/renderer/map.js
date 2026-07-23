@@ -82,6 +82,7 @@ export function rendererMap(context) {
     var _wPressStarted;
     var _wHoldTimeout;
     var _wNavigationStarted = false;
+    var _indoorFocusActive = false;
 
     // whether a pointerdown event started the zoom
     var _pointerDown = false;
@@ -739,7 +740,6 @@ export function rendererMap(context) {
         dispatch.call('drawn', this, {full: true});
     }
 
-
     function updateIndoorFocus(data, graph) {
         const enabled = experimentalFeatureEnabled(BETTERID_PREFS.indoorFocus);
         const selected = context.selectedIDs()
@@ -756,7 +756,9 @@ export function rendererMap(context) {
             const tags = entity.tags || {};
             isIndoorSelection ||= Boolean(tags.indoor && tags.indoor !== 'no') ||
                 Boolean(tags.indoormark && tags.indoormark !== 'no') ||
-                tags.level !== undefined;
+                tags.level !== undefined ||
+                tags.layer !== undefined;
+
             for (const key of ['level', 'layer']) {
                 String(tags[key] || '').split(/[;,]/)
                     .map(value => value.trim())
@@ -771,10 +773,36 @@ export function rendererMap(context) {
             graph.parentRelations(entity).forEach(collect);
         }
 
-        const active = enabled && selected.length && isIndoorSelection;
-        _selection.classed('betterid-indoor-focus', Boolean(active));
+        function datumEntity(d) {
+            return d?.properties?.entity || d?.entity || (d?.tags && d?.id ? d : null);
+        }
+
+        function sortAreaPaths(focusTest) {
+            surface.selectAll('.layer-osm.areas .areagroup')
+                .selectAll('path.area')
+                .sort((a, b) => {
+                    const entityA = datumEntity(a);
+                    const entityB = datumEntity(b);
+                    if (focusTest) {
+                        const focusedA = focusTest(entityA);
+                        const focusedB = focusTest(entityB);
+                        if (focusedA !== focusedB) return focusedA ? 1 : -1;
+                    }
+                    const areaA = entityA?.area ? Math.abs(entityA.area(graph)) : 0;
+                    const areaB = entityB?.area ? Math.abs(entityB.area(graph)) : 0;
+                    return areaB - areaA;
+                });
+        }
+
+        const hasFocusValue = focusValues.level.size || focusValues.layer.size;
+        const active = Boolean(enabled && selected.length && isIndoorSelection && hasFocusValue);
+        const wasActive = _indoorFocusActive;
+        _indoorFocusActive = active;
+        _selection.classed('indoor-focus', active);
+        context.container().classed('indoor-focus', active);
         if (!active) {
-            surface.selectAll('.betterid-indoor-dim').classed('betterid-indoor-dim', false);
+            surface.selectAll('.indoor-dim').classed('indoor-dim', false);
+            if (wasActive) sortAreaPaths();
             return;
         }
 
@@ -803,10 +831,6 @@ export function rendererMap(context) {
             if (entity.type === 'way') entity.nodes.forEach(id => keep.add(id));
         }
 
-        function datumEntity(d) {
-            return d?.properties?.entity || d?.entity || (d?.tags && d?.id ? d : null);
-        }
-
         const focusCache = new Map();
         function onFocusLevel(entity) {
             if (!entity) return true;
@@ -830,7 +854,8 @@ export function rendererMap(context) {
         }
 
         surface.selectAll('.layer-osm *')
-            .classed('betterid-indoor-dim', d => !onFocusLevel(datumEntity(d)));
+            .classed('indoor-dim', d => !onFocusLevel(datumEntity(d)));
+        sortAreaPaths(onFocusLevel);
     }
 
     map.init = function() {
