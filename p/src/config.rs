@@ -57,6 +57,7 @@ pub struct ProxyConfig {
     pub enabled_rules: Vec<String>,
     pub enable_smart_split: bool,
     pub split_strategy: SplitStrategy,
+    pub proxy_all_tiles: bool,
 }
 
 impl Default for ProxyConfig {
@@ -75,7 +76,7 @@ impl Default for ProxyConfig {
             bing_translate_region: "global".to_string(),
             deepseek_api_key: None,
             deepseek_base_url: "https://api.deepseek.com/v1".to_string(),
-            deepseek_model: "deepseek-chat".to_string(),
+            deepseek_model: "deepseek-v4-flash".to_string(),
             openai_api_key: None,
             openai_base_url: "https://api.openai.com/v1".to_string(),
             openai_resolve_ip: None,
@@ -96,6 +97,7 @@ impl Default for ProxyConfig {
             enabled_rules: vec!["foreign_name_check".to_string()],
             enable_smart_split: false,
             split_strategy: SplitStrategy::default(),
+            proxy_all_tiles: false,
         }
     }
 }
@@ -217,6 +219,10 @@ impl ProxyConfig {
         }
         if let Some(v) = value("OSM_ENABLE_SMART_SPLIT") {
             config.enable_smart_split =
+                matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on");
+        }
+        if let Some(v) = value("OSM_PROXY_ALL_TILES") {
+            config.proxy_all_tiles =
                 matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on");
         }
         if let Some(v) = value("OSM_SPLIT_FIXED_CHANGES") {

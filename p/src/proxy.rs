@@ -42,6 +42,7 @@ const MIRROR_NOTICE_CSS: &str = include_str!("../web/mirror-notice.css");
 const MIRROR_NOTICE_JS: &str = include_str!("../web/mirror-notice.js");
 const MIRROR_NOTICE_TEMPLATE: &str = include_str!("../web/mirror-notice.html");
 const OAUTH_START_TEMPLATE: &str = include_str!("../web/oauth-start.html");
+const TILE_SW_JS: &str = include_str!("../web/tile-sw.js");
 
 #[derive(Clone)]
 pub struct OsmProxy {
@@ -60,6 +61,7 @@ pub struct OsmProxy {
     rate_limits: Arc<Mutex<AiRateLimitState>>,
     ai_request_slots: Arc<Semaphore>,
     visual_request_slots: Arc<Semaphore>,
+    proxy_all_tiles: bool,
 }
 
 struct AiRateLimitState {
@@ -103,6 +105,7 @@ impl OsmProxy {
         oauth_redirect_uri: Option<String>,
         photo_upload_dir: PathBuf,
         trusted_proxy_ips: Vec<IpAddr>,
+        proxy_all_tiles: bool,
     ) -> Self {
         let client = ReqwestClient::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -129,6 +132,7 @@ impl OsmProxy {
             rate_limits: Arc::new(Mutex::new(AiRateLimitState::default())),
             ai_request_slots: Arc::new(Semaphore::new(AI_MAX_CONCURRENT_REQUESTS)),
             visual_request_slots: Arc::new(Semaphore::new(AI_MAX_CONCURRENT_VISUAL_REQUESTS)),
+            proxy_all_tiles,
         }
     }
 
@@ -168,6 +172,13 @@ impl OsmProxy {
                 MIRROR_NOTICE_JS,
             ));
         }
+        if path == "/betterid/tile-sw.js" {
+            return Ok(Self::serve_embedded_asset(
+                &method,
+                "application/javascript; charset=utf-8",
+                TILE_SW_JS,
+            ));
+        }
         if path == "/id/oauth/start" {
             return Ok(self.serve_oauth_start(&method));
         }
@@ -191,6 +202,17 @@ impl OsmProxy {
             return Ok(Self::serve_editor_bridge(&method));
         }
 
+        if path == "/tile/proxy" && self.proxy_all_tiles {
+            let url = req.uri().query().and_then(|query| {
+                form_urlencoded::parse(query.as_bytes())
+                    .find_map(|(key, value)| (key == "url").then(|| value.into_owned()))
+            });
+            return Ok(match url {
+                Some(url) => self.serve_proxied_tile(&method, &url).await,
+                None => Self::empty_response(StatusCode::BAD_REQUEST),
+            });
+        }
+
         let query = req.uri().query().map(str::to_string);
         if !self.should_cache(&method, &path) {
             return self.proxy_without_cache(req).await;
@@ -208,14 +230,14 @@ impl OsmProxy {
 
         info!("Cache miss for {}", cache_key);
         let mut response = self.proxy_without_cache(req).await?;
+        let headers = response.headers().clone();
+        let status = response.status();
+        let body = hyper::body::to_bytes(response.body_mut()).await?;
         if self.should_cache_response(&response) {
             let ttl = self.cache.get_ttl(&path);
-            let headers = response.headers().clone();
-            let status = response.status();
-            let body = hyper::body::to_bytes(response.body_mut()).await?;
             let entry = CacheEntry {
                 body: body.clone(),
-                headers,
+                headers: headers.clone(),
                 status,
                 created_at: Instant::now(),
                 ttl,
@@ -223,8 +245,11 @@ impl OsmProxy {
             self.cache.set(&cache_key, entry.clone()).await;
             return Ok(self.build_cache_response(entry));
         }
-
-        Ok(response)
+        let mut builder = Response::builder().status(status);
+        for (key, value) in &headers {
+            builder = builder.header(key, value);
+        }
+        Ok(builder.body(HyperBody::from(body)).expect("valid response"))
     }
 
     async fn handle_ai_request(
@@ -995,7 +1020,12 @@ impl OsmProxy {
         html = html.replace("__BETTERID_ASSET_VERSION__", &asset_version.to_string());
         html = html.replace("dist/iD.js?v=", "dist/iD.min.js?v=");
         let runtime_config = self.id_runtime_config(asset_version);
-        html = html.replace("</head>", &format!("{runtime_config}</head>"));
+        let sw_snippet = if self.proxy_all_tiles {
+            "<script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/betterid/tile-sw.js',{scope:'/'});</script>"
+        } else {
+            ""
+        };
+        html = html.replace("</head>", &format!("{runtime_config}{sw_snippet}</head>"));
         Self::file_response(
             StatusCode::OK,
             "text/html; charset=utf-8",
@@ -1434,7 +1464,9 @@ impl OsmProxy {
     }
 
     fn rewrite_location(&self, location: &str) -> String {
+        let upstream = self.upstream_url.trim_end_matches('/');
         location
+            .replace(upstream, "")
             .replace("https://www.openstreetmap.org", "")
             .replace("http://www.openstreetmap.org", "")
             .replace("https://openstreetmap.org", "")
@@ -1467,6 +1499,7 @@ impl OsmProxy {
         let Ok(text) = std::str::from_utf8(body) else {
             return body.to_vec();
         };
+        let upstream = self.upstream_url.trim_end_matches('/');
         let rewritten = text
             .replace("https://tile.openstreetmap.org/", "/tile/")
             .replace("http://tile.openstreetmap.org/", "/tile/")
@@ -1476,6 +1509,7 @@ impl OsmProxy {
                 "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/",
                 "/tile/arcgis/",
             )
+            .replace(&format!("{upstream}/"), "/")
             .replace("https://www.openstreetmap.org/", "/")
             .replace("http://www.openstreetmap.org/", "/")
             .replace(
@@ -1678,6 +1712,77 @@ impl OsmProxy {
             .replace('>', "&gt;")
     }
 
+    async fn serve_proxied_tile(&self, method: &Method, tile_url: &str) -> Response<HyperBody> {
+        if method != Method::GET && method != Method::HEAD {
+            return Self::empty_response(StatusCode::METHOD_NOT_ALLOWED);
+        }
+        let Ok(parsed) = Url::parse(tile_url) else {
+            return Self::empty_response(StatusCode::BAD_REQUEST);
+        };
+        if !matches!(parsed.scheme(), "http" | "https") {
+            return Self::empty_response(StatusCode::BAD_REQUEST);
+        }
+        let Some(host) = parsed.host_str() else {
+            return Self::empty_response(StatusCode::BAD_REQUEST);
+        };
+        if is_private_host(host) {
+            return Self::empty_response(StatusCode::FORBIDDEN);
+        }
+
+        let cache_key = format!("ext:{tile_url}");
+        if let Some(entry) = self.cache.get(&cache_key).await {
+            return self.build_cache_response(entry);
+        }
+
+        let result = self
+            .client
+            .get(tile_url)
+            .header("user-agent", "Mozilla/5.0 BetteriD/1.0")
+            .send()
+            .await;
+
+        match result {
+            Ok(response) => {
+                let status = StatusCode::from_u16(response.status().as_u16())
+                    .unwrap_or(StatusCode::BAD_GATEWAY);
+                if !status.is_success() {
+                    return Self::empty_response(status);
+                }
+                let content_type = response
+                    .headers()
+                    .get("content-type")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("image/png")
+                    .to_string();
+                let tile_bytes = response.bytes().await.unwrap_or_default();
+                let ttl = self.cache.get_ttl("/tile/");
+                let mut headers = HeaderMap::new();
+                if let Ok(ct) = HeaderValue::from_str(&content_type) {
+                    headers.insert("content-type", ct);
+                }
+                let entry = CacheEntry {
+                    body: tile_bytes.clone(),
+                    headers,
+                    status,
+                    created_at: Instant::now(),
+                    ttl,
+                };
+                self.cache.set(&cache_key, entry).await;
+                Self::file_response(
+                    status,
+                    &content_type,
+                    if method == Method::HEAD {
+                        Vec::new()
+                    } else {
+                        tile_bytes.to_vec()
+                    },
+                    "public, max-age=3600",
+                )
+            }
+            Err(_) => Self::empty_response(StatusCode::BAD_GATEWAY),
+        }
+    }
+
     async fn handle_request(
         &self,
         req: Request<HyperBody>,
@@ -1715,6 +1820,18 @@ impl OsmProxy {
     }
 }
 
+fn is_private_host(host: &str) -> bool {
+    if host.eq_ignore_ascii_case("localhost") {
+        return true;
+    }
+    let addr_str = host.trim_start_matches('[').trim_end_matches(']');
+    match addr_str.parse::<IpAddr>() {
+        Ok(IpAddr::V4(v4)) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
+        Ok(IpAddr::V6(v6)) => v6.is_loopback(),
+        Err(_) => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1737,6 +1854,7 @@ mod tests {
             Some("https://map.osm.asia/callback".to_string()),
             std::env::temp_dir().join("betterid-proxy-tests"),
             trusted_proxy_ips,
+            false,
         )
     }
 

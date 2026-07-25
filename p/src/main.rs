@@ -60,6 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.osm_oauth_redirect_uri.clone(),
         PathBuf::from(&config.photo_upload_dir),
         config.trusted_proxy_ips.clone(),
+        config.proxy_all_tiles,
     );
 
     let cache_for_stats = cache.clone();
