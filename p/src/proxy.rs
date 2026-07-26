@@ -1738,6 +1738,7 @@ impl OsmProxy {
             .client
             .get(tile_url)
             .header("user-agent", "Mozilla/5.0 BetteriD/1.0")
+            .header("referer", "https://www.openstreetmap.org/")
             .send()
             .await;
 
