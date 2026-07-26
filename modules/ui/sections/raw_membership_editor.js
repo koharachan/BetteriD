@@ -352,9 +352,12 @@ export function uiSectionRawMembershipEditor(context) {
             });
         } else {
 
+            const addedRelationIds = new Set();
+
             context.history().intersects(context.map().extent()).forEach(function(entity) {
                 if (entity.type !== 'relation' || entity.id === entityID) return;
 
+                addedRelationIds.add(entity.id);
                 var value = baseDisplayValue(entity);
                 if (q && (value + ' ' + entity.id).toLowerCase().indexOf(q.toLowerCase()) === -1) return;
 
@@ -364,6 +367,23 @@ export function uiSectionRawMembershipEditor(context) {
                     display: baseDisplayLabel(entity)
                 });
             });
+
+            // Also include downloaded relations outside the current viewport
+            for (const id in graph.entities) {
+                const entity = graph.entities[id];
+                if (!entity || entity.type !== 'relation' || entity.id === entityID) continue;
+                if (addedRelationIds.has(entity.id)) continue;
+
+                addedRelationIds.add(entity.id);
+                var value = baseDisplayValue(entity);
+                if (q && (value + ' ' + entity.id).toLowerCase().indexOf(q.toLowerCase()) === -1) continue;
+
+                result.push({
+                    relation: entity,
+                    value,
+                    display: baseDisplayLabel(entity)
+                });
+            }
 
             const connectedRelationIDs = getConnectedRelations();
 

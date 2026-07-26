@@ -328,7 +328,8 @@ export function svgVertices(projection, context) {
                         }
                     }
                 } else if (entity.type === 'relation') {
-                    for (i = 0; i < entity.members.length; i++) {
+                    var memberLimit = zoom < 14 ? 0 : zoom < 16 ? 50 : zoom < 18 ? 200 : entity.members.length;
+                    for (i = 0; i < Math.min(entity.members.length, memberLimit); i++) {
                         var member = graph.hasEntity(entity.members[i].id);
                         if (member) {
                             addChildVertices(member);
