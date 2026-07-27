@@ -97,7 +97,7 @@ impl Default for ProxyConfig {
             enabled_rules: vec!["foreign_name_check".to_string()],
             enable_smart_split: false,
             split_strategy: SplitStrategy::default(),
-            proxy_all_tiles: false,
+            proxy_all_tiles: true,
         }
     }
 }
@@ -288,7 +288,12 @@ fn read_env_files() -> HashMap<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_value, split_ip_addresses, split_secrets};
+    use super::{ProxyConfig, normalize_value, split_ip_addresses, split_secrets};
+
+    #[test]
+    fn tile_proxy_is_enabled_by_default() {
+        assert!(ProxyConfig::default().proxy_all_tiles);
+    }
 
     #[test]
     fn normalize_value_ignores_empty_values() {

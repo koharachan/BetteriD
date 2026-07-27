@@ -32,6 +32,16 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# BetteriD 0.1.5
+##### 2026-Jul-27
+
+#### :bug: Bugfixes
+* Route OpenStreetMap standard tile requests through the Rust proxy with a
+  BetteriD User-Agent, Referer, and compliant tile caching to avoid blocked
+  browser tile responses.
+* Replace OpenStreetMap branding with OSM.asia branding across proxied HTML
+  pages, not only on the homepage.
+
 # BetteriD 0.1.4
 ##### 2026-Jul-23
 

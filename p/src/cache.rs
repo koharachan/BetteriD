@@ -48,7 +48,7 @@ impl SmartCache {
         cache_dir: Option<PathBuf>,
     ) -> Self {
         let mut ttl_overrides = HashMap::new();
-        ttl_overrides.insert("/tile".to_string(), Duration::from_mins(10));
+        ttl_overrides.insert("/tile".to_string(), Duration::from_secs(7 * 24 * 3600));
         ttl_overrides.insert("/api".to_string(), Duration::from_mins(5));
         ttl_overrides.insert("/geocoder".to_string(), Duration::from_mins(15));
         ttl_overrides.insert("/planet".to_string(), Duration::from_secs(7 * 24 * 3600));
@@ -224,7 +224,10 @@ mod tests {
     async fn test_ttl_overrides() {
         let cache = SmartCache::new(100, Duration::from_secs(60));
 
-        assert_eq!(cache.get_ttl("/tile/1/2/3.png"), Duration::from_mins(10));
+        assert_eq!(
+            cache.get_ttl("/tile/1/2/3.png"),
+            Duration::from_secs(7 * 24 * 3600)
+        );
         assert_eq!(cache.get_ttl("/api/0.6/node/1"), Duration::from_mins(5));
         assert_eq!(cache.get_ttl("/other/path"), Duration::from_secs(60));
     }

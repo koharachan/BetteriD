@@ -17,6 +17,15 @@ BetteriD 是面向中文 OpenStreetMap 编辑场景的网页编辑器，基于
 > 上传前请逐项核对标签、来源和变更说明，并遵守
 > [OpenStreetMap 贡献条款](https://www.openstreetmap.org/copyright)。
 
+## 0.1.5 Release
+
+- Standard OpenStreetMap tiles are now routed through the Rust proxy with
+  BetteriD identity headers and compliant caching to avoid blocked tile images.
+- OSM.asia branding now applies across proxied OpenStreetMap pages, including
+  login and OAuth pages.
+
+Full notes: [0.1.5 changelog](CHANGELOG.md#betterid-015).
+
 ## 0.1.4 Release
 
 - Extracting an address-only building now moves its `addr:*` tags onto a new

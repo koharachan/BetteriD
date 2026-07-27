@@ -30,8 +30,7 @@ self.addEventListener('fetch', (event) => {
     fetch(PROXY_BASE + encodeURIComponent(event.request.url), {
       credentials: 'omit',
     }).catch(() => {
-      // Fall back to direct fetch if the proxy fails
-      return fetch(event.request);
+      return new Response('', { status: 502, statusText: 'Tile proxy unavailable' });
     })
   );
 });

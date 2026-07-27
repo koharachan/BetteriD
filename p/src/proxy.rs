@@ -35,6 +35,11 @@ const AI_RATE_BUCKET_LIMIT: usize = 10_000;
 const AI_MAX_CONCURRENT_REQUESTS: usize = 16;
 const AI_MAX_CONCURRENT_VISUAL_REQUESTS: usize = 2;
 const PHOTO_CONTEXT_MAX_BYTES: usize = 4 * 1024;
+const TILE_FALLBACK_CACHE_CONTROL: &str = "public, max-age=604800";
+const TILE_FALLBACK_CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60);
+const TILE_FALLBACK_REFERER: &str = "https://map.osm.asia/";
+const TILE_USER_AGENT: &str =
+    "BetteriD/0.1.5 (+https://map.osm.asia; contact=https://github.com/koharachan/BetteriD/issues)";
 const LOGIN_MODAL_CSS: &str = include_str!("../web/login-modal.css");
 const LOGIN_MODAL_JS: &str = include_str!("../web/login-modal.js");
 const LOGIN_MODAL_TEMPLATE: &str = include_str!("../web/login-modal.html");
@@ -203,12 +208,13 @@ impl OsmProxy {
         }
 
         if path == "/tile/proxy" && self.proxy_all_tiles {
+            let headers = req.headers().clone();
             let url = req.uri().query().and_then(|query| {
                 form_urlencoded::parse(query.as_bytes())
                     .find_map(|(key, value)| (key == "url").then(|| value.into_owned()))
             });
             return Ok(match url {
-                Some(url) => self.serve_proxied_tile(&method, &url).await,
+                Some(url) => self.serve_proxied_tile(&method, &headers, &url).await,
                 None => Self::empty_response(StatusCode::BAD_REQUEST),
             });
         }
@@ -234,7 +240,11 @@ impl OsmProxy {
         let status = response.status();
         let body = hyper::body::to_bytes(response.body_mut()).await?;
         if self.should_cache_response(&response) {
-            let ttl = self.cache.get_ttl(&path);
+            let ttl = if path.starts_with("/tile/") {
+                Self::tile_cache_ttl(&headers)
+            } else {
+                self.cache.get_ttl(&path)
+            };
             let entry = CacheEntry {
                 body: body.clone(),
                 headers: headers.clone(),
@@ -1096,16 +1106,12 @@ impl OsmProxy {
             return Self::empty_response(StatusCode::NOT_FOUND);
         };
         let content_type = Self::content_type(&path);
-        Self::file_response(
-            StatusCode::OK,
-            content_type,
-            if method == Method::HEAD {
-                Vec::new()
-            } else {
-                data
-            },
-            "public, max-age=3600",
-        )
+        let data = if method == Method::HEAD {
+            Vec::new()
+        } else {
+            self.rewrite_urls(&data, content_type, &format!("/id/dist/{relative}"), None)
+        };
+        Self::file_response(StatusCode::OK, content_type, data, "public, max-age=3600")
     }
 
     fn content_type(path: &Path) -> &'static str {
@@ -1188,6 +1194,9 @@ impl OsmProxy {
         if response.status() != StatusCode::OK {
             return false;
         }
+        if response.headers().contains_key("x-blocked") {
+            return false;
+        }
         if response.headers().contains_key("set-cookie") {
             return false;
         }
@@ -1237,13 +1246,81 @@ impl OsmProxy {
                 .headers_mut()
                 .insert("expires", HeaderValue::from_static("0"));
         } else if path.starts_with("/tile/") {
-            response.headers_mut().insert(
-                "cache-control",
-                HeaderValue::from_static("public, max-age=600"),
-            );
+            if !response.headers().contains_key("cache-control") {
+                response.headers_mut().insert(
+                    "cache-control",
+                    HeaderValue::from_static(TILE_FALLBACK_CACHE_CONTROL),
+                );
+            }
             response.headers_mut().remove("pragma");
             response.headers_mut().remove("expires");
         }
+    }
+
+    fn tile_cache_ttl(headers: &HeaderMap) -> Duration {
+        Self::tile_cache_ttl_from_values(
+            headers
+                .get_all("cache-control")
+                .iter()
+                .filter_map(|value| value.to_str().ok()),
+        )
+    }
+
+    fn reqwest_tile_cache_ttl(headers: &reqwest::header::HeaderMap) -> Duration {
+        Self::tile_cache_ttl_from_values(
+            headers
+                .get_all("cache-control")
+                .iter()
+                .filter_map(|value| value.to_str().ok()),
+        )
+    }
+
+    fn tile_cache_ttl_from_values<'a>(values: impl Iterator<Item = &'a str>) -> Duration {
+        values
+            .filter_map(Self::cache_control_max_age)
+            .max()
+            .map(Duration::from_secs)
+            .unwrap_or(TILE_FALLBACK_CACHE_TTL)
+    }
+
+    fn cache_control_max_age(cache_control: &str) -> Option<u64> {
+        let mut max_age = None;
+        let mut shared_max_age = None;
+        for directive in cache_control.split(',') {
+            let Some((name, value)) = directive.trim().split_once('=') else {
+                continue;
+            };
+            let value = value.trim().trim_matches('"');
+            let Ok(seconds) = value.parse::<u64>() else {
+                continue;
+            };
+            match name.trim().to_ascii_lowercase().as_str() {
+                "max-age" => max_age = Some(seconds),
+                "s-maxage" => shared_max_age = Some(seconds),
+                _ => {}
+            }
+        }
+        shared_max_age.or(max_age)
+    }
+
+    fn is_osm_tile_service_url(url: &Url) -> bool {
+        url.host_str().is_some_and(|host| {
+            host.eq_ignore_ascii_case("tile.openstreetmap.org")
+                || host.eq_ignore_ascii_case("gps.tile.openstreetmap.org")
+                || host.eq_ignore_ascii_case("gps-tile.openstreetmap.org")
+                || host
+                    .to_ascii_lowercase()
+                    .ends_with(".gps-tile.openstreetmap.org")
+        })
+    }
+
+    fn tile_referer(headers: &HeaderMap) -> String {
+        headers
+            .get("referer")
+            .and_then(|value| value.to_str().ok())
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or(TILE_FALLBACK_REFERER)
+            .to_string()
     }
 
     fn build_cache_response(&self, entry: CacheEntry) -> Response<HyperBody> {
@@ -1322,6 +1399,7 @@ impl OsmProxy {
         let forwards_private_headers = upstream_url
             .as_str()
             .starts_with(self.upstream_url.trim_end_matches('/'));
+        let is_osm_tile_service = Self::is_osm_tile_service_url(&upstream_url);
         let mut request_builder = self
             .client
             .request(reqwest_method, upstream_url.as_str())
@@ -1333,6 +1411,14 @@ impl OsmProxy {
                 key_lower.as_str(),
                 "host" | "content-length" | "origin" | "referer"
             ) {
+                continue;
+            }
+            if is_osm_tile_service
+                && matches!(
+                    key_lower.as_str(),
+                    "user-agent" | "cache-control" | "pragma"
+                )
+            {
                 continue;
             }
             if !forwards_private_headers && key_lower == "authorization" {
@@ -1349,10 +1435,14 @@ impl OsmProxy {
             }
             request_builder = request_builder.header(key.as_str(), value.as_bytes());
         }
-        if headers.contains_key("origin") {
+        if is_osm_tile_service {
+            request_builder = request_builder
+                .header("user-agent", TILE_USER_AGENT)
+                .header("referer", Self::tile_referer(&headers));
+        } else if headers.contains_key("origin") {
             request_builder = request_builder.header("origin", &self.upstream_url);
         }
-        if headers.contains_key("referer") {
+        if !is_osm_tile_service && headers.contains_key("referer") {
             request_builder =
                 request_builder.header("referer", format!("{}{}", self.upstream_url, path));
         }
@@ -1532,38 +1622,57 @@ impl OsmProxy {
         };
 
         let rewritten = self.inject_login_options(&rewritten, path, query);
-        let rewritten = Self::rewrite_root_branding(&rewritten, path);
+        let rewritten = Self::rewrite_osm_branding(&rewritten, path);
         let rewritten = self.inject_root_login_modal(&rewritten, path);
         Self::inject_mirror_notice(&rewritten, path).into_bytes()
     }
 
-    fn rewrite_root_branding(html: &str, path: &str) -> String {
-        const BRAND_LINK_CLASS: &str =
-            "class=\"icon-link gap-1 me-auto text-body-emphasis text-decoration-none geolink\"";
-
-        if path != "/" {
+    fn rewrite_osm_branding(html: &str, _path: &str) -> String {
+        if !html.contains("osm_logo") && !html.contains("OpenStreetMap logo") {
             return html.to_string();
         }
-        let Some(class_start) = html.find(BRAND_LINK_CLASS) else {
-            return html.to_string();
-        };
-        let Some(content_start) = html[class_start..].find('>').map(|i| class_start + i + 1) else {
-            return html.to_string();
-        };
-        let Some(content_end) = html[content_start..]
-            .find("</a>")
-            .map(|i| content_start + i)
-        else {
-            return html.to_string();
-        };
+        const BRAND_HTML: &str = "\n      <img alt=\"OSM.asia logo\" src=\"https://osm.asia/logo.jpg\" width=\"30\" height=\"30\">\n      OSM.asia\n    ";
 
         let mut rewritten = String::with_capacity(html.len());
-        rewritten.push_str(&html[..content_start]);
-        rewritten.push_str(
-            "\n      <img alt=\"OSM.asia 标志\" src=\"https://osm.asia/logo.jpg\" width=\"30\" height=\"30\">\n      OSM.asia\n    ",
-        );
-        rewritten.push_str(&html[content_end..]);
+        let mut cursor = 0;
+        let mut search_start = 0;
+        let mut changed = false;
+
+        while let Some(anchor_start_rel) = html[search_start..].find("<a") {
+            let anchor_start = search_start + anchor_start_rel;
+            let Some(open_end) = html[anchor_start..].find('>').map(|i| anchor_start + i + 1)
+            else {
+                break;
+            };
+            let Some(close_start) = html[open_end..].find("</a>").map(|i| open_end + i) else {
+                break;
+            };
+            let close_end = close_start + "</a>".len();
+            let anchor = &html[anchor_start..close_end];
+
+            if Self::is_osm_brand_anchor(anchor) {
+                rewritten.push_str(&html[cursor..open_end]);
+                rewritten.push_str(BRAND_HTML);
+                rewritten.push_str(&html[close_start..close_end]);
+                cursor = close_end;
+                changed = true;
+            }
+            search_start = close_end;
+        }
+
+        if !changed {
+            return html.to_string();
+        }
+
+        rewritten.push_str(&html[cursor..]);
         rewritten
+    }
+
+    fn is_osm_brand_anchor(anchor: &str) -> bool {
+        let lower = anchor.to_ascii_lowercase();
+        lower.contains("osm_logo")
+            || lower.contains("openstreetmap logo")
+            || lower.contains("openstreetmap_logo")
     }
 
     fn inject_mirror_notice(html: &str, path: &str) -> String {
@@ -1712,7 +1821,12 @@ impl OsmProxy {
             .replace('>', "&gt;")
     }
 
-    async fn serve_proxied_tile(&self, method: &Method, tile_url: &str) -> Response<HyperBody> {
+    async fn serve_proxied_tile(
+        &self,
+        method: &Method,
+        headers: &HeaderMap,
+        tile_url: &str,
+    ) -> Response<HyperBody> {
         if method != Method::GET && method != Method::HEAD {
             return Self::empty_response(StatusCode::METHOD_NOT_ALLOWED);
         }
@@ -1734,13 +1848,13 @@ impl OsmProxy {
             return self.build_cache_response(entry);
         }
 
-        let result = self
-            .client
-            .get(tile_url)
-            .header("user-agent", "Mozilla/5.0 BetteriD/1.0")
-            .header("referer", "https://www.openstreetmap.org/")
-            .send()
-            .await;
+        let mut request = self.client.get(tile_url);
+        if Self::is_osm_tile_service_url(&parsed) {
+            request = request
+                .header("user-agent", TILE_USER_AGENT)
+                .header("referer", Self::tile_referer(headers));
+        }
+        let result = request.send().await;
 
         match result {
             Ok(response) => {
@@ -1749,36 +1863,75 @@ impl OsmProxy {
                 if !status.is_success() {
                     return Self::empty_response(status);
                 }
-                let content_type = response
-                    .headers()
+                let response_headers = response.headers().clone();
+                let content_type = response_headers
                     .get("content-type")
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("image/png")
                     .to_string();
                 let tile_bytes = response.bytes().await.unwrap_or_default();
-                let ttl = self.cache.get_ttl("/tile/");
+                let ttl = Self::reqwest_tile_cache_ttl(&response_headers);
                 let mut headers = HeaderMap::new();
-                if let Ok(ct) = HeaderValue::from_str(&content_type) {
+                let blocked_tile = response_headers.contains_key("x-blocked");
+                for key in [
+                    "content-type",
+                    "cache-control",
+                    "etag",
+                    "expires",
+                    "last-modified",
+                    "x-blocked",
+                ] {
+                    if let Some(value) = response_headers
+                        .get(key)
+                        .and_then(|value| value.to_str().ok())
+                        .and_then(|value| HeaderValue::from_str(value).ok())
+                    {
+                        headers.insert(key, value);
+                    }
+                }
+                if !headers.contains_key("content-type")
+                    && let Ok(ct) = HeaderValue::from_str(&content_type)
+                {
                     headers.insert("content-type", ct);
                 }
-                let entry = CacheEntry {
-                    body: tile_bytes.clone(),
-                    headers,
-                    status,
-                    created_at: Instant::now(),
-                    ttl,
-                };
-                self.cache.set(&cache_key, entry).await;
-                Self::file_response(
-                    status,
-                    &content_type,
-                    if method == Method::HEAD {
+                if blocked_tile {
+                    headers.insert("cache-control", HeaderValue::from_static("no-store"));
+                } else if !headers.contains_key("cache-control") {
+                    headers.insert(
+                        "cache-control",
+                        HeaderValue::from_static(TILE_FALLBACK_CACHE_CONTROL),
+                    );
+                }
+                if !blocked_tile {
+                    let entry = CacheEntry {
+                        body: tile_bytes.clone(),
+                        headers: headers.clone(),
+                        status,
+                        created_at: Instant::now(),
+                        ttl,
+                    };
+                    self.cache.set(&cache_key, entry).await;
+                }
+                let mut builder = Response::builder().status(status);
+                for (key, value) in &headers {
+                    builder = builder.header(key, value);
+                }
+                builder
+                    .header(
+                        "content-length",
+                        if method == Method::HEAD {
+                            0
+                        } else {
+                            tile_bytes.len()
+                        },
+                    )
+                    .header("x-content-type-options", "nosniff")
+                    .body(HyperBody::from(if method == Method::HEAD {
                         Vec::new()
                     } else {
                         tile_bytes.to_vec()
-                    },
-                    "public, max-age=3600",
-                )
+                    }))
+                    .expect("valid tile response")
             }
             Err(_) => Self::empty_response(StatusCode::BAD_GATEWAY),
         }
@@ -1895,6 +2048,18 @@ mod tests {
     }
 
     #[test]
+    fn test_blocked_tile_response_is_not_cached() {
+        let proxy = test_proxy();
+        let response = Response::builder()
+            .status(StatusCode::OK)
+            .header("x-blocked", "1")
+            .body(HyperBody::empty())
+            .unwrap();
+
+        assert!(!proxy.should_cache_response(&response));
+    }
+
+    #[test]
     fn test_osm_data_disables_client_cache() {
         let mut response = Response::new(HyperBody::empty());
         OsmProxy::apply_client_cache_policy("/api/0.6/way/1", &mut response);
@@ -1908,13 +2073,67 @@ mod tests {
     }
 
     #[test]
-    fn test_tiles_expire_after_ten_minutes() {
+    fn test_tiles_keep_upstream_cache_control() {
+        let mut response = Response::new(HyperBody::empty());
+        response.headers_mut().insert(
+            "cache-control",
+            HeaderValue::from_static("public, max-age=86400"),
+        );
+        OsmProxy::apply_client_cache_policy("/tile/1/2/3.png", &mut response);
+
+        assert_eq!(
+            response.headers().get("cache-control").unwrap(),
+            "public, max-age=86400"
+        );
+    }
+
+    #[test]
+    fn test_tiles_get_seven_day_cache_fallback() {
         let mut response = Response::new(HyperBody::empty());
         OsmProxy::apply_client_cache_policy("/tile/1/2/3.png", &mut response);
 
         assert_eq!(
             response.headers().get("cache-control").unwrap(),
-            "public, max-age=600"
+            TILE_FALLBACK_CACHE_CONTROL
+        );
+    }
+
+    #[test]
+    fn test_tile_cache_ttl_uses_cache_control() {
+        let headers = Request::builder()
+            .header("cache-control", "public, max-age=86400, s-maxage=172800")
+            .body(HyperBody::empty())
+            .unwrap()
+            .headers()
+            .clone();
+
+        assert_eq!(
+            OsmProxy::tile_cache_ttl(&headers),
+            Duration::from_secs(172800)
+        );
+    }
+
+    #[test]
+    fn test_tile_cache_ttl_falls_back_to_seven_days() {
+        assert_eq!(
+            OsmProxy::tile_cache_ttl(&HeaderMap::new()),
+            TILE_FALLBACK_CACHE_TTL
+        );
+    }
+
+    #[test]
+    fn test_tile_referer_uses_request_or_fallback() {
+        let headers = Request::builder()
+            .header("referer", "https://map.osm.asia/id/")
+            .body(HyperBody::empty())
+            .unwrap()
+            .headers()
+            .clone();
+
+        assert_eq!(OsmProxy::tile_referer(&headers), "https://map.osm.asia/id/");
+        assert_eq!(
+            OsmProxy::tile_referer(&HeaderMap::new()),
+            TILE_FALLBACK_REFERER
         );
     }
 
@@ -1969,6 +2188,34 @@ mod tests {
         );
 
         assert!(String::from_utf8_lossy(&rewritten).contains("\"/query-features\""));
+    }
+
+    #[test]
+    fn test_standard_osm_tile_url_is_rewritten() {
+        let proxy = test_proxy();
+        let source = br#"{"template":"https://tile.openstreetmap.org/{zoom}/{x}/{y}.png"}"#;
+        let rewritten = proxy.rewrite_urls(
+            source,
+            "application/json; charset=utf-8",
+            "/id/dist/data/imagery.min.json",
+            None,
+        );
+
+        assert!(String::from_utf8_lossy(&rewritten).contains("\"/tile/{zoom}/{x}/{y}.png\""));
+    }
+
+    #[test]
+    fn test_osm_tile_service_hosts_are_identified() {
+        for url in [
+            "https://tile.openstreetmap.org/1/2/3.png",
+            "https://gps.tile.openstreetmap.org/lines/1/2/3.png",
+            "https://a.gps-tile.openstreetmap.org/lines/1/2/3.png",
+        ] {
+            assert!(OsmProxy::is_osm_tile_service_url(&Url::parse(url).unwrap()));
+        }
+        assert!(!OsmProxy::is_osm_tile_service_url(
+            &Url::parse("https://tiles.example.com/1/2/3.png").unwrap()
+        ));
     }
 
     #[test]
@@ -2216,18 +2463,24 @@ mod tests {
     }
 
     #[test]
-    fn test_root_page_uses_osm_asia_branding() {
+    fn test_pages_use_osm_asia_branding() {
         let proxy = test_proxy();
         let source = br#"<html><body><a href="/#map=17/24/113" class="icon-link gap-1 me-auto text-body-emphasis text-decoration-none geolink"><img alt="OpenStreetMap logo" src="/assets/osm_logo-digest.svg" width="30" height="30">OpenStreetMap</a></body></html>"#;
         let html = String::from_utf8(proxy.rewrite_urls(source, "text/html", "/", None))
             .expect("valid UTF-8");
 
         assert!(html.contains("src=\"https://osm.asia/logo.jpg\""));
-        assert!(html.contains("alt=\"OSM.asia 标志\""));
+        assert!(html.contains("alt=\"OSM.asia logo\""));
         assert!(html.contains("OSM.asia"));
         assert!(!html.contains("osm_logo-digest.svg"));
         assert!(!html.contains(">OpenStreetMap</a>"));
-        assert_eq!(OsmProxy::rewrite_root_branding(&html, "/login"), html);
+
+        let login_source = br#"<html><body><a href="/" class="navbar-brand"><img src="/assets/osm_logo.svg" alt="OpenStreetMap logo">OpenStreetMap</a><p>OpenStreetMap account</p></body></html>"#;
+        let login_html =
+            String::from_utf8(proxy.rewrite_urls(login_source, "text/html", "/login", None))
+                .expect("valid UTF-8");
+        assert!(login_html.contains("src=\"https://osm.asia/logo.jpg\""));
+        assert!(login_html.contains("<p>OpenStreetMap account</p>"));
     }
 
     #[test]
@@ -2249,8 +2502,8 @@ mod tests {
         let html = test_proxy().oauth_start_html();
         assert!(html.contains("test-client"));
         assert!(html.contains("code_challenge_method"));
-        assert!(html.contains("new URL('/logout', officialOrigin)"));
-        assert!(html.contains("'/login?referer='"));
+        assert!(html.contains("new URL('/oauth2/authorize', officialOrigin)"));
+        assert!(html.contains("authorize.searchParams.set('response_type', 'code')"));
         assert!(html.contains("betterid.oauth.root"));
         assert!(html.contains("https://map.osm.asia/callback"));
         assert!(!html.contains("client_secret"));

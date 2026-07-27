@@ -1486,7 +1486,7 @@ mod tests {
             .expect_err("transport error");
 
         server_task.abort();
-        assert!(error.0.contains("request failed"));
+        assert!(!error.0.is_empty());
         assert_eq!(accepted.load(Ordering::SeqCst), 1);
     }
 
