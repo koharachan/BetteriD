@@ -241,6 +241,62 @@ body.betterid-login-open {
   overflow: hidden !important;
 }
 
+.login-menu.betterid-login-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.betterid-login-status-user {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  max-width: min(42vw, 260px);
+  color: inherit;
+  text-decoration: none;
+}
+
+.betterid-login-status-user:hover {
+  text-decoration: underline;
+}
+
+.betterid-login-status-avatar {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e8f5e7;
+}
+
+.betterid-login-status-avatar-placeholder {
+  display: inline-grid;
+  place-items: center;
+  color: #2f7d32;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.betterid-login-status-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.betterid-login-status-logout {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.betterid-login-status-logout:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 560px) {
   .betterid-login-modal {
     align-items: end;
@@ -281,6 +337,10 @@ body.betterid-login-open {
 
   .betterid-login-footer {
     padding: 13px 18px 15px;
+  }
+
+  .betterid-login-status-user {
+    max-width: 52vw;
   }
 }
 

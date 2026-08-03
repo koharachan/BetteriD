@@ -41,7 +41,7 @@ export function modeSave(context) {
     }
 
 
-    function showProgress(num, total) {
+    function showProgress(num, total, messageID = 'save.conflict_progress') {
         var modal = context.container().select('.loading-modal .modal-section');
         var progress = modal.selectAll('.progress')
             .data([0]);
@@ -51,7 +51,7 @@ export function modeSave(context) {
             .append('div')
             .attr('class', 'progress')
             .merge(progress)
-            .text(t('save.conflict_progress', { num: num, total: total }));
+            .text(t(messageID, { num: num, total: total }));
     }
 
 

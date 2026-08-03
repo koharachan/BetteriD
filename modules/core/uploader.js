@@ -11,6 +11,7 @@ import { t } from '../core/localizer';
 import { osmChangeset } from '../osm';
 import { utilArrayUnion, utilArrayUniq, utilDisplayName, utilDisplayType, utilRebind } from '../util';
 
+const AUTO_SPLIT_MAX_CHANGES = 1500;
 
 /** @param {iD.Context} context */
 export function coreUploader(context) {
@@ -95,8 +96,9 @@ export function coreUploader(context) {
             history.perform(actionNoop());
         }
 
-        // Attempt a fast upload.. If there are conflicts, re-enter with `checkConflicts = true`
-        if (!checkConflicts && !_saveOptions.enabled) {
+        // Attempt a fast upload.. If there are conflicts, re-enter with `checkConflicts = true`.
+        // Large uploads are split automatically, so run the full check before the first batch.
+        if (!checkConflicts && !shouldSplitChanges(_origChanges)) {
             upload(changeset);
 
         // Split uploads always run the full check before the first batch.
@@ -291,42 +293,50 @@ export function coreUploader(context) {
 
 
     async function upload(changeset) {
-        var osm = context.connection();
-        if (!osm) {
-            _errors.push({ msg: 'No OSM Service' });
-        }
+        try {
+            var osm = context.connection();
+            if (!osm) {
+                _errors.push({ msg: 'No OSM Service' });
+            }
 
-        if (_conflicts.length) {
-            didResultInConflicts(changeset);
+            if (_conflicts.length) {
+                didResultInConflicts(changeset);
 
-        } else if (_errors.length) {
-            didResultInErrors();
+            } else if (_errors.length) {
+                didResultInErrors();
 
-        } else {
-            if (_anyConflictsAutomaticallyResolved) {
-                changeset.tags.merge_conflict_resolved = 'automatically';
-                if (changeset.id) {
-                    await osm.updateChangesetTags(changeset);
+            } else {
+                if (_anyConflictsAutomaticallyResolved) {
+                    changeset.tags.merge_conflict_resolved = 'automatically';
+                    if (changeset.id) {
+                        await osm.updateChangesetTags(changeset);
+                    }
+                }
+
+                var history = context.history();
+                var changes = history.changes(actionDiscardTags(history.difference(), _discardTags));
+                var hasChanges = changes.modified.length || changes.created.length || changes.deleted.length;
+                if (!hasChanges) {
+                    didResultInNoChanges();
+                    return;
+                }
+
+                var batches = shouldSplitChanges(changes) ?
+                    coreChangeBatches(changes, context.graph(), splitOptions(changes)) : [changes];
+
+                dispatch.call('willAttemptUpload', this);
+                if (batches.length > 1) {
+                    uploadBatches(changeset, batches);
+                } else {
+                    osm.putChangeset(changeset, batches[0], uploadCallback);
                 }
             }
-
-            var history = context.history();
-            var changes = history.changes(actionDiscardTags(history.difference(), _discardTags));
-            var hasChanges = changes.modified.length || changes.created.length || changes.deleted.length;
-            if (!hasChanges) {
-                didResultInNoChanges();
-                return;
-            }
-
-            var batches = _saveOptions.enabled ?
-                coreChangeBatches(changes, context.graph(), _saveOptions) : [changes];
-
-            dispatch.call('willAttemptUpload', this);
-            if (batches.length > 1) {
-                uploadBatches(changeset, batches);
-            } else {
-                osm.putChangeset(changeset, batches[0], uploadCallback);
-            }
+        } catch (err) {
+            _errors.push({
+                msg: err?.message || t('save.error'),
+                details: [t('save.unknown_error_details')]
+            });
+            didResultInErrors();
         }
     }
 
@@ -337,6 +347,8 @@ export function coreUploader(context) {
 
         function uploadNext(index) {
             var batch = batches[index];
+            dispatch.call('progressChanged', this, index + 1, batches.length, 'save.upload_progress');
+
             var tags = Object.assign({}, changeset.tags);
             if (tags.comment) {
                 tags.comment = `${tags.comment}（第 ${index + 1}/${batches.length} 批）`;
@@ -357,7 +369,6 @@ export function coreUploader(context) {
                 }
 
                 _uploadedChangesets.push(uploadedChangeset);
-                dispatch.call('progressChanged', this, index + 1, batches.length);
                 if (index + 1 < batches.length) {
                     uploadNext(index + 1);
                 } else {
@@ -367,6 +378,26 @@ export function coreUploader(context) {
         }
 
         uploadNext(0);
+    }
+
+
+    function shouldSplitChanges(changes) {
+        if (_saveOptions.enabled) return true;
+
+        var changeCount = changes.created.length + changes.modified.length + changes.deleted.length;
+        return changeCount > AUTO_SPLIT_MAX_CHANGES;
+    }
+
+
+    function splitOptions(changes) {
+        if (_saveOptions.enabled) return _saveOptions;
+
+        var changeCount = changes.created.length + changes.modified.length + changes.deleted.length;
+        return {
+            enabled: true,
+            maxChanges: Math.min(AUTO_SPLIT_MAX_CHANGES, Math.ceil(changeCount / 2)),
+            strategy: 'auto'
+        };
     }
 
 

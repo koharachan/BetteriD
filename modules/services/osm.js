@@ -58,6 +58,7 @@ var _off;
 // set a default but also load this from the API status
 var _maxWayNodes = 2000;
 let _maxChangesetElements = 10_000;
+const GZIP_UPLOAD_TIMEOUT = 15000;
 
 
 function authLoading() {
@@ -123,6 +124,18 @@ function encodeNoteRtree(note) {
         maxY: note.loc[1],
         data: note
     };
+}
+
+function gzipWithTimeout(xml) {
+    const gzip = utilGzip(xml);
+    if (!gzip) return undefined;
+
+    return Promise.race([
+        gzip,
+        new Promise(resolve => {
+            window.setTimeout(() => resolve(undefined), GZIP_UPLOAD_TIMEOUT);
+        })
+    ]);
 }
 
 
@@ -617,9 +630,19 @@ export default {
             _changeset.open = changesetID;
             changeset = changeset.update({ id: changesetID });
 
-            // Upload the changeset..
-            const xml = JXON.stringify(changeset.osmChangeJXON(changes));
-            const compressed = await utilGzip(xml);
+            let xml;
+            let compressed;
+            try {
+                // Upload the changeset..
+                xml = JXON.stringify(changeset.osmChangeJXON(changes));
+                compressed = await gzipWithTimeout(xml);
+            } catch (e) {
+                _changeset.open = null;
+                return callback({
+                    message: e?.message || 'Unable to prepare changeset upload',
+                    status: -3
+                }, changeset);
+            }
 
             const headers = { 'Content-Type': 'text/xml' };
             if (compressed) headers['Content-Encoding'] = 'gzip';

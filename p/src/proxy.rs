@@ -2463,6 +2463,15 @@ mod tests {
     }
 
     #[test]
+    fn test_root_login_modal_script_shows_oauth_status() {
+        assert!(LOGIN_MODAL_JS.contains("oauth2_access_token"));
+        assert!(LOGIN_MODAL_JS.contains("/api/0.6/user/details.json"));
+        assert!(LOGIN_MODAL_JS.contains("Authorization: `Bearer ${token}`"));
+        assert!(LOGIN_MODAL_JS.contains("betterid-login-status"));
+        assert!(LOGIN_MODAL_JS.contains("clearOauthToken();"));
+    }
+
+    #[test]
     fn test_pages_use_osm_asia_branding() {
         let proxy = test_proxy();
         let source = br#"<html><body><a href="/#map=17/24/113" class="icon-link gap-1 me-auto text-body-emphasis text-decoration-none geolink"><img alt="OpenStreetMap logo" src="/assets/osm_logo-digest.svg" width="30" height="30">OpenStreetMap</a></body></html>"#;

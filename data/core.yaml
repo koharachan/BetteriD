@@ -1177,6 +1177,7 @@ en:
     unknown_error_details: "Please ensure you are connected to the internet."
     uploading: Uploading changes to OpenStreetMap...
     conflict_progress: "Checking for conflicts: {num} of {total}"
+    upload_progress: "Uploading batch {num} of {total}"
     unsaved_changes: You have unsaved changes
     split_completed_ids: "Completed changesets: {ids}"
     split_failed: Split upload stopped after {completed} of {total} batches
