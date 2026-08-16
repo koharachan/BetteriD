@@ -141,6 +141,7 @@ cargo run
 
 ## 文档
 
+- [BetteriD Web Editor MCP](mcp/README.md)
 - [代理部署与 API](p/README.md)
 - [0.0.2 功能设计与实现说明](docs/superpowers/specs/2026-07-14-id-cn-ai-features-design.md)
 - [贡献指南](CONTRIBUTING.md)
