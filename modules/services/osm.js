@@ -1267,7 +1267,7 @@ export default {
             locale: localizer.localeCode(),
         });
 
-        oauth.authenticate(done, { switchUser: true, ...options });
+        oauth.authenticate(done, options);
     },
 
 

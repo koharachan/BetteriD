@@ -178,11 +178,15 @@ impl OsmProxy {
             ));
         }
         if path == "/betterid/tile-sw.js" {
-            return Ok(Self::serve_embedded_asset(
+            let mut response = Self::serve_embedded_asset(
                 &method,
                 "application/javascript; charset=utf-8",
                 TILE_SW_JS,
-            ));
+            );
+            response
+                .headers_mut()
+                .insert("service-worker-allowed", HeaderValue::from_static("/"));
+            return Ok(response);
         }
         if path == "/id/oauth/start" {
             return Ok(self.serve_oauth_start(&method));
