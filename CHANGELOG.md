@@ -32,6 +32,16 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# BetteriD 0.1.6
+##### 2026-Aug-17
+
+#### :white_check_mark: Validation
+* Fix the `crossing_ways` validator silently missing crossings (e.g. roads
+  crossing roads, roads crossing rivers) beyond a way's first two nodes. A
+  recent ES6 class migration made each segment's bounding box resolve to the
+  way's first segment, so the segment index misplaced every later segment and
+  intersection checks returned nothing. (upstream iD #12731 / #12734)
+
 # BetteriD 0.1.5
 ##### 2026-Jul-27
 

@@ -19,7 +19,7 @@ export interface Segment {
     wayId: WayId;
     index: number;
     nodes: NodeId[];
-    extent(graph: coreGraph): geoExtent | undefined;
+    extent(this: Segment, graph: coreGraph): geoExtent | undefined;
 }
 
 export class osmWay extends OsmAbstractEntity {
@@ -263,7 +263,13 @@ export class osmWay extends OsmAbstractEntity {
 
     // returns an array of objects representing the segments between the nodes in this way
     segments(graph: coreGraph) {
-        const segmentExtent = (graph: coreGraph) => {
+        // Note: this must be a regular function (not an arrow function) so that
+        // `this` binds to the individual Segment at call time, not the osmWay.
+        // An arrow function here broke the crossing_ways validator - every
+        // segment got the bbox of the way's first two nodes, so the segment
+        // RTree indexed them all at the same place and crossings elsewhere on
+        // the way were never detected. (upstream iD #12731 / #12734)
+        function segmentExtent(this: Segment, graph: coreGraph) {
             var n1 = graph.hasEntity<osmNode>(this.nodes[0]);
             var n2 = graph.hasEntity<osmNode>(this.nodes[1]);
             return n1 && n2 && geoExtent([
@@ -276,7 +282,7 @@ export class osmWay extends OsmAbstractEntity {
                     Math.max(n1.loc[1], n2.loc[1])
                 ]
             ]);
-        };
+        }
 
         return graph.transient(this, 'segments', () => {
             var segments: Segment[] = [];
