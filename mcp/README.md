@@ -79,6 +79,8 @@ OSM_WEB_URL=http://127.0.0.1:9178 node dist/index.js
 | `add_bus_stop` | 添加 `highway=bus_stop` 标准化公交站 |
 | `create_bus_route_relation` | 创建 `type=route, route=bus` 关系 |
 | `add_relation_member` | 向线路关系追加道路/站点成员 |
+| `order_route_members` | 用几何引擎把线路道路成员按连接顺序排好（自动反转方向） |
+| `trace_route` | 只读追踪线路：有序道路序列、长度、站点、断开段 |
 
 描述转地图与规范化：
 
@@ -86,6 +88,39 @@ OSM_WEB_URL=http://127.0.0.1:9178 node dist/index.js
 | --- | --- |
 | `geocode` | 站名/街道名 → 经纬度候选 |
 | `suggest_tags` | 调用网页版 AI 标签助手，返回带来源的规范标签 |
+| `translate_name` | 调用网页版 AI 翻译，把名称翻成 zh / zh-Hant / en 等 `name:*` 标签 |
+
+数据质量（编辑器内置 20+ 条校验规则）：
+
+| 工具 | 用途 |
+| --- | --- |
+| `get_validation_issues` | 运行校验（缺失标签、道路相交、断头路、不方正等），返回问题清单 |
+| `auto_fix_issues` | 批量应用编辑器判定为"自动安全"的修复（无效 URL、过期标签升级） |
+| `ignore_validation_issue` | 忽略指定校验问题 |
+
+几何图操作（图手术）：
+
+| 工具 | 用途 |
+| --- | --- |
+| `split_way` | 在节点处拆分道路 |
+| `join_ways` | 合并首尾相连的道路 |
+| `merge_nodes` | 合并节点（清理重复节点） |
+| `straighten_way` | 拉直道路 |
+| `orthogonalize_way` | 修正闭合面（建筑）为直角 |
+| `circularize_way` | 环岛/转盘圆形化 |
+| `reverse_way` | 反转道路方向（修正单行道） |
+| `disconnect_way` | 在节点处断开道路连接 |
+| `extract_entity` | 提取要素（地址与建筑/POI 拆分） |
+| `delete_entities` | 删除要素（谨慎） |
+
+变更审阅与安全：
+
+| 工具 | 用途 |
+| --- | --- |
+| `review_changes` | 逐要素列出未保存修改的前后对比（标签差异 + 几何变化） |
+| `summarize_changes` | 调用网页版 AI 生成 ≤80 字的中文 changeset 注释 |
+| `snapshot` | 给编辑器历史打快照标记 |
+| `restore_snapshot` | 回滚编辑器历史到快照（撤销之后所有修改） |
 
 ## 公交线路示例工作流
 
@@ -98,9 +133,23 @@ OSM_WEB_URL=http://127.0.0.1:9178 node dist/index.js
 6. create_bus_route_relation(
      name="3路", ref="3路", from="东站", to="西站",
      way_ids=[...], stop_ids=[...])
-7. screenshot()  # AI 检查
-8. get_changes()
-9. save_changes(comment="添加 3 路公交线路", source="survey")
+7. order_route_members(relation_id=...)  # 成员按几何顺序排好
+8. trace_route(relation_id=...)          # 核对线路完整性
+9. screenshot()  # AI 检查
+10. review_changes()  # 核对修改
+11. save_changes(comment="添加 3 路公交线路", source="survey")
+```
+
+数据质量检查示例：
+
+```text
+1. get_validation_issues(what="edited", where="all")
+   # 列出本次编辑引入的校验问题
+2. auto_fix_issues(what="edited")
+   # 自动修复安全的项
+3. get_validation_issues(what="edited")
+   # 复查剩余问题，对需人工判断的逐个处理
+4. review_changes() → summarize_changes() → save_changes(...)
 ```
 
 口语描述（例如“从东河路出发，路过两个站到西站”）由 AI 客户端先解析成上述结构化
@@ -109,7 +158,7 @@ OSM_WEB_URL=http://127.0.0.1:9178 node dist/index.js
 
 ## MCP 客户端配置示例
 
-Claude Desktop / 其他 stdio 客户端：
+Claude Desktop / 其他 stdio 客户端（claude_desktop_config.json）：
 
 ```json
 {
@@ -124,6 +173,53 @@ Claude Desktop / 其他 stdio 客户端：
   }
 }
 ```
+
+Cursor（`.cursor/mcp.json`）：
+
+```json
+{
+  "mcpServers": {
+    "betterid-web-editor": {
+      "command": "node",
+      "args": ["/path/to/osm/mcp/dist/index.js"],
+      "env": {
+        "OSM_WEB_URL": "http://127.0.0.1:9178"
+      }
+    }
+  }
+}
+```
+
+VS Code（`.vscode/mcp.json`，需要 MCP 扩展）：
+
+```json
+{
+  "servers": {
+    "betterid-web-editor": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/osm/mcp/dist/index.js"],
+      "env": {
+        "OSM_WEB_URL": "http://127.0.0.1:9178"
+      }
+    }
+  }
+}
+```
+
+### 使用要点
+
+1. **先构建**：`cd mcp && pnpm install && pnpm browsers:install && pnpm build`，
+   客户端拉起的 `dist/index.js` 必须存在。
+2. **编辑器要能访问**：`OSM_WEB_URL` 指向本地或线上 BetteriD（本地开发
+   `http://127.0.0.1:9178`，线上 `https://map.osm.asia`）。本地编辑器需先
+   `pnpm build` 并用 `node scripts/server.js` 或 Rust 代理启动。
+3. **首次登录**：让 AI 调用 `login` 工具，浏览器会弹出 OSM OAuth 窗口，人工
+   完成登录；登录态保存在 `mcp/.browser-profile/`，之后重启 MCP 无需重复登录。
+4. **无头模式**：服务器环境可设 `OSM_MCP_HEADLESS=1`；本地想要看到编辑器窗口
+   就保持默认（有头）。
+5. **常用开场**：`open_editor(lat, lon, zoom)` 定位，`screenshot` 看画面，
+   然后按上面的工作流绘图。
 
 ## 验证
 
