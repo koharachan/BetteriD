@@ -13,6 +13,17 @@ export interface SuggestTagsInput {
   text_provider_order?: string[];
 }
 
+export interface TranslateInput {
+  text: string;
+  target_langs: string[];
+  provider_order?: string[];
+}
+
+export interface SummarizeInput {
+  summary: unknown;
+  provider_order?: string[];
+}
+
 export interface BetterIdApiOptions {
   webBaseUrl?: string;
   nominatimUrl?: string;
@@ -36,6 +47,33 @@ export class BetterIdApi {
 
   async suggestTags(input: SuggestTagsInput): Promise<unknown> {
     return this.post('/api/osm-ai/tag-suggestions', input);
+  }
+
+  /** Translate text into multiple BCP 47 target languages via the BetteriD AI backend. */
+  async translate(input: TranslateInput): Promise<unknown> {
+    const { text, target_langs, provider_order } = input;
+    if (!text.trim()) throw new Error('翻译文本不能为空');
+    if (!target_langs.length || target_langs.length > 8) {
+      throw new Error('target_langs 需要 1-8 个 BCP 47 语言代码');
+    }
+    for (const lang of target_langs) {
+      if (!/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/.test(lang.trim())) {
+        throw new Error(`无效的语言代码：${lang}`);
+      }
+    }
+    return this.post('/api/osm-ai/translate', {
+      text,
+      target_langs: target_langs.map((lang) => lang.trim()),
+      ...(provider_order?.length ? { provider_order } : {})
+    });
+  }
+
+  /** Ask the BetteriD AI backend to summarize a changeset diff into a comment. */
+  async summarize(input: SummarizeInput): Promise<unknown> {
+    return this.post('/api/osm-ai/summarize', {
+      summary: input.summary,
+      ...(input.provider_order?.length ? { provider_order: input.provider_order } : {})
+    });
   }
 
   async geocode(query: string, limit: number): Promise<unknown> {

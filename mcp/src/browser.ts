@@ -47,6 +47,48 @@ export interface ChangeSummary {
   deleted: string[];
 }
 
+/** A single validation issue reported by the editor's built-in validators. */
+export interface ValidationIssue {
+  id: string;
+  type: string;
+  subtype?: string;
+  severity: 'error' | 'warning' | 'suggestion';
+  message: string;
+  entityIds: string[];
+  loc?: [number, number];
+  fixes: { title: string; autoSafe: boolean; icon?: string; entityIds: string[] }[];
+}
+
+export interface AutofixResult {
+  count: number;
+  fixed: string[];
+  annotation: string;
+}
+
+/** Before/after diff of a single changed entity. */
+export interface EntityDiff {
+  id: string;
+  type: 'node' | 'way' | 'relation';
+  action: 'created' | 'modified' | 'deleted';
+  geometry_changed: boolean;
+  tags_before: Tags;
+  tags_after: Tags;
+  tag_changes: { added: [string, string][]; changed: [string, string, string][]; removed: string[] };
+  name_before?: string;
+  name_after?: string;
+}
+
+export interface RouteTrace {
+  relation_id: string;
+  sequences: {
+    ways: string[];
+    nodes: string[];
+    length_m: number;
+  }[];
+  stops: { id: string; role?: string; loc?: [number, number] }[];
+  disconnected: boolean;
+}
+
 export interface BrowserEditorOptions {
   baseUrl: string;
   editorPath: string;
@@ -466,6 +508,347 @@ export class BetterIdBrowser {
     });
   }
 
+  /** Split the way(s) at the given node IDs. */
+  async splitWay(nodeIds: string[], wayIds?: string[]): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      ({ nodeIds, wayIds }) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        const action = iD.actionSplit(nodeIds);
+        if (wayIds && wayIds.length) action.limitWays(wayIds);
+        context.perform(action, '拆分道路');
+        const created = context.history().difference().extantIDs();
+        context.enter(iD.modeSelect(context, created));
+      },
+      { nodeIds, wayIds }
+    );
+    return this.getState();
+  }
+
+  /** Join ways that share endpoints into a single way. */
+  async joinWays(wayIds: string[]): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (wayIds) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(iD.actionJoin(wayIds), '合并道路');
+        context.enter(iD.modeSelect(context, [wayIds[0]]));
+      },
+      wayIds
+    );
+    return this.getState();
+  }
+
+  /** Merge multiple nodes into one (duplicate node cleanup). */
+  async mergeNodes(nodeIds: string[]): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (nodeIds) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(iD.actionMergeNodes(nodeIds), '合并节点');
+        context.enter(iD.modeSelect(context, [nodeIds[0]]));
+      },
+      nodeIds
+    );
+    return this.getState();
+  }
+
+  /** Straighten a way (or selected nodes) onto a best-fit line. */
+  async straightenWay(wayIds: string[]): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (wayIds) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(
+          iD.actionStraightenWay(wayIds, context.projection),
+          '拉直道路'
+        );
+        context.enter(iD.modeSelect(context, wayIds));
+      },
+      wayIds
+    );
+    return this.getState();
+  }
+
+  /** Square up the corners of an area (e.g. building footprints). */
+  async orthogonalizeWay(wayId: string): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (wayId) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(
+          iD.actionOrthogonalize(wayId, context.projection),
+          '正交化道路'
+        );
+        context.enter(iD.modeSelect(context, [wayId]));
+      },
+      wayId
+    );
+    return this.getState();
+  }
+
+  /** Make a closed way circular (e.g. roundabouts, traffic circles). */
+  async circularizeWay(wayId: string): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (wayId) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(
+          iD.actionCircularize(wayId, context.projection),
+          '圆形化道路'
+        );
+        context.enter(iD.modeSelect(context, [wayId]));
+      },
+      wayId
+    );
+    return this.getState();
+  }
+
+  /** Reverse the direction of a way, fixing direction-dependent tags. */
+  async reverseWay(wayId: string): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (wayId) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(iD.actionReverse(wayId), '反转道路方向');
+        context.enter(iD.modeSelect(context, [wayId]));
+      },
+      wayId
+    );
+    return this.getState();
+  }
+
+  /** Disconnect all ways sharing the given node (unglue). */
+  async disconnectNode(nodeId: string): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (nodeId) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(iD.actionDisconnect(nodeId), '断开道路连接');
+        const created = context.history().difference().extantIDs();
+        context.enter(iD.modeSelect(context, created));
+      },
+      nodeId
+    );
+    return this.getState();
+  }
+
+  /** Extract an entity (e.g. building from a combined address feature). */
+  async extractEntity(entityId: string): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (entityId) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(iD.actionExtract(entityId, context.projection), '提取要素');
+        const created = context.history().difference().extantIDs();
+        context.enter(iD.modeSelect(context, created));
+      },
+      entityId
+    );
+    return this.getState();
+  }
+
+  /** Delete the given entities (and any child nodes that become orphaned). */
+  async deleteEntities(entityIds: string[]): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate(
+      (entityIds) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        const iD = (window as unknown as { iD?: IDLike }).iD;
+        if (!context || !iD) throw new Error('Editor is not ready');
+        context.perform(iD.actionDeleteMultiple(entityIds), '删除要素');
+        context.enter(iD.modeSelect(context, []));
+      },
+      entityIds
+    );
+    return this.getState();
+  }
+
+  /**
+   * Run the editor's built-in validators (20+ rules) and return matching issues.
+   * `what`: 'all' (base + edited) or 'edited' (only user-modified entities).
+   * `where`: 'all' or 'visible' (current map viewport).
+   */
+  async getValidationIssues(
+    what: 'all' | 'edited' = 'edited',
+    where: 'all' | 'visible' = 'all'
+  ): Promise<ValidationIssue[]> {
+    const page = await this.requirePage();
+    await page.evaluate(() => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      if (!context) throw new Error('Editor is not ready');
+      return context.validator().validate();
+    });
+    return page.evaluate(
+      ({ what, where }) => {
+        const context = (window as unknown as { context?: EditorLike }).context;
+        if (!context) throw new Error('Editor is not ready');
+        return context
+          .validator()
+          .getIssues({ what, where })
+          .map((issue) => {
+            const render = (fn: unknown): string => {
+              if (typeof fn !== 'function') return String(fn ?? '');
+              const texts: string[] = [];
+              const el = {
+                append: () => el,
+                attr: () => el,
+                text: (value: unknown) => {
+                  if (typeof value === 'string') texts.push(value);
+                  return el;
+                },
+                call: (sub: (el: unknown) => void) => {
+                  sub(el);
+                  return el;
+                }
+              };
+              try {
+                (fn as (el: unknown) => void)(el);
+              } catch {
+                /* ignore rendering errors */
+              }
+              return texts.join(' ');
+            };
+            const fixes = (issue.fixes ? issue.fixes(context) : [])
+              .map((fix) => ({
+                title: render(fix.title),
+                autoSafe: fix.autoSafe === true,
+                icon: fix.icon,
+                entityIds: fix.entityIds ?? []
+              }));
+            return {
+              id: issue.id,
+              type: issue.type,
+              subtype: issue.subtype,
+              severity: issue.severity,
+              message: render(issue.message(context)),
+              entityIds: issue.entityIds ?? [],
+              loc: issue.loc,
+              fixes
+            };
+          });
+      },
+      { what, where }
+    );
+  }
+
+  /**
+   * Apply the editor's auto-safe validation fixes in a single batch action.
+   * Ports the same decision logic the editor UI uses (see validation_autofix.js):
+   * only issues with exactly one actionable fix marked `autoSafe` are applied.
+   */
+  async autoFixIssues(what: 'all' | 'edited' = 'edited'): Promise<AutofixResult> {
+    const page = await this.requirePage();
+    await page.evaluate(() => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      if (!context) throw new Error('Editor is not ready');
+      return context.validator().validate();
+    });
+    return page.evaluate((what) => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      if (!context) throw new Error('Editor is not ready');
+      const issues = context.validator().getIssues({ what, where: 'all' });
+
+      const actions: ((graph: unknown) => unknown)[] = [];
+      const fixed: string[] = [];
+      let stagedGraph = context.graph();
+
+      for (const issue of issues) {
+        const decisionFixes = (issue.fixes ? issue.fixes(context) : []).filter(
+          (fix) =>
+            !fix.disabledReason &&
+            typeof fix.onClick === 'function' &&
+            fix.icon !== 'iD-icon-close'
+        );
+        if (decisionFixes.length !== 1 || !decisionFixes[0].autoSafe) continue;
+
+        const captured: ((graph: unknown) => unknown)[] = [];
+        const fixGraph = stagedGraph;
+        const captureContext = new Proxy(context, {
+          get(target, property) {
+            if (property === 'perform' || property === 'replace') {
+              return (...args: unknown[]) => {
+                const values = args.slice();
+                if (values.length && typeof values[values.length - 1] !== 'function') values.pop();
+                if (!values.length || values.some((v) => typeof v !== 'function')) {
+                  throw new Error('Auto-safe fixes must use graph actions');
+                }
+                captured.push(...(values as ((graph: unknown) => unknown)[]));
+              };
+            }
+            if (property === 'graph') return () => fixGraph;
+            if (property === 'entity') return (id: string) => fixGraph.entity(id);
+            if (property === 'hasEntity') return (id: string) => fixGraph.hasEntity(id);
+            const value = Reflect.get(target, property);
+            return typeof value === 'function' ? value.bind(target) : value;
+          }
+        });
+
+        try {
+          const onClick = decisionFixes[0].onClick;
+          if (!onClick) continue;
+          onClick(captureContext);
+        } catch {
+          continue;
+        }
+        if (!captured.length) continue;
+
+        let preview: unknown = fixGraph;
+        try {
+          preview = captured.reduce(
+            (graph: unknown, action) => action(graph),
+            fixGraph as unknown
+          );
+        } catch {
+          continue;
+        }
+        if (context.editPolicy?.(fixGraph, preview)) continue;
+
+        actions.push(...captured);
+        stagedGraph = preview as typeof stagedGraph;
+        fixed.push(issue.type + (issue.subtype ? '/' + issue.subtype : ''));
+      }
+
+      if (actions.length) {
+        context.perform(
+          (graph: unknown) => actions.reduce((g, action) => action(g), graph),
+          `自动修复 ${fixed.length} 个校验问题`
+        );
+        context.validator().validate();
+      }
+      return { count: fixed.length, fixed, annotation: `自动修复 ${fixed.length} 个校验问题` };
+    }, what);
+  }
+
+  /** Mark a validation issue as ignored (kept out of issue lists). */
+  async ignoreValidationIssue(issueId: string): Promise<{ ignored: string }> {
+    const page = await this.requirePage();
+    await page.evaluate((issueId) => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      if (!context) throw new Error('Editor is not ready');
+      context.validator().ignoreIssue(issueId);
+    }, issueId);
+    return { ignored: issueId };
+  }
+
   async login(): Promise<AccountState & { waiting?: boolean }> {
     const page = await this.requirePage();
     const current = await this.getAccount();
@@ -640,16 +1023,29 @@ interface EditorLike {
   history(): {
     changesCount(): number;
     changes(): {
-      created: { id: string }[];
-      modified: { id: string }[];
-      deleted: { id: string }[];
+      created: EntityLike[];
+      modified: EntityLike[];
+      deleted: EntityLike[];
     };
     undoAnnotation(): unknown;
     redoAnnotation(): unknown;
     intersects(extent: unknown): string[];
+    base(): {
+      entity(id: string): EntityLike | undefined;
+    };
+    difference(): {
+      extantIDs(): string[];
+    };
+    checkpoint(key: string): unknown;
+    reset(key?: string): unknown;
   };
   graph(): {
     entity(id: string): EntityLike;
+    hasEntity(id: string): EntityLike | undefined;
+    geometry(id: string): string;
+    replace(entity: EntityLike): unknown;
+    childNodes(entity: EntityLike): EntityLike[];
+    parentWays(entity: EntityLike): EntityLike[];
   };
   connection(): {
     authenticated(): boolean;
@@ -661,6 +1057,33 @@ interface EditorLike {
   zoomToEntity(id: string, zoomTo: boolean): void;
   undo(): void;
   redo(): void;
+  projection: (loc: [number, number]) => [number, number];
+  editPolicy?: (before: unknown, after: unknown) => unknown;
+  validator(): {
+    validate(): Promise<unknown>;
+    getIssues(options: { what: string; where: string }): ValidationIssueLike[];
+    ignoreIssue(id: string): void;
+  };
+}
+
+interface ValidationIssueLike {
+  id: string;
+  type: string;
+  subtype?: string;
+  severity: 'error' | 'warning' | 'suggestion';
+  message(context: EditorLike): unknown;
+  entityIds?: string[];
+  loc?: [number, number];
+  fixes?(context: EditorLike): ValidationFixLike[];
+}
+
+interface ValidationFixLike {
+  title: unknown;
+  icon?: string;
+  autoSafe?: boolean;
+  disabledReason?: unknown;
+  entityIds?: string[];
+  onClick?(context: unknown): void;
 }
 
 interface EntityLike {
@@ -671,6 +1094,8 @@ interface EntityLike {
   nodes?: string[];
   members?: { type: 'node' | 'way' | 'relation'; id: string; role?: string }[];
   extent(graph: unknown): { center(): [number, number] };
+  update(attrs: Partial<EntityLike>): EntityLike;
+  geometry(graph: unknown): string;
 }
 
 interface IDLike {
@@ -680,6 +1105,21 @@ interface IDLike {
   actionAddEntity: (entity: EntityLike) => (graph: unknown) => unknown;
   actionChangeTags: (id: string, tags: Tags) => unknown;
   actionAddMember: (relationId: string, member: unknown, index?: number) => unknown;
+  actionSplit: (nodeIds: string[], wayIds?: string[]) => {
+    limitWays(wayIds?: string[]): unknown;
+    (graph: unknown): unknown;
+  };
+  actionJoin: (wayIds: string[]) => (graph: unknown) => unknown;
+  actionMergeNodes: (nodeIds: string[], loc?: [number, number]) => (graph: unknown) => unknown;
+  actionStraightenWay: (ids: string[], projection: unknown) => (graph: unknown) => unknown;
+  actionOrthogonalize: (wayId: string, projection: unknown) => (graph: unknown) => unknown;
+  actionCircularize: (wayId: string, projection: unknown) => (graph: unknown) => unknown;
+  actionReverse: (wayId: string) => (graph: unknown) => unknown;
+  actionDisconnect: (nodeId: string) => (graph: unknown) => unknown;
+  actionExtract: (entityId: string, projection: unknown) => (graph: unknown) => unknown;
+  actionDeleteMultiple: (entityIds: string[]) => (graph: unknown) => unknown;
+  osmJoinWays: (members: unknown[], graph: unknown) => unknown;
+  geoSphericalDistance: (a: [number, number], b: [number, number]) => number;
   modeSelect: (context: unknown, ids: string[]) => unknown;
   geoExtent: new (
     min: [number, number],
