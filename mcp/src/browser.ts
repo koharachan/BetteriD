@@ -683,6 +683,242 @@ export class BetterIdBrowser {
   }
 
   /**
+   * Order a route relation's way members into connected sequences using the
+   * editor's `osmJoinWays` geometry engine, then rewrite the relation members
+   * in that order. Returns the ordered trace for the caller to verify.
+   */
+  async orderRouteMembers(relationId: string): Promise<RouteTrace & { ordered_ids: string[] }> {
+    const page = await this.requirePage();
+    const result = await page.evaluate((relationId) => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      const iD = (window as unknown as { iD?: IDLike }).iD;
+      if (!context || !iD) throw new Error('Editor is not ready');
+      const graph = context.graph();
+      const relation = graph.entity(relationId);
+      if (!relation || relation.type !== 'relation') {
+        throw new Error(`不是有效的关系：${relationId}`);
+      }
+
+      const wayMembers = relation.members?.filter((m) => m.type === 'way') ?? [];
+      const stopMembers = relation.members?.filter((m) => m.type === 'node') ?? [];
+
+      const sequences = iD.osmJoinWays(wayMembers, graph) as unknown as {
+        length: number;
+        nodes: string[];
+        actions: ((graph: unknown) => unknown)[];
+        [index: number]: { type: 'way'; id: string; role?: string };
+      };
+
+      const orderedMembers: { type: 'way'; id: string; role?: string }[] = [];
+      const seqInfo: { ways: string[]; nodes: string[]; length_m: number }[] = [];
+      for (let i = 0; i < sequences.length; i++) {
+        const seq = sequences[i] as unknown as { type: 'way'; id: string; role?: string }[] & {
+          nodes: string[];
+        };
+        const seqMembers = Array.from(seq);
+        const ways = seqMembers.map((m) => m.id);
+        const nodes = seq.nodes ?? [];
+        let lengthM = 0;
+        for (let n = 1; n < nodes.length; n++) {
+          const a = graph.entity(nodes[n - 1])?.loc;
+          const b = graph.entity(nodes[n])?.loc;
+          if (a && b) lengthM += iD.geoSphericalDistance(a, b);
+        }
+        orderedMembers.push(...(seqMembers as { type: 'way'; id: string; role?: string }[]));
+        seqInfo.push({ ways, nodes, length_m: Math.round(lengthM) });
+      }
+
+      const reversalActions = sequences.actions ?? [];
+      const newMembers = [...orderedMembers, ...stopMembers];
+      context.perform(
+        (graph: unknown) => {
+          let g = graph as {
+            replace(e: EntityLike): unknown;
+            entity(id: string): EntityLike;
+          };
+          for (const action of reversalActions) g = action(g) as typeof g;
+          return g.replace(g.entity(relationId).update({ members: newMembers }));
+        },
+        '整理公交线路成员顺序'
+      );
+      context.enter(iD.modeSelect(context, [relationId]));
+
+      const stops = stopMembers.map((m) => ({
+        id: m.id,
+        role: m.role,
+        loc: graph.entity(m.id)?.loc
+      }));
+
+      return {
+        relation_id: relationId,
+        sequences: seqInfo,
+        stops,
+        disconnected: seqInfo.length > 1,
+        ordered_ids: orderedMembers.map((m) => m.id)
+      };
+    }, relationId);
+    await this.getState();
+    return result;
+  }
+
+  /** Trace a route relation into ordered way/nodes sequences and stops (read-only). */
+  async traceRoute(relationId: string): Promise<RouteTrace> {
+    const page = await this.requirePage();
+    return page.evaluate((relationId) => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      const iD = (window as unknown as { iD?: IDLike }).iD;
+      if (!context || !iD) throw new Error('Editor is not ready');
+      const graph = context.graph();
+      const relation = graph.entity(relationId);
+      if (!relation || relation.type !== 'relation') {
+        throw new Error(`不是有效的关系：${relationId}`);
+      }
+
+      const wayMembers = relation.members?.filter((m) => m.type === 'way') ?? [];
+      const stopMembers = relation.members?.filter((m) => m.type === 'node') ?? [];
+      const sequences = iD.osmJoinWays(wayMembers, graph) as unknown as {
+        length: number;
+        nodes: string[];
+        [index: number]: { type: 'way'; id: string };
+      };
+
+      const seqInfo: { ways: string[]; nodes: string[]; length_m: number }[] = [];
+      for (let i = 0; i < sequences.length; i++) {
+        const seq = sequences[i] as unknown as { id: string }[] & { nodes: string[] };
+        const ways = Array.from(seq).map((m) => m.id);
+        const nodes = seq.nodes ?? [];
+        let lengthM = 0;
+        for (let n = 1; n < nodes.length; n++) {
+          const a = graph.entity(nodes[n - 1])?.loc;
+          const b = graph.entity(nodes[n])?.loc;
+          if (a && b) lengthM += iD.geoSphericalDistance(a, b);
+        }
+        seqInfo.push({ ways, nodes, length_m: Math.round(lengthM) });
+      }
+
+      return {
+        relation_id: relationId,
+        sequences: seqInfo,
+        stops: stopMembers.map((m) => ({
+          id: m.id,
+          role: m.role,
+          loc: graph.entity(m.id)?.loc
+        })),
+        disconnected: seqInfo.length > 1
+      };
+    }, relationId);
+  }
+
+  /** Review all unsaved changes as before/after entity diffs. */
+  async reviewChanges(): Promise<{ count: number; diffs: EntityDiff[] }> {
+    const page = await this.requirePage();
+    return page.evaluate(() => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      if (!context) throw new Error('Editor is not ready');
+      const base = context.history().base();
+      const graph = context.graph();
+      const changes = context.history().changes();
+      const diffs: EntityDiff[] = [];
+
+      const tagsOf = (entity: EntityLike | undefined): Tags => entity?.tags ?? {};
+
+      for (const entity of changes.created) {
+        const after = tagsOf(entity);
+        diffs.push({
+          id: entity.id,
+          type: entity.type,
+          action: 'created',
+          geometry_changed: true,
+          tags_before: {},
+          tags_after: after,
+          tag_changes: {
+            added: Object.entries(after),
+            changed: [],
+            removed: []
+          },
+          name_after: after.name
+        });
+      }
+      for (const entity of changes.modified) {
+        const beforeEntity = base.entity(entity.id);
+        const before = tagsOf(beforeEntity);
+        const after = tagsOf(entity);
+        const added: [string, string][] = [];
+        const changed: [string, string, string][] = [];
+        const removed: string[] = [];
+        for (const [key, value] of Object.entries(after)) {
+          if (!(key in before)) added.push([key, value]);
+          else if (before[key] !== value) changed.push([key, before[key], value]);
+        }
+        for (const key of Object.keys(before)) {
+          if (!(key in after)) removed.push(key);
+        }
+        diffs.push({
+          id: entity.id,
+          type: entity.type,
+          action: 'modified',
+          geometry_changed:
+            (entity.type === 'node' && !sameLoc(beforeEntity?.loc, entity.loc)) ||
+            (entity.type === 'way' && !sameArray(beforeEntity?.nodes, entity.nodes)) ||
+            (entity.type === 'relation' &&
+              !sameArray(
+                (beforeEntity?.members ?? []) as unknown as string[],
+                (entity.members ?? []) as unknown as string[]
+              )),
+          tags_before: before,
+          tags_after: after,
+          tag_changes: { added, changed, removed },
+          name_before: before.name,
+          name_after: after.name
+        });
+      }
+      for (const entity of changes.deleted) {
+        const before = tagsOf(entity);
+        diffs.push({
+          id: entity.id,
+          type: entity.type,
+          action: 'deleted',
+          geometry_changed: true,
+          tags_before: before,
+          tags_after: {},
+          tag_changes: { added: [], changed: [], removed: Object.keys(before) },
+          name_before: before.name
+        });
+      }
+      return { count: diffs.length, diffs };
+
+      function sameLoc(a?: [number, number], b?: [number, number]): boolean {
+        return Boolean(a && b && a[0] === b[0] && a[1] === b[1]);
+      }
+      function sameArray(a?: unknown[], b?: unknown[]): boolean {
+        return JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
+      }
+    });
+  }
+
+  /** Checkpoint the editor history so edits can be rolled back with `restoreSnapshot`. */
+  async snapshot(key: string): Promise<{ key: string }> {
+    const page = await this.requirePage();
+    await page.evaluate((key) => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      if (!context) throw new Error('Editor is not ready');
+      context.history().checkpoint(key);
+    }, key);
+    return { key };
+  }
+
+  /** Restore the editor history to a previously taken snapshot. */
+  async restoreSnapshot(key: string): Promise<EditorState> {
+    const page = await this.requirePage();
+    await page.evaluate((key) => {
+      const context = (window as unknown as { context?: EditorLike }).context;
+      if (!context) throw new Error('Editor is not ready');
+      context.history().reset(key);
+    }, key);
+    return this.getState();
+  }
+
+  /**
    * Run the editor's built-in validators (20+ rules) and return matching issues.
    * `what`: 'all' (base + edited) or 'edited' (only user-modified entities).
    * `where`: 'all' or 'visible' (current map viewport).
