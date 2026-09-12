@@ -37,6 +37,10 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 ##### 2026-Sep-12
 
 #### :mega: Release Highlights
+* Merge upstream iD 2.42.0 (the upstream `release` branch) while keeping the
+  BetteriD features: the fork's military-area edit policy, BetteriD locale
+  overrides, AI tag assistant, image/lanes fields, address extraction and the
+  safe validation fixes were ported onto upstream's TypeScript files.
 * Import an `osmChange` (`.osc`) or OSM XML (`.osm`) file as pending edits, from
   a toolbar button or by dropping the file onto the map.
 * Privacy (anonymous) editing: upload the pending changeset through the server's

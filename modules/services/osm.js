@@ -9,7 +9,7 @@ import { JXON } from '../util/jxon';
 import { geoExtent, geoRawMercator, geoVecAdd, geoZoomToScale } from '../geo';
 import { osmIdManager, osmNode, osmNote, osmRelation, osmWay } from '../osm';
 import { utilArrayChunk, utilArrayGroupBy, utilArrayUniq, utilObjectOmit, utilRebind, utilTiler, utilQsString } from '../util';
-import { localizer } from '../core/localizer.js';
+import { localizer } from '../core/localizer';
 import { utilGzip } from '../util/util';
 import { ApiError } from '../util/error';
 import { osmApiConnections } from '../../config/id.js';

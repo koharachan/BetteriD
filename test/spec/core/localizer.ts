@@ -105,7 +105,7 @@ describe('iD.coreLocalizer', function() {
             const warnSpy = vi.spyOn(globalThis.console, 'warn').mockImplementation(() => {});
 
             try {
-                const localizer = iD.coreLocalizer();
+                const localizer = new iD.coreLocalizer();
                 localizer.preferredLocaleCodes('en');
                 await localizer.ensureLoaded();
                 expect(localizer.t('icons.download')).toEqual('download');
