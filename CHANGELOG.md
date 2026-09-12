@@ -37,6 +37,13 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 ##### 2026-Sep-12
 
 #### :mega: Release Highlights
+* A Photoshop-style tool palette on the left edge of the map: marquee (rectangle /
+  ellipse), quick selection (brush), magic wand (connected similar features) and
+  a pen tool that flattens bezier curves into OSM way nodes.
+* Optional Adobe shortcut layer: wheel scrolls, Ctrl+wheel scrolls sideways,
+  Alt+wheel zooms at the pointer, hold Space to pan, Alt+click copies the hex
+  colour under the pointer, Ctrl+T transforms, Ctrl+J duplicates,
+  Ctrl+Shift+V pastes in place and Ctrl+Alt+Shift+T repeats the transform.
 * Merge upstream iD 2.42.0 (the upstream `release` branch) while keeping the
   BetteriD features: the fork's military-area edit policy, BetteriD locale
   overrides, AI tag assistant, image/lanes fields, address extraction and the
@@ -53,6 +60,17 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   when WASD navigation is off, and empty DeepSeek replies.
 
 #### :tada: New Features
+* Photoshop-style tool palette (left edge): marquee with rectangle / ellipse
+  shapes and Shift/Alt/Shift+Alt add / subtract / intersect semantics, quick
+  selection brush, magic wand with tolerance and contiguous options, and a pen
+  tool (click for corner points, drag for smooth ones, curves are sampled into
+  way nodes; `Alt`+click breaks a handle, `Backspace` undoes a point).
+* Adobe shortcut layer, toggled from the palette (`betterid.editing.adobe_shortcuts`):
+  `wheel` scrolls vertically, `Ctrl`+`wheel` horizontally, `Alt`+`wheel` zooms at
+  the pointer, holding `Space` is a temporary hand tool, `Alt`+click copies the
+  hex colour under the pointer, `Ctrl+T` free transform, `Ctrl+J` duplicate,
+  `Ctrl+Shift+J` cut-and-duplicate, `Ctrl+Shift+V` paste in place,
+  `Ctrl+Shift+T` / `Ctrl+Alt+Shift+T` repeat the last transform.
 * Import pending edits from an `osmChange` (`.osc`) or OSM XML (`.osm`) file, from
   the top toolbar or by dropping the file onto the map. Imported features appear
   as unsaved changes, each file is one undoable step, and ways/relations whose

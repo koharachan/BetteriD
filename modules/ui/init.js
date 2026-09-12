@@ -8,6 +8,9 @@ import { BETTERID_PREFS, betteridBool } from '../core/betterid_preferences';
 import { t, localizer } from '../core/localizer';
 import { presetManager } from '../presets';
 import { behaviorHash } from '../behavior';
+import { behaviorBetteridSelectTools } from '../behavior/betterid_select_tools';
+import { behaviorBetteridPen } from '../behavior/betterid_pen';
+import { behaviorBetteridAdobe } from '../behavior/betterid_adobe';
 import { modeBrowse } from '../modes/browse';
 import { svgDefs, svgIcon } from '../svg';
 import { utilDetect } from '../util/detect';
@@ -38,6 +41,7 @@ import { uiSplash } from './splash';
 import { uiStatus } from './status';
 import { uiTooltip } from './tooltip';
 import { uiTopToolbar } from './top_toolbar';
+import { uiBetteridToolPalette } from './betterid_toolbar';
 import { uiVersion } from './version';
 import { uiZoom } from './zoom';
 import { uiZoomToSelection } from './zoom_to_selection';
@@ -178,6 +182,13 @@ export function uiInit(context) {
         overMap
             .call(uiMapInMap(context))
             .call(uiNotice(context));
+
+        // Photoshop-style tool palette (marquee / quick selection / wand / pen)
+        overMap.call(uiBetteridToolPalette(context));
+
+        context.install(behaviorBetteridSelectTools(context));
+        context.install(behaviorBetteridPen(context));
+        context.install(behaviorBetteridAdobe(context));
 
         overMap
             .append('div')

@@ -303,6 +303,7 @@ describe('rendererMap BetteriD interactions', function() {
         iD.prefs('betterid.experimental.wasd_navigation', null);
         iD.prefs('betterid.experimental.indoor_focus', null);
         iD.prefs('betterid.navigation.mode', null);
+        iD.prefs('betterid.editing.adobe_shortcuts', null);
         vi.restoreAllMocks();
         container.remove();
     });
@@ -696,6 +697,8 @@ describe('rendererMap BetteriD interactions', function() {
     it('zooms out once per Space press while navigation is enabled', function() {
         iD.prefs('betterid.experimental.enabled', 'true');
         iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        // the Adobe shortcut layer owns Space when it is enabled
+        iD.prefs('betterid.editing.adobe_shortcuts', 'false');
 
         const zoomOut = vi.spyOn(context.map(), 'zoomOut').mockReturnValue(context.map());
         const spaceDown = new KeyboardEvent('keydown', {
@@ -704,6 +707,21 @@ describe('rendererMap BetteriD interactions', function() {
         window.dispatchEvent(spaceDown);
         expect(spaceDown.defaultPrevented).toBe(true);
         expect(zoomOut).toHaveBeenCalledOnce();
+        window.dispatchEvent(new KeyboardEvent('keyup', {
+            key: ' ', code: 'Space', keyCode: 32, cancelable: true
+        }));
+    });
+
+    it('leaves Space to the Adobe hand tool when that layer is on', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'true');
+        iD.prefs('betterid.editing.adobe_shortcuts', 'true');
+
+        const zoomOut = vi.spyOn(context.map(), 'zoomOut').mockReturnValue(context.map());
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+            key: ' ', code: 'Space', keyCode: 32, cancelable: true
+        }));
+        expect(zoomOut).not.toHaveBeenCalled();
         window.dispatchEvent(new KeyboardEvent('keyup', {
             key: ' ', code: 'Space', keyCode: 32, cancelable: true
         }));

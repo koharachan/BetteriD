@@ -1,0 +1,190 @@
+/* BetteriD Photoshop-style tool palette and its map previews
+   ------------------------------------------------------- */
+
+.betterid-tool-palette {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--transparent-bg-color);
+  box-shadow: 0 2px 6px var(--shadow-color);
+  pointer-events: auto;
+}
+
+.betterid-tool-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.betterid-tool-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.betterid-tool-button .icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.betterid-tool-button:hover {
+  background: var(--active-bg-color);
+}
+
+.betterid-tool-button.active {
+  border-color: var(--link-color);
+  background: var(--selected-bg-color);
+  color: var(--link-focus-color);
+}
+
+.betterid-tool-options,
+.betterid-tool-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 2px 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.betterid-tool-option,
+.betterid-tool-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.betterid-tool-option input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 60px;
+}
+
+.betterid-tool-option output {
+  min-width: 24px;
+  text-align: right;
+  color: var(--muted-text-color);
+}
+
+.betterid-tool-shape {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.betterid-tool-shape .icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.betterid-tool-hint {
+  margin: 0;
+  color: var(--muted-text-color);
+  line-height: 1.4;
+  white-space: normal;
+}
+
+/* map cursors */
+.betterid-tool-active .main-map {
+  cursor: crosshair;
+}
+
+.betterid-hand-tool .main-map {
+  cursor: grab;
+}
+
+.betterid-tool-dragging .main-map {
+  cursor: crosshair;
+}
+
+/* marquee / brush / pen previews (SVG on the map surface) */
+.betterid-selection-preview .betterid-marquee {
+  fill: #41874120;
+  stroke: #418741;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.betterid-selection-preview.subtract .betterid-marquee {
+  fill: #b3261e20;
+  stroke: #b3261e;
+}
+
+.betterid-selection-preview.intersect .betterid-marquee {
+  fill: #7092ff20;
+  stroke: #7092ff;
+}
+
+.betterid-selection-preview .betterid-brush {
+  fill: none;
+  stroke: #418741;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  pointer-events: none;
+}
+
+.betterid-selection-preview.subtract .betterid-brush {
+  stroke: #b3261e;
+}
+
+.betterid-selection-preview.intersect .betterid-brush {
+  stroke: #7092ff;
+}
+
+.betterid-pen-preview .betterid-pen-path {
+  fill: none;
+  stroke: #418741;
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.betterid-pen-preview .betterid-pen-point {
+  fill: #fff;
+  stroke: #333;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.betterid-pen-preview .betterid-pen-handle {
+  stroke: #7092ff;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .betterid-tool-palette {
+    top: auto;
+    bottom: 70px;
+    transform: none;
+    max-width: 150px;
+  }
+}

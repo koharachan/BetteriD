@@ -10962,3 +10962,193 @@
         display: block;
     }
 }
+/* BetteriD Photoshop-style tool palette and its map previews
+   ------------------------------------------------------- */
+
+.ideditor .betterid-tool-palette {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--transparent-bg-color);
+  box-shadow: 0 2px 6px var(--shadow-color);
+  pointer-events: auto;
+}
+
+.ideditor .betterid-tool-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ideditor .betterid-tool-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.ideditor .betterid-tool-button .icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.ideditor .betterid-tool-button:hover {
+  background: var(--active-bg-color);
+}
+
+.ideditor .betterid-tool-button.active {
+  border-color: var(--link-color);
+  background: var(--selected-bg-color);
+  color: var(--link-focus-color);
+}
+
+.ideditor .betterid-tool-options,
+.ideditor .betterid-tool-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 2px 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.ideditor .betterid-tool-option,
+.ideditor .betterid-tool-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ideditor .betterid-tool-option input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 60px;
+}
+
+.ideditor .betterid-tool-option output {
+  min-width: 24px;
+  text-align: right;
+  color: var(--muted-text-color);
+}
+
+.ideditor .betterid-tool-shape {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ideditor .betterid-tool-shape .icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.ideditor .betterid-tool-hint {
+  margin: 0;
+  color: var(--muted-text-color);
+  line-height: 1.4;
+  white-space: normal;
+}
+
+/* map cursors */
+.ideditor .betterid-tool-active .main-map {
+  cursor: crosshair;
+}
+
+.ideditor .betterid-hand-tool .main-map {
+  cursor: grab;
+}
+
+.ideditor .betterid-tool-dragging .main-map {
+  cursor: crosshair;
+}
+
+/* marquee / brush / pen previews (SVG on the map surface) */
+.ideditor .betterid-selection-preview .betterid-marquee {
+  fill: #41874120;
+  stroke: #418741;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.ideditor .betterid-selection-preview.subtract .betterid-marquee {
+  fill: #b3261e20;
+  stroke: #b3261e;
+}
+
+.ideditor .betterid-selection-preview.intersect .betterid-marquee {
+  fill: #7092ff20;
+  stroke: #7092ff;
+}
+
+.ideditor .betterid-selection-preview .betterid-brush {
+  fill: none;
+  stroke: #418741;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  pointer-events: none;
+}
+
+.ideditor .betterid-selection-preview.subtract .betterid-brush {
+  stroke: #b3261e;
+}
+
+.ideditor .betterid-selection-preview.intersect .betterid-brush {
+  stroke: #7092ff;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-path {
+  fill: none;
+  stroke: #418741;
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-point {
+  fill: #fff;
+  stroke: #333;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-handle {
+  stroke: #7092ff;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .ideditor .betterid-tool-palette {
+    top: auto;
+    bottom: 70px;
+    transform: none;
+    max-width: 150px;
+  }
+}

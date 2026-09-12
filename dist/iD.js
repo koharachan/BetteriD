@@ -43936,6 +43936,1827 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     }
   });
 
+  // modules/core/betterid_tools.js
+  var betterid_tools_exports = {};
+  __export(betterid_tools_exports, {
+    BETTERID_ADOBE_SHORTCUTS_PREF: () => BETTERID_ADOBE_SHORTCUTS_PREF,
+    BETTERID_BRUSH_SIZE_PREF: () => BETTERID_BRUSH_SIZE_PREF,
+    BETTERID_MARQUEE_SHAPES: () => BETTERID_MARQUEE_SHAPES,
+    BETTERID_MARQUEE_SHAPE_PREF: () => BETTERID_MARQUEE_SHAPE_PREF,
+    BETTERID_TOOLS: () => BETTERID_TOOLS,
+    BETTERID_TOOL_PREF: () => BETTERID_TOOL_PREF,
+    BETTERID_WAND_CONTIGUOUS_PREF: () => BETTERID_WAND_CONTIGUOUS_PREF,
+    BETTERID_WAND_TOLERANCE_PREF: () => BETTERID_WAND_TOLERANCE_PREF,
+    adobeShortcutsEnabled: () => adobeShortcutsEnabled,
+    betteridTool: () => betteridTool,
+    brushSize: () => brushSize,
+    combineSelection: () => combineSelection,
+    cycleMarqueeShape: () => cycleMarqueeShape,
+    marqueeShape: () => marqueeShape,
+    selectionMode: () => selectionMode,
+    setAdobeShortcuts: () => setAdobeShortcuts,
+    setBetteridTool: () => setBetteridTool,
+    setBrushSize: () => setBrushSize,
+    setMarqueeShape: () => setMarqueeShape,
+    setWandContiguous: () => setWandContiguous,
+    setWandTolerance: () => setWandTolerance,
+    wandContiguous: () => wandContiguous,
+    wandTolerance: () => wandTolerance
+  });
+  function clampedInt(value, fallback, min4, max4) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min4, Math.min(max4, parsed));
+  }
+  function betteridTool() {
+    const value = corePreferences(BETTERID_TOOL_PREF);
+    return BETTERID_TOOLS.indexOf(value) === -1 ? "select" : value;
+  }
+  function setBetteridTool(tool) {
+    corePreferences(BETTERID_TOOL_PREF, BETTERID_TOOLS.indexOf(tool) === -1 ? "select" : tool);
+  }
+  function marqueeShape() {
+    const value = corePreferences(BETTERID_MARQUEE_SHAPE_PREF);
+    return BETTERID_MARQUEE_SHAPES.indexOf(value) === -1 ? TOOL_DEFAULTS.marqueeShape : value;
+  }
+  function setMarqueeShape(shape) {
+    corePreferences(BETTERID_MARQUEE_SHAPE_PREF, BETTERID_MARQUEE_SHAPES.indexOf(shape) === -1 ? "rect" : shape);
+  }
+  function cycleMarqueeShape() {
+    const index2 = BETTERID_MARQUEE_SHAPES.indexOf(marqueeShape());
+    setMarqueeShape(BETTERID_MARQUEE_SHAPES[(index2 + 1) % BETTERID_MARQUEE_SHAPES.length]);
+  }
+  function brushSize() {
+    return clampedInt(corePreferences(BETTERID_BRUSH_SIZE_PREF), TOOL_DEFAULTS.brushSize, 8, 200);
+  }
+  function setBrushSize(size2) {
+    corePreferences(BETTERID_BRUSH_SIZE_PREF, String(clampedInt(size2, TOOL_DEFAULTS.brushSize, 8, 200)));
+  }
+  function wandTolerance() {
+    return clampedInt(corePreferences(BETTERID_WAND_TOLERANCE_PREF), TOOL_DEFAULTS.wandTolerance, 0, 10);
+  }
+  function setWandTolerance(tolerance) {
+    corePreferences(BETTERID_WAND_TOLERANCE_PREF, String(clampedInt(tolerance, TOOL_DEFAULTS.wandTolerance, 0, 10)));
+  }
+  function wandContiguous() {
+    const value = corePreferences(BETTERID_WAND_CONTIGUOUS_PREF);
+    if (value === null || value === void 0) return TOOL_DEFAULTS.wandContiguous;
+    return value === "true";
+  }
+  function setWandContiguous(value) {
+    corePreferences(BETTERID_WAND_CONTIGUOUS_PREF, value ? "true" : "false");
+  }
+  function adobeShortcutsEnabled() {
+    const value = corePreferences(BETTERID_ADOBE_SHORTCUTS_PREF);
+    if (value === null || value === void 0) return TOOL_DEFAULTS.adobeShortcuts;
+    return value === "true";
+  }
+  function setAdobeShortcuts(value) {
+    corePreferences(BETTERID_ADOBE_SHORTCUTS_PREF, value ? "true" : "false");
+  }
+  function selectionMode(d3_event) {
+    const shift = Boolean(d3_event.shiftKey);
+    const alt = Boolean(d3_event.altKey);
+    if (shift && alt) return "intersect";
+    if (shift) return "add";
+    if (alt) return "subtract";
+    return "replace";
+  }
+  function combineSelection(currentIDs, newIDs, mode2) {
+    const current = new Set(currentIDs);
+    const incoming = new Set(newIDs);
+    if (mode2 === "add") {
+      const result2 = new Set(current);
+      incoming.forEach((id2) => result2.add(id2));
+      return Array.from(result2);
+    }
+    if (mode2 === "subtract") {
+      incoming.forEach((id2) => current.delete(id2));
+      return Array.from(current);
+    }
+    if (mode2 === "intersect") {
+      return Array.from(current).filter((id2) => incoming.has(id2));
+    }
+    return Array.from(incoming);
+  }
+  var BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF, BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF, BETTERID_ADOBE_SHORTCUTS_PREF, BETTERID_TOOLS, BETTERID_MARQUEE_SHAPES, TOOL_DEFAULTS;
+  var init_betterid_tools = __esm({
+    "modules/core/betterid_tools.js"() {
+      "use strict";
+      init_preferences();
+      BETTERID_TOOL_PREF = "betterid.tools.active";
+      BETTERID_MARQUEE_SHAPE_PREF = "betterid.tools.marquee_shape";
+      BETTERID_BRUSH_SIZE_PREF = "betterid.tools.brush_size";
+      BETTERID_WAND_TOLERANCE_PREF = "betterid.tools.wand_tolerance";
+      BETTERID_WAND_CONTIGUOUS_PREF = "betterid.tools.wand_contiguous";
+      BETTERID_ADOBE_SHORTCUTS_PREF = "betterid.editing.adobe_shortcuts";
+      BETTERID_TOOLS = ["select", "marquee", "quickselect", "magicwand", "pen"];
+      BETTERID_MARQUEE_SHAPES = ["rect", "ellipse"];
+      TOOL_DEFAULTS = {
+        marquee: "marquee",
+        marqueeShape: "rect",
+        brushSize: 40,
+        wandTolerance: 1,
+        wandContiguous: true,
+        adobeShortcuts: true
+      };
+    }
+  });
+
+  // modules/util/betterid_selection.js
+  var betterid_selection_exports = {};
+  __export(betterid_selection_exports, {
+    entitiesInBrush: () => entitiesInBrush,
+    entitiesInEllipse: () => entitiesInEllipse,
+    entitiesInRect: () => entitiesInRect,
+    entityScreenPoints: () => entityScreenPoints,
+    expandBySimilarity: () => expandBySimilarity,
+    insideEllipse: () => insideEllipse,
+    tagDistance: () => tagDistance
+  });
+  function tagsOf(value) {
+    if (!value || typeof value !== "object") return {};
+    if (value.tags && typeof value.tags === "object") return value.tags;
+    return value;
+  }
+  function tagDistance(a2, b11) {
+    const tagsA = tagsOf(a2);
+    const tagsB = tagsOf(b11);
+    const keys4 = /* @__PURE__ */ new Set([...Object.keys(tagsA), ...Object.keys(tagsB)]);
+    let distance = 0;
+    keys4.forEach((key) => {
+      if (tagsA[key] !== tagsB[key]) distance++;
+    });
+    return distance;
+  }
+  function entityScreenPoints(entity, graph, projection2) {
+    if (!entity) return [];
+    if (entity.type === "node") {
+      return [projection2(entity.loc)];
+    }
+    const points2 = [];
+    const locs = [];
+    const childIDs = entity.type === "way" ? entity.nodes : entity.members.map((member) => member.id);
+    childIDs.forEach((id2) => {
+      const child = graph.hasEntity(id2);
+      const loc = child && child.loc;
+      if (loc) {
+        points2.push(projection2(loc));
+        locs.push(loc);
+      }
+    });
+    for (let i3 = 1; i3 < locs.length; i3++) {
+      points2.push(projection2([
+        (locs[i3 - 1][0] + locs[i3][0]) / 2,
+        (locs[i3 - 1][1] + locs[i3][1]) / 2
+      ]));
+    }
+    return points2;
+  }
+  function visibleEntities(context, entities) {
+    const graph = context.graph();
+    const features = context.features();
+    return entities.filter(
+      (entity) => !features.isHidden(entity, graph, entity.geometry(graph))
+    );
+  }
+  function entitiesInRect(context, rect) {
+    const projection2 = context.projection;
+    const a2 = projection2.invert([rect.minX, rect.minY]);
+    const b11 = projection2.invert([rect.maxX, rect.maxY]);
+    const extent2 = geoExtent(
+      [Math.min(a2[0], b11[0]), Math.min(a2[1], b11[1])],
+      [Math.max(a2[0], b11[0]), Math.max(a2[1], b11[1])]
+    );
+    return visibleEntities(context, context.history().intersects(extent2));
+  }
+  function entitiesInEllipse(context, ellipse) {
+    const rect = {
+      minX: ellipse.centerX - ellipse.radiusX,
+      minY: ellipse.centerY - ellipse.radiusY,
+      maxX: ellipse.centerX + ellipse.radiusX,
+      maxY: ellipse.centerY + ellipse.radiusY
+    };
+    return entitiesInRect(context, rect).filter((entity) => {
+      const points2 = entityScreenPoints(entity, context.graph(), context.projection);
+      return points2.some((point3) => insideEllipse(point3, ellipse));
+    });
+  }
+  function insideEllipse([x3, y3], ellipse) {
+    const dx = (x3 - ellipse.centerX) / (ellipse.radiusX || 1);
+    const dy = (y3 - ellipse.centerY) / (ellipse.radiusY || 1);
+    return dx * dx + dy * dy <= 1;
+  }
+  function entitiesInBrush(context, brush2) {
+    return entitiesInRect(context, {
+      minX: brush2.centerX - brush2.radius,
+      minY: brush2.centerY - brush2.radius,
+      maxX: brush2.centerX + brush2.radius,
+      maxY: brush2.centerY + brush2.radius
+    }).filter((entity) => {
+      const points2 = entityScreenPoints(entity, context.graph(), context.projection);
+      return points2.some((point3) => {
+        const dx = point3[0] - brush2.centerX;
+        const dy = point3[1] - brush2.centerY;
+        return dx * dx + dy * dy <= brush2.radius * brush2.radius;
+      });
+    }).map((entity) => entity.id);
+  }
+  function neighborsOf(graph, entity) {
+    const neighbors = [];
+    if (entity.type === "node") {
+      graph.parentWays(entity).forEach((parent) => {
+        neighbors.push(parent);
+        parent.nodes.forEach((id2) => {
+          const sibling = graph.hasEntity(id2);
+          if (sibling) neighbors.push(sibling);
+        });
+      });
+      graph.parentRelations(entity).forEach((parent) => neighbors.push(parent));
+    } else if (entity.type === "way") {
+      entity.nodes.forEach((id2) => {
+        const child = graph.hasEntity(id2);
+        if (!child) return;
+        neighbors.push(child);
+        graph.parentWays(child).forEach((parent) => {
+          if (parent.id !== entity.id) neighbors.push(parent);
+        });
+      });
+      graph.parentRelations(entity).forEach((parent) => neighbors.push(parent));
+    } else if (entity.type === "relation") {
+      entity.members.forEach((member) => {
+        const child = graph.hasEntity(member.id);
+        if (child) neighbors.push(child);
+      });
+      graph.parentRelations(entity).forEach((parent) => neighbors.push(parent));
+    }
+    return neighbors;
+  }
+  function expandBySimilarity(graph, seedIDs, options) {
+    const tolerance = Math.max(0, options && options.tolerance || 0);
+    const contiguous = !options || options.contiguous !== false;
+    const sameGeometry = !options || options.sameGeometry !== false;
+    const seeds = seedIDs.map((id2) => graph.hasEntity(id2)).filter(Boolean);
+    const result2 = new Set(seeds.map((entity) => entity.id));
+    if (!contiguous) {
+      const all = [];
+      if (graph.entities) {
+        for (const id2 in graph.entities) {
+          const entity = graph.entities[id2];
+          if (entity) all.push(entity);
+        }
+      }
+      seeds.forEach((seed) => {
+        all.forEach((entity) => {
+          if (!entity || result2.has(entity.id)) return;
+          if (sameGeometry && entity.geometry(graph) !== seed.geometry(graph)) return;
+          if (tagDistance(seed, entity) <= tolerance) result2.add(entity.id);
+          if (result2.size >= MAX_EXPANDED_ENTITIES) return;
+        });
+      });
+      return Array.from(result2);
+    }
+    const queue = seeds.slice();
+    let head3 = 0;
+    while (head3 < queue.length && result2.size < MAX_EXPANDED_ENTITIES) {
+      const entity = queue[head3++];
+      for (const neighbor of neighborsOf(graph, entity)) {
+        if (!neighbor || result2.has(neighbor.id)) continue;
+        if (sameGeometry && neighbor.geometry(graph) !== entity.geometry(graph)) continue;
+        if (tagDistance(entity, neighbor) > tolerance) continue;
+        result2.add(neighbor.id);
+        queue.push(neighbor);
+      }
+    }
+    return Array.from(result2);
+  }
+  var MAX_EXPANDED_ENTITIES;
+  var init_betterid_selection = __esm({
+    "modules/util/betterid_selection.js"() {
+      "use strict";
+      init_geo2();
+      MAX_EXPANDED_ENTITIES = 2e3;
+    }
+  });
+
+  // modules/behavior/betterid_select_tools.js
+  var betterid_select_tools_exports = {};
+  __export(betterid_select_tools_exports, {
+    behaviorBetteridSelectTools: () => behaviorBetteridSelectTools
+  });
+  function behaviorBetteridSelectTools(context) {
+    var prefix = "PointerEvent" in window ? "pointer" : "mouse";
+    var _gesture = null;
+    var _overlay = select_default2(null);
+    var _shape = select_default2(null);
+    var _brush = select_default2(null);
+    var _liveMode = "replace";
+    function activeTool() {
+      var tool = betteridTool();
+      return tool === "marquee" || tool === "quickselect" || tool === "magicwand" ? tool : null;
+    }
+    function mapNode() {
+      return context.container().select(".main-map").node();
+    }
+    function mouseLoc(d3_event) {
+      var node = mapNode();
+      if (!node) return [0, 0];
+      return utilFastMouse(node)(d3_event);
+    }
+    function ensureOverlay() {
+      if (!_overlay.empty()) return;
+      _overlay = context.surface().selectAll(".betterid-selection-preview").data([0]).enter().append("g").attr("class", "betterid-selection-preview hide");
+      _shape = _overlay.append("rect").attr("class", "betterid-marquee");
+      _brush = _overlay.append("circle").attr("class", "betterid-brush");
+    }
+    function showOverlay() {
+      ensureOverlay();
+      _overlay.classed("hide", false).classed("subtract", _liveMode === "subtract").classed("intersect", _liveMode === "intersect");
+    }
+    function hideOverlay() {
+      if (_overlay.empty()) return;
+      _overlay.classed("hide", true);
+      _shape.attr("width", 0).attr("height", 0).attr("rx", 0);
+      _brush.attr("r", 0);
+    }
+    function drawMarquee(start2, current) {
+      var minX = Math.min(start2[0], current[0]);
+      var minY = Math.min(start2[1], current[1]);
+      var width = Math.abs(current[0] - start2[0]);
+      var height = Math.abs(current[1] - start2[1]);
+      if (marqueeShape() === "ellipse") {
+        _shape.attr("x", minX).attr("y", minY).attr("width", width).attr("height", height).attr("rx", width / 2).attr("ry", height / 2);
+      } else {
+        _shape.attr("x", minX).attr("y", minY).attr("width", width).attr("height", height).attr("rx", 0);
+      }
+    }
+    function drawBrush(point3) {
+      _brush.attr("cx", point3[0]).attr("cy", point3[1]).attr("r", brushSize() / 2);
+    }
+    function datumEntity(target) {
+      var element = target;
+      while (element && element !== document.body) {
+        var datum2 = element.__data__;
+        if (datum2) {
+          if (datum2.properties && datum2.properties.entity) return datum2.properties.entity;
+          if (datum2.entity) return datum2.entity;
+          if (datum2.id && datum2.type) return datum2;
+        }
+        element = element.parentNode;
+      }
+      return null;
+    }
+    function wandSeed(point3, d3_event) {
+      var entity = datumEntity(d3_event.target);
+      if (entity && context.hasEntity(entity.id)) return entity.id;
+      var ids = entitiesInBrush(context, {
+        centerX: point3[0],
+        centerY: point3[1],
+        radius: Math.max(8, brushSize() / 2)
+      });
+      return ids.length ? ids[0] : null;
+    }
+    function marqueeResult(start2, current) {
+      if (marqueeShape() === "ellipse") {
+        var radiusX = Math.abs(current[0] - start2[0]) / 2;
+        var radiusY = Math.abs(current[1] - start2[1]) / 2;
+        if (radiusX < 1 || radiusY < 1) return [];
+        return entitiesInEllipse(context, {
+          centerX: (start2[0] + current[0]) / 2,
+          centerY: (start2[1] + current[1]) / 2,
+          radiusX,
+          radiusY
+        }).map((entity) => entity.id);
+      }
+      if (Math.abs(current[0] - start2[0]) < 1 || Math.abs(current[1] - start2[1]) < 1) return [];
+      return entitiesInRect(context, {
+        minX: Math.min(start2[0], current[0]),
+        minY: Math.min(start2[1], current[1]),
+        maxX: Math.max(start2[0], current[0]),
+        maxY: Math.max(start2[1], current[1])
+      }).map((entity) => entity.id);
+    }
+    function quickSelectResult(start2, current) {
+      var radius = brushSize() / 2;
+      var points2 = [start2];
+      if (current) {
+        var distance = Math.hypot(current[0] - start2[0], current[1] - start2[1]);
+        var steps = Math.max(1, Math.ceil(distance / Math.max(1, radius / 2)));
+        for (var i3 = 1; i3 <= steps; i3++) {
+          points2.push([
+            start2[0] + (current[0] - start2[0]) * i3 / steps,
+            start2[1] + (current[1] - start2[1]) * i3 / steps
+          ]);
+        }
+      }
+      var ids = /* @__PURE__ */ new Set();
+      points2.forEach((point3) => {
+        entitiesInBrush(context, {
+          centerX: point3[0],
+          centerY: point3[1],
+          radius
+        }).forEach((id2) => ids.add(id2));
+      });
+      if (!ids.size) return [];
+      return expandBySimilarity(context.graph(), Array.from(ids), {
+        tolerance: wandTolerance(),
+        contiguous: true,
+        sameGeometry: true
+      });
+    }
+    function wandResult(seedID) {
+      if (!seedID) return [];
+      return expandBySimilarity(context.graph(), [seedID], {
+        tolerance: wandTolerance(),
+        contiguous: wandContiguous(),
+        sameGeometry: true
+      });
+    }
+    function stopListeners() {
+      select_default2(window).on(prefix + "move.betteridSelectTools", null).on(prefix + "up.betteridSelectTools", null).on("pointercancel.betteridSelectTools", null);
+    }
+    function finishGesture(d3_event) {
+      var gesture = _gesture;
+      _gesture = null;
+      stopListeners();
+      hideOverlay();
+      context.container().classed("betterid-tool-dragging", false);
+      if (!gesture) return;
+      var mode2 = selectionMode(d3_event);
+      var ids = [];
+      if (gesture.tool === "marquee") {
+        var dragged = Math.hypot(
+          gesture.current[0] - gesture.start[0],
+          gesture.current[1] - gesture.start[1]
+        ) >= MIN_MARQUEE;
+        var current = gesture.current;
+        if (dragged && marqueeShape() === "ellipse" && d3_event.shiftKey && !d3_event.altKey) {
+          var size2 = Math.max(
+            Math.abs(current[0] - gesture.start[0]),
+            Math.abs(current[1] - gesture.start[1])
+          );
+          current = [
+            gesture.start[0] + Math.sign(current[0] - gesture.start[0] || 1) * size2,
+            gesture.start[1] + Math.sign(current[1] - gesture.start[1] || 1) * size2
+          ];
+        }
+        ids = dragged ? marqueeResult(gesture.start, current) : [];
+      } else if (gesture.tool === "quickselect") {
+        ids = gesture.currentIDs || quickSelectResult(gesture.start, null);
+      } else if (gesture.tool === "magicwand") {
+        ids = wandResult(gesture.seed);
+      }
+      var combined = combineSelection(context.selectedIDs(), ids, mode2);
+      context.enter(modeSelect(context, combined));
+    }
+    function pointerdown(d3_event) {
+      if (_gesture) return;
+      var tool = activeTool();
+      if (!tool || d3_event.button !== 0) return;
+      if (d3_event.altKey && d3_event.ctrlKey) return;
+      var target = d3_event.target;
+      if (!target || !target.closest || !target.closest(".main-map")) return;
+      if (context.container().classed("betterid-hand-tool")) return;
+      if (!context.map().withinEditableZoom()) return;
+      var osmLayer = context.layers().layer("osm");
+      if (osmLayer && !osmLayer.enabled()) return;
+      var point3 = mouseLoc(d3_event);
+      _liveMode = selectionMode(d3_event);
+      _gesture = {
+        tool,
+        start: point3,
+        current: point3,
+        seed: tool === "magicwand" ? wandSeed(point3, d3_event) : null,
+        currentIDs: null
+      };
+      if (tool === "marquee") {
+        showOverlay();
+        drawMarquee(point3, point3);
+      } else if (tool === "quickselect") {
+        showOverlay();
+        drawBrush(point3);
+      } else {
+        hideOverlay();
+      }
+      context.container().classed("betterid-tool-dragging", true);
+      select_default2(window).on(prefix + "move.betteridSelectTools", pointermove).on(prefix + "up.betteridSelectTools", finishGesture).on("pointercancel.betteridSelectTools", finishGesture);
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+    }
+    function pointermove(d3_event) {
+      if (!_gesture) return;
+      var point3 = mouseLoc(d3_event);
+      _gesture.current = point3;
+      _liveMode = selectionMode(d3_event);
+      if (_gesture.tool === "marquee") {
+        showOverlay();
+        drawMarquee(_gesture.start, point3);
+      } else if (_gesture.tool === "quickselect") {
+        showOverlay();
+        drawBrush(point3);
+        _gesture.currentIDs = quickSelectResult(_gesture.start, point3);
+      }
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+    }
+    function behavior() {
+      select_default2(window).on(prefix + "down.betteridSelectTools", pointerdown, true);
+    }
+    behavior.off = function() {
+      select_default2(window).on(prefix + "down.betteridSelectTools", null, true);
+      stopListeners();
+      hideOverlay();
+      _gesture = null;
+      context.container().classed("betterid-tool-dragging", false);
+    };
+    return behavior;
+  }
+  var MIN_MARQUEE;
+  var init_betterid_select_tools = __esm({
+    "modules/behavior/betterid_select_tools.js"() {
+      "use strict";
+      init_src6();
+      init_betterid_tools();
+      init_select5();
+      init_util2();
+      init_betterid_selection();
+      MIN_MARQUEE = 4;
+    }
+  });
+
+  // modules/behavior/betterid_pen.js
+  var betterid_pen_exports = {};
+  __export(betterid_pen_exports, {
+    behaviorBetteridPen: () => behaviorBetteridPen
+  });
+  function behaviorBetteridPen(context) {
+    var prefix = "PointerEvent" in window ? "pointer" : "mouse";
+    var _anchors = [];
+    var _draft = null;
+    var _closed = false;
+    var _overlay = select_default2(null);
+    var _preview = select_default2(null);
+    var _handles = select_default2(null);
+    var _points = select_default2(null);
+    function active() {
+      return betteridTool() === "pen";
+    }
+    function mapNode() {
+      return context.container().select(".main-map").node();
+    }
+    function mouseLoc(d3_event) {
+      var node = mapNode();
+      if (!node) return [0, 0];
+      return utilFastMouse(node)(d3_event);
+    }
+    function ensureOverlay() {
+      if (!_overlay.empty()) return;
+      _overlay = context.surface().selectAll(".betterid-pen-preview").data([0]).enter().append("g").attr("class", "betterid-pen-preview");
+      _handles = _overlay.append("g").attr("class", "betterid-pen-handles");
+      _preview = _overlay.append("path").attr("class", "betterid-pen-path");
+      _points = _overlay.append("g").attr("class", "betterid-pen-points");
+    }
+    function clearOverlay() {
+      if (_overlay.empty()) return;
+      _overlay.classed("hide", true);
+      _preview.attr("d", null);
+      _handles.selectAll("*").remove();
+      _points.selectAll("*").remove();
+    }
+    function anchorScreen(anchor) {
+      return context.projection(anchor.loc);
+    }
+    function handleScreen(anchor, which) {
+      var offset = anchor[which];
+      if (!offset) return null;
+      return context.projection(geoVecAdd(anchor.loc, offset));
+    }
+    function curvePoints(anchors, closed, cursorScreen) {
+      var list = anchors.slice();
+      if (!closed && cursorScreen) {
+        list = list.concat([{ loc: context.projection.invert(cursorScreen) }]);
+      }
+      if (list.length < 2) return list.map(anchorScreen);
+      var segments = list.length - 1;
+      var sampled = [anchorScreen(list[0])];
+      for (var i3 = 0; i3 < segments; i3++) {
+        var a2 = list[i3];
+        var b11 = list[i3 + 1];
+        var p02 = anchorScreen(a2);
+        var p3 = anchorScreen(b11);
+        var c1 = handleScreen(a2, "handleOut") || p02;
+        var c2 = handleScreen(b11, "handleIn") || p3;
+        var chord = Math.hypot(p3[0] - p02[0], p3[1] - p02[1]);
+        var steps = Math.max(1, Math.round(chord / NODE_SPACING_PX));
+        for (var step = 1; step <= steps; step++) {
+          var t4 = step / steps;
+          var mt2 = 1 - t4;
+          var x3 = mt2 * mt2 * mt2 * p02[0] + 3 * mt2 * mt2 * t4 * c1[0] + 3 * mt2 * t4 * t4 * c2[0] + t4 * t4 * t4 * p3[0];
+          var y3 = mt2 * mt2 * mt2 * p02[1] + 3 * mt2 * mt2 * t4 * c1[1] + 3 * mt2 * t4 * t4 * c2[1] + t4 * t4 * t4 * p3[1];
+          sampled.push([x3, y3]);
+        }
+      }
+      return sampled;
+    }
+    function draw(cursorScreen) {
+      ensureOverlay();
+      _overlay.classed("hide", false);
+      var visible = _anchors.slice();
+      if (_draft && _draft.moved) visible.push(_draft.anchor);
+      var sampled = curvePoints(_anchors, _closed || !cursorScreen, _closed ? null : cursorScreen);
+      if (sampled.length) {
+        _preview.attr("d", "M" + sampled.map((p2) => `${p2[0]},${p2[1]}`).join(" L") + (_closed ? " Z" : ""));
+      } else {
+        _preview.attr("d", null);
+      }
+      var points2 = _points.selectAll("circle").data(visible, (d3, i3) => i3);
+      points2.exit().remove();
+      points2.enter().append("circle").attr("class", "betterid-pen-point").attr("r", 4).merge(points2).attr("cx", (d3) => anchorScreen(d3)[0]).attr("cy", (d3) => anchorScreen(d3)[1]);
+      var handleLines = [];
+      visible.forEach((anchor) => {
+        var center = anchorScreen(anchor);
+        ["handleIn", "handleOut"].forEach((which) => {
+          var point3 = handleScreen(anchor, which);
+          if (point3) handleLines.push({ center, point: point3 });
+        });
+      });
+      var lines = _handles.selectAll("line").data(handleLines);
+      lines.exit().remove();
+      lines.enter().append("line").attr("class", "betterid-pen-handle").merge(lines).attr("x1", (d3) => d3.center[0]).attr("y1", (d3) => d3.center[1]).attr("x2", (d3) => d3.point[0]).attr("y2", (d3) => d3.point[1]);
+    }
+    function screenToGeoOffset(fromLoc, toScreen) {
+      var toLoc = context.projection.invert(toScreen);
+      return geoVecSubtract(toLoc, fromLoc);
+    }
+    function finishPath() {
+      var anchors = _anchors.slice();
+      var closed = _closed;
+      _anchors = [];
+      _draft = null;
+      _closed = false;
+      clearOverlay();
+      if (anchors.length < 1) return;
+      var sampled = curvePoints(anchors, closed, null);
+      if (sampled.length < 2) return;
+      var nodes = [];
+      var previous = null;
+      sampled.forEach((point3) => {
+        var loc = context.projection.invert(point3);
+        if (previous && geoVecLength(previous, loc) < 1e-9) return;
+        previous = loc;
+        nodes.push(new osmNode({ loc, tags: {} }));
+      });
+      if (nodes.length < 2) return;
+      var way = new osmWay({ nodes: nodes.map((node) => node.id), tags: {} });
+      var actions = nodes.map((node) => actionAddEntity(node));
+      actions.push(actionAddEntity(way));
+      context.perform.apply(context, actions);
+      if (context.hasEntity(way.id)) {
+        context.enter(modeSelect(context, [way.id]));
+      }
+    }
+    function cancelPath() {
+      _anchors = [];
+      _draft = null;
+      _closed = false;
+      clearOverlay();
+    }
+    function pointerdown(d3_event) {
+      if (!active()) return;
+      if (d3_event.button !== 0) return;
+      var target = d3_event.target;
+      if (!target || !target.closest || !target.closest(".main-map")) return;
+      if (context.container().classed("betterid-hand-tool")) return;
+      if (!context.map().withinEditableZoom()) return;
+      if (d3_event.ctrlKey || d3_event.metaKey || d3_event.shiftKey) return;
+      var point3 = mouseLoc(d3_event);
+      if (d3_event.altKey) {
+        var existing = findAnchorNear(point3);
+        if (existing !== -1) {
+          _anchors[existing].handleIn = null;
+          _anchors[existing].handleOut = null;
+          draw(point3);
+          d3_event.preventDefault();
+          d3_event.stopPropagation();
+          return;
+        }
+      }
+      if (_anchors.length > 1) {
+        var first = anchorScreen(_anchors[0]);
+        if (Math.hypot(first[0] - point3[0], first[1] - point3[1]) <= CLOSE_RADIUS_PX) {
+          _closed = true;
+          finishPath();
+          d3_event.preventDefault();
+          d3_event.stopPropagation();
+          return;
+        }
+      }
+      _draft = {
+        start: point3,
+        moved: false,
+        anchor: { loc: context.projection.invert(point3), handleIn: null, handleOut: null }
+      };
+      select_default2(window).on(prefix + "move.betteridPen", pointermove).on(prefix + "up.betteridPen", pointerup);
+      draw(point3);
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+    }
+    function findAnchorNear(point3) {
+      for (var i3 = 0; i3 < _anchors.length; i3++) {
+        var screen = anchorScreen(_anchors[i3]);
+        if (Math.hypot(screen[0] - point3[0], screen[1] - point3[1]) <= CLOSE_RADIUS_PX) return i3;
+      }
+      return -1;
+    }
+    function pointermove(d3_event) {
+      if (!_draft) return;
+      var point3 = mouseLoc(d3_event);
+      var distance = Math.hypot(point3[0] - _draft.start[0], point3[1] - _draft.start[1]);
+      if (distance > HANDLE_THRESHOLD_PX) {
+        _draft.moved = true;
+        var offset = screenToGeoOffset(_draft.anchor.loc, point3);
+        _draft.anchor.handleOut = offset;
+        _draft.anchor.handleIn = [-offset[0], -offset[1]];
+      }
+      draw(point3);
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+    }
+    function pointerup(d3_event) {
+      if (!_draft) return;
+      select_default2(window).on(prefix + "move.betteridPen", null).on(prefix + "up.betteridPen", null);
+      _anchors.push(_draft.anchor);
+      _draft = null;
+      draw();
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+    }
+    function dblclick(d3_event) {
+      if (!active() || !_anchors.length) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      finishPath();
+    }
+    function keydown(d3_event) {
+      if (!active()) return;
+      var isTextEntry = d3_event.target && /^(INPUT|TEXTAREA|SELECT)$/.test(d3_event.target.tagName);
+      if (isTextEntry) return;
+      if (d3_event.key === "Enter") {
+        if (!_anchors.length) return;
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        finishPath();
+      } else if (d3_event.key === "Escape") {
+        if (!_anchors.length) return;
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        cancelPath();
+      } else if (d3_event.key === "Backspace") {
+        if (!_anchors.length) return;
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        _anchors.pop();
+        draw(context.map().mouse());
+      }
+    }
+    function behavior() {
+      select_default2(window).on(prefix + "down.betteridPen", pointerdown, true).on("dblclick.betteridPen", dblclick, true).on("keydown.betteridPen", keydown, true);
+    }
+    behavior.off = function() {
+      select_default2(window).on(prefix + "down.betteridPen", null, true).on("dblclick.betteridPen", null, true).on("keydown.betteridPen", null, true).on(prefix + "move.betteridPen", null).on(prefix + "up.betteridPen", null);
+      cancelPath();
+    };
+    return behavior;
+  }
+  var NODE_SPACING_PX, HANDLE_THRESHOLD_PX, CLOSE_RADIUS_PX;
+  var init_betterid_pen = __esm({
+    "modules/behavior/betterid_pen.js"() {
+      "use strict";
+      init_src6();
+      init_betterid_tools();
+      init_add_entity();
+      init_geo2();
+      init_select5();
+      init_osm();
+      init_util2();
+      NODE_SPACING_PX = 12;
+      HANDLE_THRESHOLD_PX = 3;
+      CLOSE_RADIUS_PX = 10;
+    }
+  });
+
+  // modules/actions/rotate.ts
+  var rotate_exports = {};
+  __export(rotate_exports, {
+    actionRotate: () => actionRotate
+  });
+  function actionRotate(rotateIds, pivot, angle2, projection2) {
+    var action = function(graph) {
+      return graph.update(function(graph2) {
+        utilGetAllNodes(rotateIds, graph2).forEach(function(node) {
+          var point3 = geoRotate([projection2(node.loc)], angle2, pivot)[0];
+          graph2 = graph2.replace(node.move(projection2.invert(point3)));
+        });
+      });
+    };
+    return action;
+  }
+  var init_rotate = __esm({
+    "modules/actions/rotate.ts"() {
+      "use strict";
+      init_geo2();
+      init_util2();
+    }
+  });
+
+  // modules/operations/move.js
+  var move_exports2 = {};
+  __export(move_exports2, {
+    operationMove: () => operationMove
+  });
+  function operationMove(context, selectedIDs) {
+    var multi = selectedIDs.length === 1 ? "single" : "multiple";
+    var nodes = utilGetAllNodes(selectedIDs, context.graph());
+    var coords = nodes.map(function(n3) {
+      return n3.loc;
+    });
+    var extent2 = utilTotalExtent(selectedIDs, context.graph());
+    var operation2 = function() {
+      context.enter(modeMove(context, selectedIDs));
+    };
+    operation2.available = function() {
+      return selectedIDs.length > 0;
+    };
+    operation2.disabled = function() {
+      if (extent2.percentContainedIn(context.map().extent()) < 0.8) {
+        return "too_large";
+      } else if (someMissing()) {
+        return "not_downloaded";
+      } else if (selectedIDs.some(context.hasHiddenConnections)) {
+        return "connected_to_hidden";
+      } else if (selectedIDs.some(incompleteRelation)) {
+        return "incomplete_relation";
+      }
+      return false;
+      function someMissing() {
+        if (context.inIntro()) return false;
+        var osm = context.connection();
+        if (osm) {
+          var missing = coords.filter(function(loc) {
+            return !osm.isDataLoaded(loc);
+          });
+          if (missing.length) {
+            missing.forEach(function(loc) {
+              context.loadTileAtLoc(loc);
+            });
+            return true;
+          }
+        }
+        return false;
+      }
+      function incompleteRelation(id2) {
+        var entity = context.entity(id2);
+        return entity.type === "relation" && !entity.isComplete(context.graph());
+      }
+    };
+    operation2.tooltip = function() {
+      var disable = operation2.disabled();
+      return disable ? _t.append("operations.move." + disable + "." + multi) : _t.append("operations.move.description." + multi);
+    };
+    operation2.annotation = function() {
+      return selectedIDs.length === 1 ? _t("operations.move.annotation." + context.graph().geometry(selectedIDs[0])) : _t("operations.move.annotation.feature", { n: selectedIDs.length });
+    };
+    operation2.id = "move";
+    operation2.keys = [_t("operations.move.key")];
+    operation2.title = _t.append("operations.move.title");
+    operation2.behavior = behaviorOperation(context).which(operation2);
+    operation2.mouseOnly = true;
+    return operation2;
+  }
+  var init_move2 = __esm({
+    "modules/operations/move.js"() {
+      "use strict";
+      init_localizer();
+      init_operation();
+      init_move3();
+      init_util();
+    }
+  });
+
+  // modules/actions/orthogonalize.ts
+  var orthogonalize_exports = {};
+  __export(orthogonalize_exports, {
+    actionOrthogonalize: () => actionOrthogonalize
+  });
+  function actionOrthogonalize(wayID, projection2, vertexID, degThresh, ep) {
+    var epsilon3 = ep || 1e-4;
+    var threshold2 = degThresh || 13;
+    var lowerThreshold = Math.cos((90 - threshold2) * Math.PI / 180);
+    var upperThreshold = Math.cos(threshold2 * Math.PI / 180);
+    var action = function(graph, t4) {
+      if (t4 === null || !isFinite(t4)) t4 = 1;
+      t4 = Math.min(Math.max(+t4, 0), 1);
+      let way = graph.entity(wayID);
+      way = way.removeNode("");
+      if (way.tags.nonsquare) {
+        var tags = { ...way.tags };
+        delete tags.nonsquare;
+        way = way.update({ tags });
+      }
+      graph = graph.replace(way);
+      var isClosed = way.isClosed();
+      var nodes = graph.childNodes(way).slice();
+      if (isClosed) nodes.pop();
+      if (vertexID !== void 0) {
+        nodes = nodeSubset(nodes, vertexID, isClosed);
+        if (nodes.length !== 3) return graph;
+      }
+      var nodeCount = {};
+      var points2 = [];
+      var corner = { i: 0, dotp: 1 };
+      var node, point3, loc, score, motions, i3, j3;
+      for (i3 = 0; i3 < nodes.length; i3++) {
+        node = nodes[i3];
+        nodeCount[node.id] = (nodeCount[node.id] || 0) + 1;
+        points2.push({ id: node.id, coord: projection2(node.loc) });
+      }
+      if (points2.length === 3) {
+        for (i3 = 0; i3 < 1e3; i3++) {
+          const motion = calcMotion(points2[1], 1, points2);
+          points2[corner.i].coord = geoVecAdd(points2[corner.i].coord, motion);
+          score = corner.dotp;
+          if (score < epsilon3) {
+            break;
+          }
+        }
+        node = graph.entity(nodes[corner.i].id);
+        loc = projection2.invert(points2[corner.i].coord);
+        graph = graph.replace(node.move(geoVecInterp(node.loc, loc, t4)));
+      } else {
+        const straights = [];
+        const simplified = [];
+        for (i3 = 0; i3 < points2.length; i3++) {
+          point3 = points2[i3];
+          let dotp = 0;
+          if (isClosed || i3 > 0 && i3 < points2.length - 1) {
+            const a2 = points2[(i3 - 1 + points2.length) % points2.length];
+            const b11 = points2[(i3 + 1) % points2.length];
+            dotp = Math.abs(geoVecNormalizedDot(a2.coord, b11.coord, point3.coord));
+          }
+          if (dotp > upperThreshold) {
+            straights.push(point3);
+          } else {
+            simplified.push(point3);
+          }
+        }
+        var bestPoints = clonePoints(simplified);
+        var originalPoints = clonePoints(simplified);
+        score = Infinity;
+        for (i3 = 0; i3 < 1e3; i3++) {
+          motions = simplified.map(calcMotion);
+          for (j3 = 0; j3 < motions.length; j3++) {
+            simplified[j3].coord = geoVecAdd(simplified[j3].coord, motions[j3]);
+          }
+          var newScore = geoOrthoCalcScore(simplified, isClosed, epsilon3, threshold2);
+          if (newScore < score) {
+            bestPoints = clonePoints(simplified);
+            score = newScore;
+          }
+          if (score < epsilon3) {
+            break;
+          }
+        }
+        var bestCoords = bestPoints.map(function(p2) {
+          return p2.coord;
+        });
+        if (isClosed) bestCoords.push(bestCoords[0]);
+        for (i3 = 0; i3 < bestPoints.length; i3++) {
+          point3 = bestPoints[i3];
+          if (!geoVecEqual(originalPoints[i3].coord, point3.coord)) {
+            node = graph.entity(point3.id);
+            loc = projection2.invert(point3.coord);
+            graph = graph.replace(node.move(geoVecInterp(node.loc, loc, t4)));
+          }
+        }
+        for (i3 = 0; i3 < straights.length; i3++) {
+          point3 = straights[i3];
+          if (nodeCount[point3.id] > 1) continue;
+          node = graph.entity(point3.id);
+          if (t4 === 1 && graph.parentWays(node).length === 1 && graph.parentRelations(node).length === 0 && !node.hasInterestingTags()) {
+            graph = actionDeleteNode(node.id)(graph);
+          } else {
+            var choice = geoVecProject(point3.coord, bestCoords);
+            if (choice) {
+              loc = projection2.invert(choice.target);
+              graph = graph.replace(node.move(geoVecInterp(node.loc, loc, t4)));
+            }
+          }
+        }
+      }
+      return graph;
+      function clonePoints(array2) {
+        return array2.map(function(p2) {
+          return { id: p2.id, coord: [p2.coord[0], p2.coord[1]] };
+        });
+      }
+      function calcMotion(point4, i4, array2) {
+        if (!isClosed && (i4 === 0 || i4 === array2.length - 1)) return [0, 0];
+        if (nodeCount[array2[i4].id] > 1) return [0, 0];
+        var a2 = array2[(i4 - 1 + array2.length) % array2.length].coord;
+        var origin = point4.coord;
+        var b11 = array2[(i4 + 1) % array2.length].coord;
+        var p2 = geoVecSubtract(a2, origin);
+        var q3 = geoVecSubtract(b11, origin);
+        var scale = 2 * Math.min(geoVecLength(p2), geoVecLength(q3));
+        p2 = geoVecNormalize(p2);
+        q3 = geoVecNormalize(q3);
+        var dotp = p2[0] * q3[0] + p2[1] * q3[1];
+        var val = Math.abs(dotp);
+        if (val < lowerThreshold) {
+          corner.i = i4;
+          corner.dotp = val;
+          var vec = geoVecNormalize(geoVecAdd(p2, q3));
+          return geoVecScale(vec, 0.1 * dotp * scale);
+        }
+        return [0, 0];
+      }
+    };
+    function nodeSubset(nodes, vertexID2, isClosed) {
+      var first = isClosed ? 0 : 1;
+      var last3 = isClosed ? nodes.length : nodes.length - 1;
+      for (var i3 = first; i3 < last3; i3++) {
+        if (nodes[i3].id === vertexID2) {
+          return [
+            nodes[(i3 - 1 + nodes.length) % nodes.length],
+            nodes[i3],
+            nodes[(i3 + 1) % nodes.length]
+          ];
+        }
+      }
+      return [];
+    }
+    action.disabled = function(graph) {
+      let way = graph.entity(wayID);
+      way = way.removeNode("");
+      graph = graph.replace(way);
+      let isClosed = way.isClosed();
+      let nodes = graph.childNodes(way).slice();
+      if (isClosed) nodes.pop();
+      let allowStraightAngles = false;
+      if (vertexID !== void 0) {
+        allowStraightAngles = true;
+        nodes = nodeSubset(nodes, vertexID, isClosed);
+        if (nodes.length !== 3) return "end_vertex";
+        isClosed = false;
+      }
+      const coords = nodes.map(function(n3) {
+        return projection2(n3.loc);
+      });
+      const score = geoOrthoCanOrthogonalize(coords, isClosed, epsilon3, threshold2, allowStraightAngles);
+      if (score === null) {
+        return "not_squarish";
+      } else if (score === 0) {
+        return "square_enough";
+      } else {
+        return false;
+      }
+    };
+    action.transitionable = true;
+    return action;
+  }
+  var init_orthogonalize = __esm({
+    "modules/actions/orthogonalize.ts"() {
+      "use strict";
+      init_delete_node();
+      init_geo2();
+    }
+  });
+
+  // modules/operations/orthogonalize.js
+  var orthogonalize_exports2 = {};
+  __export(orthogonalize_exports2, {
+    operationOrthogonalize: () => operationOrthogonalize
+  });
+  function operationOrthogonalize(context, selectedIDs) {
+    var _extent;
+    var _type;
+    var _actions = selectedIDs.map(chooseAction).filter(Boolean);
+    var _amount = _actions.length === 1 ? "single" : "multiple";
+    var _coords = utilGetAllNodes(selectedIDs, context.graph()).map(function(n3) {
+      return n3.loc;
+    });
+    function chooseAction(entityID) {
+      var entity = context.entity(entityID);
+      var geometry2 = entity.geometry(context.graph());
+      if (!_extent) {
+        _extent = entity.extent(context.graph());
+      } else {
+        _extent = _extent.extend(entity.extent(context.graph()));
+      }
+      if (entity.type === "way" && new Set(entity.nodes).size > 2) {
+        if (_type && _type !== "feature") return null;
+        _type = "feature";
+        return actionOrthogonalize(entityID, context.projection);
+      } else if (geometry2 === "vertex") {
+        if (_type && _type !== "corner") return null;
+        _type = "corner";
+        var graph = context.graph();
+        var parents = graph.parentWays(entity);
+        if (parents.length === 1) {
+          var way = parents[0];
+          if (way.nodes.indexOf(entityID) !== -1) {
+            return actionOrthogonalize(way.id, context.projection, entityID);
+          }
+        }
+      }
+      return null;
+    }
+    var operation2 = function() {
+      if (!_actions.length) return;
+      var combinedAction = function(graph, t4) {
+        _actions.forEach(function(action) {
+          if (!action.disabled(graph)) {
+            graph = action(graph, t4);
+          }
+        });
+        return graph;
+      };
+      combinedAction.transitionable = true;
+      context.perform(combinedAction, operation2.annotation());
+      window.setTimeout(function() {
+        context.validator().validate();
+      }, 300);
+    };
+    operation2.available = function() {
+      return _actions.length && selectedIDs.length === _actions.length;
+    };
+    operation2.disabled = function() {
+      if (!_actions.length) return "";
+      var actionDisableds = _actions.map(function(action) {
+        return action.disabled(context.graph());
+      }).filter(Boolean);
+      if (actionDisableds.length === _actions.length) {
+        if (new Set(actionDisableds).size > 1) {
+          return "multiple_blockers";
+        }
+        return actionDisableds[0];
+      } else if (_extent && _extent.percentContainedIn(context.map().extent()) < 0.8) {
+        return "too_large";
+      } else if (someMissing()) {
+        return "not_downloaded";
+      } else if (selectedIDs.some(context.hasHiddenConnections)) {
+        return "connected_to_hidden";
+      }
+      return false;
+      function someMissing() {
+        if (context.inIntro()) return false;
+        var osm = context.connection();
+        if (osm) {
+          var missing = _coords.filter(function(loc) {
+            return !osm.isDataLoaded(loc);
+          });
+          if (missing.length) {
+            missing.forEach(function(loc) {
+              context.loadTileAtLoc(loc);
+            });
+            return true;
+          }
+        }
+        return false;
+      }
+    };
+    operation2.getAuxiliaryGeometry = function() {
+      const graph = context.graph();
+      return _actions.map((action, idx) => {
+        if (!action.disabled(graph)) {
+          const previewGraph = action(graph);
+          const way = previewGraph.hasEntity(selectedIDs[idx]);
+          const getPath = svgPath(context.projection, previewGraph, false);
+          return {
+            id: way.id,
+            path: getPath(way),
+            klass: "preview"
+          };
+        } else {
+          return false;
+        }
+      }).filter(Boolean);
+    };
+    operation2.tooltip = function() {
+      var disable = operation2.disabled();
+      return disable ? _t.append("operations.orthogonalize." + disable + "." + _amount) : _t.append("operations.orthogonalize.description." + _type + "." + _amount);
+    };
+    operation2.annotation = function() {
+      return _t("operations.orthogonalize.annotation." + _type, { n: _actions.length });
+    };
+    operation2.id = "orthogonalize";
+    operation2.keys = [_t("operations.orthogonalize.key")];
+    operation2.title = _t.append("operations.orthogonalize.title");
+    operation2.behavior = behaviorOperation(context).which(operation2);
+    return operation2;
+  }
+  var init_orthogonalize2 = __esm({
+    "modules/operations/orthogonalize.js"() {
+      "use strict";
+      init_localizer();
+      init_orthogonalize();
+      init_operation();
+      init_util2();
+      init_svg();
+    }
+  });
+
+  // modules/actions/reflect.ts
+  var reflect_exports = {};
+  __export(reflect_exports, {
+    actionReflect: () => actionReflect
+  });
+  function actionReflect(reflectIds, projection2) {
+    var _useLongAxis = true;
+    var action = function(graph, t4) {
+      if (t4 === null || t4 === void 0 || !isFinite(t4)) t4 = 1;
+      t4 = Math.min(Math.max(+t4, 0), 1);
+      const [p2, q3] = getReflectAxis(graph);
+      var dx = q3[0] - p2[0];
+      var dy = q3[1] - p2[1];
+      var a2 = (dx * dx - dy * dy) / (dx * dx + dy * dy);
+      var b11 = 2 * dx * dy / (dx * dx + dy * dy);
+      const nodes = utilGetAllNodes(reflectIds, graph);
+      for (const node of nodes) {
+        const c2 = projection2(node.loc);
+        const newLoc = projection2.invert([
+          a2 * (c2[0] - p2[0]) + b11 * (c2[1] - p2[1]) + p2[0],
+          b11 * (c2[0] - p2[0]) - a2 * (c2[1] - p2[1]) + p2[1]
+        ]);
+        graph = graph.replace(
+          node.move(geoVecInterp(node.loc, newLoc, t4))
+        );
+      }
+      return graph;
+    };
+    action.useLongAxis = function(val) {
+      if (!arguments.length) return _useLongAxis;
+      _useLongAxis = val;
+      return action;
+    };
+    function getReflectAxis(graph) {
+      const nodes = utilGetAllNodes(reflectIds, graph);
+      const points2 = nodes.map(function(n3) {
+        return projection2(n3.loc);
+      });
+      const ssr = geoGetSmallestSurroundingRectangle(points2);
+      const p1 = [(ssr.poly[0][0] + ssr.poly[1][0]) / 2, (ssr.poly[0][1] + ssr.poly[1][1]) / 2];
+      const q1 = [(ssr.poly[2][0] + ssr.poly[3][0]) / 2, (ssr.poly[2][1] + ssr.poly[3][1]) / 2];
+      const p2 = [(ssr.poly[3][0] + ssr.poly[4][0]) / 2, (ssr.poly[3][1] + ssr.poly[4][1]) / 2];
+      const q22 = [(ssr.poly[1][0] + ssr.poly[2][0]) / 2, (ssr.poly[1][1] + ssr.poly[2][1]) / 2];
+      const isLong = geoVecLength(p1, q1) > geoVecLength(p2, q22);
+      if (_useLongAxis && isLong || !_useLongAxis && !isLong) {
+        return [p1, q1];
+      } else {
+        return [p2, q22];
+      }
+    }
+    ;
+    action.getReflectAxis = getReflectAxis;
+    action.transitionable = true;
+    return action;
+  }
+  var init_reflect = __esm({
+    "modules/actions/reflect.ts"() {
+      "use strict";
+      init_geo2();
+      init_util2();
+    }
+  });
+
+  // modules/operations/reflect.js
+  var reflect_exports2 = {};
+  __export(reflect_exports2, {
+    operationReflect: () => operationReflect,
+    operationReflectLong: () => operationReflectLong,
+    operationReflectShort: () => operationReflectShort
+  });
+  function operationReflectShort(context, selectedIDs) {
+    return operationReflect(context, selectedIDs, "short");
+  }
+  function operationReflectLong(context, selectedIDs) {
+    return operationReflect(context, selectedIDs, "long");
+  }
+  function operationReflect(context, selectedIDs, axis) {
+    axis = axis || "long";
+    var multi = selectedIDs.length === 1 ? "single" : "multiple";
+    var nodes = utilGetAllNodes(selectedIDs, context.graph());
+    var coords = nodes.map(function(n3) {
+      return n3.loc;
+    });
+    var extent2 = utilTotalExtent(selectedIDs, context.graph());
+    var _action = actionReflect(selectedIDs, context.projection).useLongAxis(Boolean(axis === "long"));
+    var operation2 = function() {
+      context.perform(_action, operation2.annotation());
+      window.setTimeout(function() {
+        context.validator().validate();
+      }, 300);
+    };
+    operation2.available = function() {
+      return nodes.length >= 3;
+    };
+    operation2.disabled = function() {
+      if (extent2.percentContainedIn(context.map().extent()) < 0.8) {
+        return "too_large";
+      } else if (someMissing()) {
+        return "not_downloaded";
+      } else if (selectedIDs.some(context.hasHiddenConnections)) {
+        return "connected_to_hidden";
+      } else if (selectedIDs.some(incompleteRelation)) {
+        return "incomplete_relation";
+      }
+      return false;
+      function someMissing() {
+        if (context.inIntro()) return false;
+        var osm = context.connection();
+        if (osm) {
+          var missing = coords.filter(function(loc) {
+            return !osm.isDataLoaded(loc);
+          });
+          if (missing.length) {
+            missing.forEach(function(loc) {
+              context.loadTileAtLoc(loc);
+            });
+            return true;
+          }
+        }
+        return false;
+      }
+      function incompleteRelation(id2) {
+        var entity = context.entity(id2);
+        return entity.type === "relation" && !entity.isComplete(context.graph());
+      }
+    };
+    operation2.getAuxiliaryGeometry = function() {
+      const graph = context.graph();
+      const [p2, q3] = _action.getReflectAxis(graph);
+      const previewGraph = _action(graph);
+      const getPath = svgPath(context.projection, previewGraph, false);
+      return [{
+        id: "axis",
+        path: `M ${p2[0]} ${p2[1]} L ${q3[0]} ${q3[1]}`,
+        klass: "reflect-axis"
+      }, ...selectedIDs.map((entityId) => {
+        const entity = previewGraph.hasEntity(entityId);
+        return {
+          id: entity.id,
+          path: getPath(entity),
+          klass: "preview"
+        };
+      })];
+    };
+    operation2.tooltip = function() {
+      var disable = operation2.disabled();
+      return disable ? _t.append("operations.reflect." + disable + "." + multi) : _t.append("operations.reflect.description." + axis + "." + multi);
+    };
+    operation2.annotation = function() {
+      return _t("operations.reflect.annotation." + axis + ".feature", { n: selectedIDs.length });
+    };
+    operation2.id = "reflect-" + axis;
+    operation2.keys = [_t("operations.reflect.key." + axis)];
+    operation2.title = _t.append("operations.reflect.title." + axis);
+    operation2.behavior = behaviorOperation(context).which(operation2);
+    return operation2;
+  }
+  var init_reflect2 = __esm({
+    "modules/operations/reflect.js"() {
+      "use strict";
+      init_localizer();
+      init_reflect();
+      init_operation();
+      init_util();
+      init_svg();
+    }
+  });
+
+  // modules/modes/rotate.js
+  var rotate_exports2 = {};
+  __export(rotate_exports2, {
+    modeRotate: () => modeRotate
+  });
+  function modeRotate(context, entityIDs) {
+    var mode2 = {
+      id: "rotate",
+      button: "browse"
+    };
+    var keybinding = utilKeybinding("rotate");
+    var behaviors = [
+      behaviorEdit(context),
+      operationCircularize(context, entityIDs).behavior,
+      operationDelete(context, entityIDs).behavior,
+      operationMove(context, entityIDs).behavior,
+      operationOrthogonalize(context, entityIDs).behavior,
+      operationReflectLong(context, entityIDs).behavior,
+      operationReflectShort(context, entityIDs).behavior
+    ];
+    var annotation = entityIDs.length === 1 ? _t("operations.rotate.annotation." + context.graph().geometry(entityIDs[0])) : _t("operations.rotate.annotation.feature", { n: entityIDs.length });
+    var _prevGraph;
+    var _prevAngle;
+    var _prevTransform;
+    var _pivot;
+    var _startEvent;
+    var _pointerPrefix = "PointerEvent" in window ? "pointer" : "mouse";
+    function doRotate(d3_event) {
+      var fn;
+      if (context.graph() !== _prevGraph) {
+        fn = context.perform;
+      } else {
+        fn = context.replace;
+      }
+      var projection2 = context.projection;
+      var currTransform = projection2.transform();
+      if (!_prevTransform || currTransform.k !== _prevTransform.k || currTransform.x !== _prevTransform.x || currTransform.y !== _prevTransform.y) {
+        var nodes = utilGetAllNodes(entityIDs, context.graph());
+        var points2 = nodes.map(function(n3) {
+          return projection2(n3.loc);
+        });
+        _pivot = getPivot(points2);
+        _prevAngle = void 0;
+      }
+      var currMouse = context.map().mouse(d3_event);
+      var currAngle = Math.atan2(currMouse[1] - _pivot[1], currMouse[0] - _pivot[0]);
+      if (typeof _prevAngle === "undefined") _prevAngle = currAngle;
+      var delta = currAngle - _prevAngle;
+      fn(actionRotate(entityIDs, _pivot, delta, projection2));
+      _prevTransform = currTransform;
+      _prevAngle = currAngle;
+      _prevGraph = context.graph();
+    }
+    function getPivot(points2) {
+      var _pivot2;
+      if (points2.length === 1) {
+        _pivot2 = points2[0];
+      } else if (points2.length === 2) {
+        _pivot2 = geoVecInterp(points2[0], points2[1], 0.5);
+      } else {
+        var polygonHull = hull_default(points2);
+        if (polygonHull.length === 2) {
+          _pivot2 = geoVecInterp(points2[0], points2[1], 0.5);
+        } else {
+          _pivot2 = centroid_default(hull_default(points2));
+        }
+      }
+      return _pivot2;
+    }
+    function finish(d3_event) {
+      d3_event.stopPropagation();
+      context.replace(actionNoop(), annotation);
+      context.enter(modeSelect(context, entityIDs));
+    }
+    function cancel() {
+      if (_prevGraph) context.pop();
+      context.enter(modeSelect(context, entityIDs));
+    }
+    function undone() {
+      context.enter(modeBrowse(context));
+    }
+    mode2.enter = function() {
+      _prevGraph = null;
+      context.features().forceVisible(entityIDs);
+      behaviors.forEach(context.install);
+      var downEvent = _startEvent;
+      _startEvent = null;
+      context.surface().on(_pointerPrefix + "down.modeRotate", function(d3_event) {
+        downEvent = d3_event;
+      });
+      select_default2(window).on(_pointerPrefix + "move.modeRotate", doRotate, true).on(_pointerPrefix + "up.modeRotate", function(d3_event) {
+        if (!downEvent) return;
+        var mapNode = context.container().select(".main-map").node();
+        var pointGetter = utilFastMouse(mapNode);
+        var p1 = pointGetter(downEvent);
+        var p2 = pointGetter(d3_event);
+        var dist = geoVecLength(p1, p2);
+        if (dist <= getSnapTolerance() / 2) finish(d3_event);
+        downEvent = null;
+      }, true);
+      context.history().on("undone.modeRotate", undone);
+      keybinding.on("\u238B", cancel).on("\u21A9", finish);
+      select_default2(document).call(keybinding);
+    };
+    mode2.exit = function() {
+      behaviors.forEach(context.uninstall);
+      context.surface().on(_pointerPrefix + "down.modeRotate", null);
+      select_default2(window).on(_pointerPrefix + "move.modeRotate", null, true).on(_pointerPrefix + "up.modeRotate", null, true);
+      context.history().on("undone.modeRotate", null);
+      select_default2(document).call(keybinding.unbind);
+      context.features().forceVisible([]);
+    };
+    mode2.selectedIDs = function() {
+      if (!arguments.length) return entityIDs;
+      return mode2;
+    };
+    mode2.startEvent = function(_3) {
+      if (!arguments.length) return _startEvent;
+      _startEvent = _3;
+      return mode2;
+    };
+    return mode2;
+  }
+  var init_rotate2 = __esm({
+    "modules/modes/rotate.js"() {
+      "use strict";
+      init_src6();
+      init_src();
+      init_localizer();
+      init_betterid_preferences();
+      init_rotate();
+      init_noop4();
+      init_edit();
+      init_vector();
+      init_browse();
+      init_select5();
+      init_circularize();
+      init_delete();
+      init_move2();
+      init_orthogonalize2();
+      init_reflect2();
+      init_keybinding();
+      init_util();
+    }
+  });
+
+  // modules/behavior/betterid_adobe.js
+  var betterid_adobe_exports = {};
+  __export(betterid_adobe_exports, {
+    behaviorBetteridAdobe: () => behaviorBetteridAdobe
+  });
+  function behaviorBetteridAdobe(context) {
+    var prefix = "PointerEvent" in window ? "pointer" : "mouse";
+    var _lastTransform = null;
+    var _spaceDown = false;
+    function enabled() {
+      return adobeShortcutsEnabled();
+    }
+    function container() {
+      return context.container();
+    }
+    function mapNode() {
+      return container().select(".main-map").node();
+    }
+    function mouseLoc(d3_event) {
+      var node = mapNode();
+      if (!node) return [0, 0];
+      return utilFastMouse(node)(d3_event);
+    }
+    function isTextEntry(d3_event) {
+      var target = d3_event.target;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return true;
+      var active = document.activeElement;
+      return Boolean(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
+    }
+    function overMap(d3_event) {
+      var target = d3_event.target;
+      return Boolean(target && target.closest && target.closest(".main-map"));
+    }
+    function wheel(d3_event) {
+      if (!enabled() || isTextEntry(d3_event)) return;
+      if (!overMap(d3_event)) return;
+      var deltaY = d3_event.deltaY;
+      if (d3_event.deltaMode === 1) deltaY *= 20;
+      else if (d3_event.deltaMode === 2) deltaY *= 100;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      if (d3_event.altKey) {
+        zoomAtPointer(d3_event, Math.exp(-deltaY * WHEEL_ZOOM_FACTOR));
+      } else if (d3_event.ctrlKey || d3_event.metaKey) {
+        context.map().pan([deltaY * WHEEL_PAN_FACTOR, 0]);
+      } else {
+        context.map().pan([0, deltaY * WHEEL_PAN_FACTOR]);
+      }
+    }
+    function zoomAtPointer(d3_event, factor) {
+      var map4 = context.map();
+      var point3 = mouseLoc(d3_event);
+      var transform3 = context.projection.transform();
+      var target = transform3.scale(factor);
+      var inverted = transform3.invert(point3);
+      target.x = point3[0] - inverted[0] * target.k;
+      target.y = point3[1] - inverted[1] * target.k;
+      map4.transformEase(target);
+    }
+    function keydown(d3_event) {
+      if (!enabled() || isTextEntry(d3_event)) return;
+      if (SPACE_KEYS.indexOf(d3_event.key) !== -1) {
+        if (_spaceDown) return;
+        _spaceDown = true;
+        container().classed("betterid-hand-tool", true);
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
+      }
+      var key = (d3_event.key || "").toLowerCase();
+      if ((d3_event.ctrlKey || d3_event.metaKey) && !d3_event.shiftKey && key === "t") {
+        freeTransform(d3_event);
+      } else if ((d3_event.ctrlKey || d3_event.metaKey) && key === "j") {
+        if (d3_event.shiftKey) {
+          cutToClipboard(d3_event);
+        } else {
+          duplicateSelection(d3_event);
+        }
+      } else if ((d3_event.ctrlKey || d3_event.metaKey) && d3_event.shiftKey && key === "v") {
+        pasteInPlace(d3_event);
+      } else if ((d3_event.ctrlKey || d3_event.metaKey) && d3_event.shiftKey && key === "t") {
+        repeatTransform(d3_event, d3_event.altKey);
+      }
+    }
+    function keyup(d3_event) {
+      if (SPACE_KEYS.indexOf(d3_event.key) === -1) return;
+      _spaceDown = false;
+      container().classed("betterid-hand-tool", false);
+    }
+    function blur3() {
+      _spaceDown = false;
+      container().classed("betterid-hand-tool", false);
+    }
+    function pointerdown(d3_event) {
+      if (!enabled() || _spaceDown) return;
+      if (!d3_event.altKey || d3_event.ctrlKey || d3_event.metaKey) return;
+      if (!overMap(d3_event) || d3_event.button !== 0) return;
+      var hex2 = sampleColor(d3_event.clientX, d3_event.clientY);
+      if (!hex2) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      var label = () => _t("betterid.tools.eyedropper_copied", { color: hex2 });
+      context.ui().flash.duration(3e3).iconName("#fas-eye-dropper").iconClass("operation").label(label)();
+      copyText(hex2);
+    }
+    function sampleColor(clientX, clientY) {
+      var elements = document.elementsFromPoint ? document.elementsFromPoint(clientX, clientY) : [document.elementFromPoint(clientX, clientY)];
+      for (var i3 = 0; i3 < elements.length; i3++) {
+        var element = elements[i3];
+        if (!element) continue;
+        var hex2 = null;
+        if (element.tagName === "IMG") {
+          hex2 = sampleImage(element, clientX, clientY);
+        } else if (element.tagName === "CANVAS") {
+          hex2 = sampleCanvas(element, clientX, clientY);
+        }
+        if (hex2) return hex2;
+      }
+      return null;
+    }
+    function sampleImage(image, clientX, clientY) {
+      try {
+        var rect = image.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        var x3 = Math.floor((clientX - rect.left) * (image.naturalWidth / rect.width));
+        var y3 = Math.floor((clientY - rect.top) * (image.naturalHeight / rect.height));
+        if (x3 < 0 || y3 < 0 || x3 >= image.naturalWidth || y3 >= image.naturalHeight) return null;
+        var canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        var ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(image, x3, y3, 1, 1, 0, 0, 1, 1);
+        return toHex(ctx.getImageData(0, 0, 1, 1).data);
+      } catch {
+        return null;
+      }
+    }
+    function sampleCanvas(canvas, clientX, clientY) {
+      try {
+        var rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        var x3 = Math.floor((clientX - rect.left) * (canvas.width / rect.width));
+        var y3 = Math.floor((clientY - rect.top) * (canvas.height / rect.height));
+        var ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return null;
+        return toHex(ctx.getImageData(x3, y3, 1, 1).data);
+      } catch {
+        return null;
+      }
+    }
+    function toHex(data) {
+      var value = data[0] << 16 | data[1] << 8 | data[2];
+      return "#" + value.toString(16).padStart(6, "0").toUpperCase();
+    }
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(function() {
+        });
+        return;
+      }
+      try {
+        var input = document.createElement("textarea");
+        input.value = text;
+        input.setAttribute("readonly", "readonly");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      } catch {
+      }
+    }
+    function selectedIDs() {
+      return context.selectedIDs().filter((id2) => context.hasEntity(id2));
+    }
+    function screenDeltaToGeo(deltaPx) {
+      var origin = context.map().center();
+      var screen = context.projection(origin);
+      var moved = context.projection.invert([screen[0] + deltaPx[0], screen[1] + deltaPx[1]]);
+      return [moved[0] - origin[0], moved[1] - origin[1]];
+    }
+    function freeTransform(d3_event) {
+      var ids = selectedIDs();
+      if (!ids.length) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      context.enter(modeRotate(context, ids));
+    }
+    function duplicateElements(ids, delta) {
+      if (!ids.length) return [];
+      var baseGraph = context.graph();
+      var action = actionCopyEntities(ids, baseGraph);
+      context.perform(action);
+      var copies = action.copies();
+      var newIDs = Object.keys(copies);
+      if (!newIDs.length) return [];
+      context.perform(actionMove(newIDs, delta, context.projection));
+      return newIDs;
+    }
+    function duplicateSelection(d3_event) {
+      var ids = selectedIDs();
+      if (!ids.length) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      var delta = screenDeltaToGeo(DUPLICATE_OFFSET_PX);
+      var newIDs = duplicateElements(ids, delta);
+      if (!newIDs.length) return;
+      _lastTransform = { delta };
+      context.enter(modeSelect(context, newIDs));
+    }
+    function cutToClipboard(d3_event) {
+      var ids = selectedIDs();
+      if (!ids.length) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      var delta = screenDeltaToGeo(DUPLICATE_OFFSET_PX);
+      var newIDs = duplicateElements(ids, delta);
+      if (!newIDs.length) return;
+      context.perform(actionDeleteMultiple(ids));
+      _lastTransform = { delta };
+      context.enter(modeSelect(context, newIDs));
+    }
+    function pasteInPlace(d3_event) {
+      var oldIDs = context.copyIDs();
+      if (!oldIDs || !oldIDs.length) {
+        context.ui().flash.duration(4e3).iconName("#iD-icon-no").iconClass("disabled").label(_t.append("operations.paste.nothing_copied"))();
+        return;
+      }
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      var newIDs = duplicateElements(oldIDs, [0, 0]);
+      if (!newIDs.length) return;
+      context.enter(modeSelect(context, newIDs));
+    }
+    function repeatTransform(d3_event, withCopy) {
+      if (!_lastTransform) return;
+      var ids = selectedIDs();
+      if (!ids.length) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      if (withCopy) {
+        var newIDs = duplicateElements(ids, _lastTransform.delta);
+        if (newIDs.length) context.enter(modeSelect(context, newIDs));
+        return;
+      }
+      context.perform(actionMove(ids, _lastTransform.delta, context.projection));
+    }
+    function behavior() {
+      select_default2(window).on("wheel.betteridAdobe", wheel, { capture: true, passive: false }).on("keydown.betteridAdobe", keydown, true).on("keyup.betteridAdobe", keyup, true).on(prefix + "down.betteridAdobe", pointerdown, true).on("blur.betteridAdobe", blur3);
+    }
+    behavior.off = function() {
+      select_default2(window).on("wheel.betteridAdobe", null, { capture: true }).on("keydown.betteridAdobe", null, true).on("keyup.betteridAdobe", null, true).on(prefix + "down.betteridAdobe", null, true).on("blur.betteridAdobe", null);
+      blur3();
+    };
+    return behavior;
+  }
+  var DUPLICATE_OFFSET_PX, WHEEL_PAN_FACTOR, WHEEL_ZOOM_FACTOR, SPACE_KEYS;
+  var init_betterid_adobe = __esm({
+    "modules/behavior/betterid_adobe.js"() {
+      "use strict";
+      init_src6();
+      init_copy_entities();
+      init_delete_multiple();
+      init_move();
+      init_betterid_tools();
+      init_localizer();
+      init_rotate2();
+      init_select5();
+      init_util2();
+      DUPLICATE_OFFSET_PX = [12, 12];
+      WHEEL_PAN_FACTOR = 1;
+      WHEEL_ZOOM_FACTOR = 25e-4;
+      SPACE_KEYS = ["Space", " "];
+    }
+  });
+
   // modules/util/dimensions.ts
   var dimensions_exports = {};
   __export(dimensions_exports, {
@@ -53083,6 +54904,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     }
     function handleZoomKeydown(d3_event, key) {
       if (!navigationEnabled() || key !== "space") return false;
+      if (adobeShortcutsEnabled()) return false;
       d3_event.preventDefault();
       d3_event.stopImmediatePropagation();
       if (d3_event.repeat || _navigationZoomKeys.has(key)) return true;
@@ -53929,6 +55751,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       init_src6();
       init_src13();
       init_preferences();
+      init_betterid_tools();
       init_localizer();
       init_betterid_preferences();
       init_geo2();
@@ -71394,741 +73217,6 @@ ${tag}` : tag;
     }
   });
 
-  // modules/actions/rotate.ts
-  var rotate_exports = {};
-  __export(rotate_exports, {
-    actionRotate: () => actionRotate
-  });
-  function actionRotate(rotateIds, pivot, angle2, projection2) {
-    var action = function(graph) {
-      return graph.update(function(graph2) {
-        utilGetAllNodes(rotateIds, graph2).forEach(function(node) {
-          var point3 = geoRotate([projection2(node.loc)], angle2, pivot)[0];
-          graph2 = graph2.replace(node.move(projection2.invert(point3)));
-        });
-      });
-    };
-    return action;
-  }
-  var init_rotate = __esm({
-    "modules/actions/rotate.ts"() {
-      "use strict";
-      init_geo2();
-      init_util2();
-    }
-  });
-
-  // modules/operations/move.js
-  var move_exports2 = {};
-  __export(move_exports2, {
-    operationMove: () => operationMove
-  });
-  function operationMove(context, selectedIDs) {
-    var multi = selectedIDs.length === 1 ? "single" : "multiple";
-    var nodes = utilGetAllNodes(selectedIDs, context.graph());
-    var coords = nodes.map(function(n3) {
-      return n3.loc;
-    });
-    var extent2 = utilTotalExtent(selectedIDs, context.graph());
-    var operation2 = function() {
-      context.enter(modeMove(context, selectedIDs));
-    };
-    operation2.available = function() {
-      return selectedIDs.length > 0;
-    };
-    operation2.disabled = function() {
-      if (extent2.percentContainedIn(context.map().extent()) < 0.8) {
-        return "too_large";
-      } else if (someMissing()) {
-        return "not_downloaded";
-      } else if (selectedIDs.some(context.hasHiddenConnections)) {
-        return "connected_to_hidden";
-      } else if (selectedIDs.some(incompleteRelation)) {
-        return "incomplete_relation";
-      }
-      return false;
-      function someMissing() {
-        if (context.inIntro()) return false;
-        var osm = context.connection();
-        if (osm) {
-          var missing = coords.filter(function(loc) {
-            return !osm.isDataLoaded(loc);
-          });
-          if (missing.length) {
-            missing.forEach(function(loc) {
-              context.loadTileAtLoc(loc);
-            });
-            return true;
-          }
-        }
-        return false;
-      }
-      function incompleteRelation(id2) {
-        var entity = context.entity(id2);
-        return entity.type === "relation" && !entity.isComplete(context.graph());
-      }
-    };
-    operation2.tooltip = function() {
-      var disable = operation2.disabled();
-      return disable ? _t.append("operations.move." + disable + "." + multi) : _t.append("operations.move.description." + multi);
-    };
-    operation2.annotation = function() {
-      return selectedIDs.length === 1 ? _t("operations.move.annotation." + context.graph().geometry(selectedIDs[0])) : _t("operations.move.annotation.feature", { n: selectedIDs.length });
-    };
-    operation2.id = "move";
-    operation2.keys = [_t("operations.move.key")];
-    operation2.title = _t.append("operations.move.title");
-    operation2.behavior = behaviorOperation(context).which(operation2);
-    operation2.mouseOnly = true;
-    return operation2;
-  }
-  var init_move2 = __esm({
-    "modules/operations/move.js"() {
-      "use strict";
-      init_localizer();
-      init_operation();
-      init_move3();
-      init_util();
-    }
-  });
-
-  // modules/actions/orthogonalize.ts
-  var orthogonalize_exports = {};
-  __export(orthogonalize_exports, {
-    actionOrthogonalize: () => actionOrthogonalize
-  });
-  function actionOrthogonalize(wayID, projection2, vertexID, degThresh, ep) {
-    var epsilon3 = ep || 1e-4;
-    var threshold2 = degThresh || 13;
-    var lowerThreshold = Math.cos((90 - threshold2) * Math.PI / 180);
-    var upperThreshold = Math.cos(threshold2 * Math.PI / 180);
-    var action = function(graph, t4) {
-      if (t4 === null || !isFinite(t4)) t4 = 1;
-      t4 = Math.min(Math.max(+t4, 0), 1);
-      let way = graph.entity(wayID);
-      way = way.removeNode("");
-      if (way.tags.nonsquare) {
-        var tags = { ...way.tags };
-        delete tags.nonsquare;
-        way = way.update({ tags });
-      }
-      graph = graph.replace(way);
-      var isClosed = way.isClosed();
-      var nodes = graph.childNodes(way).slice();
-      if (isClosed) nodes.pop();
-      if (vertexID !== void 0) {
-        nodes = nodeSubset(nodes, vertexID, isClosed);
-        if (nodes.length !== 3) return graph;
-      }
-      var nodeCount = {};
-      var points2 = [];
-      var corner = { i: 0, dotp: 1 };
-      var node, point3, loc, score, motions, i3, j3;
-      for (i3 = 0; i3 < nodes.length; i3++) {
-        node = nodes[i3];
-        nodeCount[node.id] = (nodeCount[node.id] || 0) + 1;
-        points2.push({ id: node.id, coord: projection2(node.loc) });
-      }
-      if (points2.length === 3) {
-        for (i3 = 0; i3 < 1e3; i3++) {
-          const motion = calcMotion(points2[1], 1, points2);
-          points2[corner.i].coord = geoVecAdd(points2[corner.i].coord, motion);
-          score = corner.dotp;
-          if (score < epsilon3) {
-            break;
-          }
-        }
-        node = graph.entity(nodes[corner.i].id);
-        loc = projection2.invert(points2[corner.i].coord);
-        graph = graph.replace(node.move(geoVecInterp(node.loc, loc, t4)));
-      } else {
-        const straights = [];
-        const simplified = [];
-        for (i3 = 0; i3 < points2.length; i3++) {
-          point3 = points2[i3];
-          let dotp = 0;
-          if (isClosed || i3 > 0 && i3 < points2.length - 1) {
-            const a2 = points2[(i3 - 1 + points2.length) % points2.length];
-            const b11 = points2[(i3 + 1) % points2.length];
-            dotp = Math.abs(geoVecNormalizedDot(a2.coord, b11.coord, point3.coord));
-          }
-          if (dotp > upperThreshold) {
-            straights.push(point3);
-          } else {
-            simplified.push(point3);
-          }
-        }
-        var bestPoints = clonePoints(simplified);
-        var originalPoints = clonePoints(simplified);
-        score = Infinity;
-        for (i3 = 0; i3 < 1e3; i3++) {
-          motions = simplified.map(calcMotion);
-          for (j3 = 0; j3 < motions.length; j3++) {
-            simplified[j3].coord = geoVecAdd(simplified[j3].coord, motions[j3]);
-          }
-          var newScore = geoOrthoCalcScore(simplified, isClosed, epsilon3, threshold2);
-          if (newScore < score) {
-            bestPoints = clonePoints(simplified);
-            score = newScore;
-          }
-          if (score < epsilon3) {
-            break;
-          }
-        }
-        var bestCoords = bestPoints.map(function(p2) {
-          return p2.coord;
-        });
-        if (isClosed) bestCoords.push(bestCoords[0]);
-        for (i3 = 0; i3 < bestPoints.length; i3++) {
-          point3 = bestPoints[i3];
-          if (!geoVecEqual(originalPoints[i3].coord, point3.coord)) {
-            node = graph.entity(point3.id);
-            loc = projection2.invert(point3.coord);
-            graph = graph.replace(node.move(geoVecInterp(node.loc, loc, t4)));
-          }
-        }
-        for (i3 = 0; i3 < straights.length; i3++) {
-          point3 = straights[i3];
-          if (nodeCount[point3.id] > 1) continue;
-          node = graph.entity(point3.id);
-          if (t4 === 1 && graph.parentWays(node).length === 1 && graph.parentRelations(node).length === 0 && !node.hasInterestingTags()) {
-            graph = actionDeleteNode(node.id)(graph);
-          } else {
-            var choice = geoVecProject(point3.coord, bestCoords);
-            if (choice) {
-              loc = projection2.invert(choice.target);
-              graph = graph.replace(node.move(geoVecInterp(node.loc, loc, t4)));
-            }
-          }
-        }
-      }
-      return graph;
-      function clonePoints(array2) {
-        return array2.map(function(p2) {
-          return { id: p2.id, coord: [p2.coord[0], p2.coord[1]] };
-        });
-      }
-      function calcMotion(point4, i4, array2) {
-        if (!isClosed && (i4 === 0 || i4 === array2.length - 1)) return [0, 0];
-        if (nodeCount[array2[i4].id] > 1) return [0, 0];
-        var a2 = array2[(i4 - 1 + array2.length) % array2.length].coord;
-        var origin = point4.coord;
-        var b11 = array2[(i4 + 1) % array2.length].coord;
-        var p2 = geoVecSubtract(a2, origin);
-        var q3 = geoVecSubtract(b11, origin);
-        var scale = 2 * Math.min(geoVecLength(p2), geoVecLength(q3));
-        p2 = geoVecNormalize(p2);
-        q3 = geoVecNormalize(q3);
-        var dotp = p2[0] * q3[0] + p2[1] * q3[1];
-        var val = Math.abs(dotp);
-        if (val < lowerThreshold) {
-          corner.i = i4;
-          corner.dotp = val;
-          var vec = geoVecNormalize(geoVecAdd(p2, q3));
-          return geoVecScale(vec, 0.1 * dotp * scale);
-        }
-        return [0, 0];
-      }
-    };
-    function nodeSubset(nodes, vertexID2, isClosed) {
-      var first = isClosed ? 0 : 1;
-      var last3 = isClosed ? nodes.length : nodes.length - 1;
-      for (var i3 = first; i3 < last3; i3++) {
-        if (nodes[i3].id === vertexID2) {
-          return [
-            nodes[(i3 - 1 + nodes.length) % nodes.length],
-            nodes[i3],
-            nodes[(i3 + 1) % nodes.length]
-          ];
-        }
-      }
-      return [];
-    }
-    action.disabled = function(graph) {
-      let way = graph.entity(wayID);
-      way = way.removeNode("");
-      graph = graph.replace(way);
-      let isClosed = way.isClosed();
-      let nodes = graph.childNodes(way).slice();
-      if (isClosed) nodes.pop();
-      let allowStraightAngles = false;
-      if (vertexID !== void 0) {
-        allowStraightAngles = true;
-        nodes = nodeSubset(nodes, vertexID, isClosed);
-        if (nodes.length !== 3) return "end_vertex";
-        isClosed = false;
-      }
-      const coords = nodes.map(function(n3) {
-        return projection2(n3.loc);
-      });
-      const score = geoOrthoCanOrthogonalize(coords, isClosed, epsilon3, threshold2, allowStraightAngles);
-      if (score === null) {
-        return "not_squarish";
-      } else if (score === 0) {
-        return "square_enough";
-      } else {
-        return false;
-      }
-    };
-    action.transitionable = true;
-    return action;
-  }
-  var init_orthogonalize = __esm({
-    "modules/actions/orthogonalize.ts"() {
-      "use strict";
-      init_delete_node();
-      init_geo2();
-    }
-  });
-
-  // modules/operations/orthogonalize.js
-  var orthogonalize_exports2 = {};
-  __export(orthogonalize_exports2, {
-    operationOrthogonalize: () => operationOrthogonalize
-  });
-  function operationOrthogonalize(context, selectedIDs) {
-    var _extent;
-    var _type;
-    var _actions = selectedIDs.map(chooseAction).filter(Boolean);
-    var _amount = _actions.length === 1 ? "single" : "multiple";
-    var _coords = utilGetAllNodes(selectedIDs, context.graph()).map(function(n3) {
-      return n3.loc;
-    });
-    function chooseAction(entityID) {
-      var entity = context.entity(entityID);
-      var geometry2 = entity.geometry(context.graph());
-      if (!_extent) {
-        _extent = entity.extent(context.graph());
-      } else {
-        _extent = _extent.extend(entity.extent(context.graph()));
-      }
-      if (entity.type === "way" && new Set(entity.nodes).size > 2) {
-        if (_type && _type !== "feature") return null;
-        _type = "feature";
-        return actionOrthogonalize(entityID, context.projection);
-      } else if (geometry2 === "vertex") {
-        if (_type && _type !== "corner") return null;
-        _type = "corner";
-        var graph = context.graph();
-        var parents = graph.parentWays(entity);
-        if (parents.length === 1) {
-          var way = parents[0];
-          if (way.nodes.indexOf(entityID) !== -1) {
-            return actionOrthogonalize(way.id, context.projection, entityID);
-          }
-        }
-      }
-      return null;
-    }
-    var operation2 = function() {
-      if (!_actions.length) return;
-      var combinedAction = function(graph, t4) {
-        _actions.forEach(function(action) {
-          if (!action.disabled(graph)) {
-            graph = action(graph, t4);
-          }
-        });
-        return graph;
-      };
-      combinedAction.transitionable = true;
-      context.perform(combinedAction, operation2.annotation());
-      window.setTimeout(function() {
-        context.validator().validate();
-      }, 300);
-    };
-    operation2.available = function() {
-      return _actions.length && selectedIDs.length === _actions.length;
-    };
-    operation2.disabled = function() {
-      if (!_actions.length) return "";
-      var actionDisableds = _actions.map(function(action) {
-        return action.disabled(context.graph());
-      }).filter(Boolean);
-      if (actionDisableds.length === _actions.length) {
-        if (new Set(actionDisableds).size > 1) {
-          return "multiple_blockers";
-        }
-        return actionDisableds[0];
-      } else if (_extent && _extent.percentContainedIn(context.map().extent()) < 0.8) {
-        return "too_large";
-      } else if (someMissing()) {
-        return "not_downloaded";
-      } else if (selectedIDs.some(context.hasHiddenConnections)) {
-        return "connected_to_hidden";
-      }
-      return false;
-      function someMissing() {
-        if (context.inIntro()) return false;
-        var osm = context.connection();
-        if (osm) {
-          var missing = _coords.filter(function(loc) {
-            return !osm.isDataLoaded(loc);
-          });
-          if (missing.length) {
-            missing.forEach(function(loc) {
-              context.loadTileAtLoc(loc);
-            });
-            return true;
-          }
-        }
-        return false;
-      }
-    };
-    operation2.getAuxiliaryGeometry = function() {
-      const graph = context.graph();
-      return _actions.map((action, idx) => {
-        if (!action.disabled(graph)) {
-          const previewGraph = action(graph);
-          const way = previewGraph.hasEntity(selectedIDs[idx]);
-          const getPath = svgPath(context.projection, previewGraph, false);
-          return {
-            id: way.id,
-            path: getPath(way),
-            klass: "preview"
-          };
-        } else {
-          return false;
-        }
-      }).filter(Boolean);
-    };
-    operation2.tooltip = function() {
-      var disable = operation2.disabled();
-      return disable ? _t.append("operations.orthogonalize." + disable + "." + _amount) : _t.append("operations.orthogonalize.description." + _type + "." + _amount);
-    };
-    operation2.annotation = function() {
-      return _t("operations.orthogonalize.annotation." + _type, { n: _actions.length });
-    };
-    operation2.id = "orthogonalize";
-    operation2.keys = [_t("operations.orthogonalize.key")];
-    operation2.title = _t.append("operations.orthogonalize.title");
-    operation2.behavior = behaviorOperation(context).which(operation2);
-    return operation2;
-  }
-  var init_orthogonalize2 = __esm({
-    "modules/operations/orthogonalize.js"() {
-      "use strict";
-      init_localizer();
-      init_orthogonalize();
-      init_operation();
-      init_util2();
-      init_svg();
-    }
-  });
-
-  // modules/actions/reflect.ts
-  var reflect_exports = {};
-  __export(reflect_exports, {
-    actionReflect: () => actionReflect
-  });
-  function actionReflect(reflectIds, projection2) {
-    var _useLongAxis = true;
-    var action = function(graph, t4) {
-      if (t4 === null || t4 === void 0 || !isFinite(t4)) t4 = 1;
-      t4 = Math.min(Math.max(+t4, 0), 1);
-      const [p2, q3] = getReflectAxis(graph);
-      var dx = q3[0] - p2[0];
-      var dy = q3[1] - p2[1];
-      var a2 = (dx * dx - dy * dy) / (dx * dx + dy * dy);
-      var b11 = 2 * dx * dy / (dx * dx + dy * dy);
-      const nodes = utilGetAllNodes(reflectIds, graph);
-      for (const node of nodes) {
-        const c2 = projection2(node.loc);
-        const newLoc = projection2.invert([
-          a2 * (c2[0] - p2[0]) + b11 * (c2[1] - p2[1]) + p2[0],
-          b11 * (c2[0] - p2[0]) - a2 * (c2[1] - p2[1]) + p2[1]
-        ]);
-        graph = graph.replace(
-          node.move(geoVecInterp(node.loc, newLoc, t4))
-        );
-      }
-      return graph;
-    };
-    action.useLongAxis = function(val) {
-      if (!arguments.length) return _useLongAxis;
-      _useLongAxis = val;
-      return action;
-    };
-    function getReflectAxis(graph) {
-      const nodes = utilGetAllNodes(reflectIds, graph);
-      const points2 = nodes.map(function(n3) {
-        return projection2(n3.loc);
-      });
-      const ssr = geoGetSmallestSurroundingRectangle(points2);
-      const p1 = [(ssr.poly[0][0] + ssr.poly[1][0]) / 2, (ssr.poly[0][1] + ssr.poly[1][1]) / 2];
-      const q1 = [(ssr.poly[2][0] + ssr.poly[3][0]) / 2, (ssr.poly[2][1] + ssr.poly[3][1]) / 2];
-      const p2 = [(ssr.poly[3][0] + ssr.poly[4][0]) / 2, (ssr.poly[3][1] + ssr.poly[4][1]) / 2];
-      const q22 = [(ssr.poly[1][0] + ssr.poly[2][0]) / 2, (ssr.poly[1][1] + ssr.poly[2][1]) / 2];
-      const isLong = geoVecLength(p1, q1) > geoVecLength(p2, q22);
-      if (_useLongAxis && isLong || !_useLongAxis && !isLong) {
-        return [p1, q1];
-      } else {
-        return [p2, q22];
-      }
-    }
-    ;
-    action.getReflectAxis = getReflectAxis;
-    action.transitionable = true;
-    return action;
-  }
-  var init_reflect = __esm({
-    "modules/actions/reflect.ts"() {
-      "use strict";
-      init_geo2();
-      init_util2();
-    }
-  });
-
-  // modules/operations/reflect.js
-  var reflect_exports2 = {};
-  __export(reflect_exports2, {
-    operationReflect: () => operationReflect,
-    operationReflectLong: () => operationReflectLong,
-    operationReflectShort: () => operationReflectShort
-  });
-  function operationReflectShort(context, selectedIDs) {
-    return operationReflect(context, selectedIDs, "short");
-  }
-  function operationReflectLong(context, selectedIDs) {
-    return operationReflect(context, selectedIDs, "long");
-  }
-  function operationReflect(context, selectedIDs, axis) {
-    axis = axis || "long";
-    var multi = selectedIDs.length === 1 ? "single" : "multiple";
-    var nodes = utilGetAllNodes(selectedIDs, context.graph());
-    var coords = nodes.map(function(n3) {
-      return n3.loc;
-    });
-    var extent2 = utilTotalExtent(selectedIDs, context.graph());
-    var _action = actionReflect(selectedIDs, context.projection).useLongAxis(Boolean(axis === "long"));
-    var operation2 = function() {
-      context.perform(_action, operation2.annotation());
-      window.setTimeout(function() {
-        context.validator().validate();
-      }, 300);
-    };
-    operation2.available = function() {
-      return nodes.length >= 3;
-    };
-    operation2.disabled = function() {
-      if (extent2.percentContainedIn(context.map().extent()) < 0.8) {
-        return "too_large";
-      } else if (someMissing()) {
-        return "not_downloaded";
-      } else if (selectedIDs.some(context.hasHiddenConnections)) {
-        return "connected_to_hidden";
-      } else if (selectedIDs.some(incompleteRelation)) {
-        return "incomplete_relation";
-      }
-      return false;
-      function someMissing() {
-        if (context.inIntro()) return false;
-        var osm = context.connection();
-        if (osm) {
-          var missing = coords.filter(function(loc) {
-            return !osm.isDataLoaded(loc);
-          });
-          if (missing.length) {
-            missing.forEach(function(loc) {
-              context.loadTileAtLoc(loc);
-            });
-            return true;
-          }
-        }
-        return false;
-      }
-      function incompleteRelation(id2) {
-        var entity = context.entity(id2);
-        return entity.type === "relation" && !entity.isComplete(context.graph());
-      }
-    };
-    operation2.getAuxiliaryGeometry = function() {
-      const graph = context.graph();
-      const [p2, q3] = _action.getReflectAxis(graph);
-      const previewGraph = _action(graph);
-      const getPath = svgPath(context.projection, previewGraph, false);
-      return [{
-        id: "axis",
-        path: `M ${p2[0]} ${p2[1]} L ${q3[0]} ${q3[1]}`,
-        klass: "reflect-axis"
-      }, ...selectedIDs.map((entityId) => {
-        const entity = previewGraph.hasEntity(entityId);
-        return {
-          id: entity.id,
-          path: getPath(entity),
-          klass: "preview"
-        };
-      })];
-    };
-    operation2.tooltip = function() {
-      var disable = operation2.disabled();
-      return disable ? _t.append("operations.reflect." + disable + "." + multi) : _t.append("operations.reflect.description." + axis + "." + multi);
-    };
-    operation2.annotation = function() {
-      return _t("operations.reflect.annotation." + axis + ".feature", { n: selectedIDs.length });
-    };
-    operation2.id = "reflect-" + axis;
-    operation2.keys = [_t("operations.reflect.key." + axis)];
-    operation2.title = _t.append("operations.reflect.title." + axis);
-    operation2.behavior = behaviorOperation(context).which(operation2);
-    return operation2;
-  }
-  var init_reflect2 = __esm({
-    "modules/operations/reflect.js"() {
-      "use strict";
-      init_localizer();
-      init_reflect();
-      init_operation();
-      init_util();
-      init_svg();
-    }
-  });
-
-  // modules/modes/rotate.js
-  var rotate_exports2 = {};
-  __export(rotate_exports2, {
-    modeRotate: () => modeRotate
-  });
-  function modeRotate(context, entityIDs) {
-    var mode2 = {
-      id: "rotate",
-      button: "browse"
-    };
-    var keybinding = utilKeybinding("rotate");
-    var behaviors = [
-      behaviorEdit(context),
-      operationCircularize(context, entityIDs).behavior,
-      operationDelete(context, entityIDs).behavior,
-      operationMove(context, entityIDs).behavior,
-      operationOrthogonalize(context, entityIDs).behavior,
-      operationReflectLong(context, entityIDs).behavior,
-      operationReflectShort(context, entityIDs).behavior
-    ];
-    var annotation = entityIDs.length === 1 ? _t("operations.rotate.annotation." + context.graph().geometry(entityIDs[0])) : _t("operations.rotate.annotation.feature", { n: entityIDs.length });
-    var _prevGraph;
-    var _prevAngle;
-    var _prevTransform;
-    var _pivot;
-    var _startEvent;
-    var _pointerPrefix = "PointerEvent" in window ? "pointer" : "mouse";
-    function doRotate(d3_event) {
-      var fn;
-      if (context.graph() !== _prevGraph) {
-        fn = context.perform;
-      } else {
-        fn = context.replace;
-      }
-      var projection2 = context.projection;
-      var currTransform = projection2.transform();
-      if (!_prevTransform || currTransform.k !== _prevTransform.k || currTransform.x !== _prevTransform.x || currTransform.y !== _prevTransform.y) {
-        var nodes = utilGetAllNodes(entityIDs, context.graph());
-        var points2 = nodes.map(function(n3) {
-          return projection2(n3.loc);
-        });
-        _pivot = getPivot(points2);
-        _prevAngle = void 0;
-      }
-      var currMouse = context.map().mouse(d3_event);
-      var currAngle = Math.atan2(currMouse[1] - _pivot[1], currMouse[0] - _pivot[0]);
-      if (typeof _prevAngle === "undefined") _prevAngle = currAngle;
-      var delta = currAngle - _prevAngle;
-      fn(actionRotate(entityIDs, _pivot, delta, projection2));
-      _prevTransform = currTransform;
-      _prevAngle = currAngle;
-      _prevGraph = context.graph();
-    }
-    function getPivot(points2) {
-      var _pivot2;
-      if (points2.length === 1) {
-        _pivot2 = points2[0];
-      } else if (points2.length === 2) {
-        _pivot2 = geoVecInterp(points2[0], points2[1], 0.5);
-      } else {
-        var polygonHull = hull_default(points2);
-        if (polygonHull.length === 2) {
-          _pivot2 = geoVecInterp(points2[0], points2[1], 0.5);
-        } else {
-          _pivot2 = centroid_default(hull_default(points2));
-        }
-      }
-      return _pivot2;
-    }
-    function finish(d3_event) {
-      d3_event.stopPropagation();
-      context.replace(actionNoop(), annotation);
-      context.enter(modeSelect(context, entityIDs));
-    }
-    function cancel() {
-      if (_prevGraph) context.pop();
-      context.enter(modeSelect(context, entityIDs));
-    }
-    function undone() {
-      context.enter(modeBrowse(context));
-    }
-    mode2.enter = function() {
-      _prevGraph = null;
-      context.features().forceVisible(entityIDs);
-      behaviors.forEach(context.install);
-      var downEvent = _startEvent;
-      _startEvent = null;
-      context.surface().on(_pointerPrefix + "down.modeRotate", function(d3_event) {
-        downEvent = d3_event;
-      });
-      select_default2(window).on(_pointerPrefix + "move.modeRotate", doRotate, true).on(_pointerPrefix + "up.modeRotate", function(d3_event) {
-        if (!downEvent) return;
-        var mapNode = context.container().select(".main-map").node();
-        var pointGetter = utilFastMouse(mapNode);
-        var p1 = pointGetter(downEvent);
-        var p2 = pointGetter(d3_event);
-        var dist = geoVecLength(p1, p2);
-        if (dist <= getSnapTolerance() / 2) finish(d3_event);
-        downEvent = null;
-      }, true);
-      context.history().on("undone.modeRotate", undone);
-      keybinding.on("\u238B", cancel).on("\u21A9", finish);
-      select_default2(document).call(keybinding);
-    };
-    mode2.exit = function() {
-      behaviors.forEach(context.uninstall);
-      context.surface().on(_pointerPrefix + "down.modeRotate", null);
-      select_default2(window).on(_pointerPrefix + "move.modeRotate", null, true).on(_pointerPrefix + "up.modeRotate", null, true);
-      context.history().on("undone.modeRotate", null);
-      select_default2(document).call(keybinding.unbind);
-      context.features().forceVisible([]);
-    };
-    mode2.selectedIDs = function() {
-      if (!arguments.length) return entityIDs;
-      return mode2;
-    };
-    mode2.startEvent = function(_3) {
-      if (!arguments.length) return _startEvent;
-      _startEvent = _3;
-      return mode2;
-    };
-    return mode2;
-  }
-  var init_rotate2 = __esm({
-    "modules/modes/rotate.js"() {
-      "use strict";
-      init_src6();
-      init_src();
-      init_localizer();
-      init_betterid_preferences();
-      init_rotate();
-      init_noop4();
-      init_edit();
-      init_vector();
-      init_browse();
-      init_select5();
-      init_circularize();
-      init_delete();
-      init_move2();
-      init_orthogonalize2();
-      init_reflect2();
-      init_keybinding();
-      init_util();
-    }
-  });
-
   // modules/ui/conflicts.js
   var conflicts_exports = {};
   __export(conflicts_exports, {
@@ -74874,6 +75962,109 @@ ${tag}` : tag;
       init_src6();
       init_dist2();
       init_tools();
+    }
+  });
+
+  // modules/ui/betterid_toolbar.js
+  var betterid_toolbar_exports = {};
+  __export(betterid_toolbar_exports, {
+    uiBetteridToolPalette: () => uiBetteridToolPalette
+  });
+  function uiBetteridToolPalette(context) {
+    var _container = select_default2(null);
+    function chooseTool(tool) {
+      setBetteridTool(betteridTool() === tool && tool !== "select" ? "select" : tool);
+      context.ui().flash.duration(1500).iconName(TOOL_ICONS[betteridTool()]).iconClass("operation").label(_t("betterid.tools.active", { tool: _t("betterid.tools." + betteridTool()) }))();
+    }
+    function optionRow(container, label, value, min4, max4, step, onInput) {
+      var row = container.append("label").attr("class", "betterid-tool-option");
+      row.append("span").attr("class", "betterid-tool-option-label").call(_t.append(label));
+      row.append("input").attr("type", "range").attr("min", min4).attr("max", max4).attr("step", step).property("value", value).on("input", function() {
+        onInput(Number(this.value));
+      });
+      row.append("output").text(value);
+      return row;
+    }
+    function render(selection2) {
+      selection2.selectAll(".betterid-tool-palette").remove();
+      context.container().classed("betterid-tool-active", betteridTool() !== "select");
+      var palette2 = selection2.append("div").attr("class", "betterid-tool-palette");
+      var tools = palette2.append("div").attr("class", "betterid-tool-buttons");
+      BETTERID_TOOLS.forEach(function(tool2) {
+        var button = tools.append("button").attr("type", "button").attr("class", "betterid-tool-button betterid-tool-" + tool2).classed("active", betteridTool() === tool2).on("click", function(d3_event) {
+          d3_event.preventDefault();
+          chooseTool(tool2);
+        });
+        button.call(svgIcon(TOOL_ICONS[tool2]));
+        button.call(uiTooltip().placement("right").title(() => _t.append("betterid.tools." + tool2)).keys([_t("betterid.tools." + tool2 + "_key")]).scrollContainer(context.container().select(".over-map")));
+      });
+      var options = palette2.append("div").attr("class", "betterid-tool-options");
+      var tool = betteridTool();
+      if (tool === "marquee") {
+        var shapeButton = options.append("button").attr("type", "button").attr("class", "betterid-tool-shape").on("click", function(d3_event) {
+          d3_event.preventDefault();
+          cycleMarqueeShape();
+        }).call(svgIcon("#iD-icon-area"));
+        shapeButton.append("span").call(_t.append(marqueeShape() === "ellipse" ? "betterid.tools.marquee_ellipse" : "betterid.tools.marquee_rect"));
+      } else if (tool === "quickselect") {
+        optionRow(options, "betterid.tools.brush_size", brushSize(), 8, 200, 4, function(value) {
+          setBrushSize(value);
+        });
+      } else if (tool === "magicwand") {
+        optionRow(options, "betterid.tools.tolerance", wandTolerance(), 0, 10, 1, function(value) {
+          setWandTolerance(value);
+        });
+        var contiguousLabel = options.append("label").attr("class", "betterid-tool-check");
+        contiguousLabel.append("input").attr("type", "checkbox").property("checked", wandContiguous()).on("change", function() {
+          setWandContiguous(this.checked);
+        });
+        contiguousLabel.append("span").call(_t.append("betterid.tools.contiguous"));
+      } else if (tool === "pen") {
+        options.append("p").attr("class", "betterid-tool-hint").call(_t.append("betterid.tools.pen_hint"));
+      }
+      var footer = palette2.append("div").attr("class", "betterid-tool-footer");
+      var adobeLabel = footer.append("label").attr("class", "betterid-tool-check");
+      adobeLabel.append("input").attr("type", "checkbox").property("checked", adobeShortcutsEnabled()).on("change", function() {
+        setAdobeShortcuts(this.checked);
+      });
+      adobeLabel.append("span").call(_t.append("betterid.tools.adobe_shortcuts"));
+      adobeLabel.call(uiTooltip().placement("right").title(() => _t.append("betterid.tools.adobe_shortcuts_hint")).scrollContainer(context.container().select(".over-map")));
+    }
+    function palette(selection2) {
+      _container = selection2;
+      render(selection2);
+      [
+        BETTERID_TOOL_PREF,
+        BETTERID_MARQUEE_SHAPE_PREF,
+        BETTERID_BRUSH_SIZE_PREF,
+        BETTERID_WAND_TOLERANCE_PREF,
+        BETTERID_WAND_CONTIGUOUS_PREF,
+        BETTERID_ADOBE_SHORTCUTS_PREF
+      ].forEach(function(key) {
+        corePreferences.onChange(key, function() {
+          if (!_container.empty()) render(_container);
+        });
+      });
+    }
+    return palette;
+  }
+  var TOOL_ICONS;
+  var init_betterid_toolbar = __esm({
+    "modules/ui/betterid_toolbar.js"() {
+      "use strict";
+      init_src6();
+      init_betterid_tools();
+      init_preferences();
+      init_localizer();
+      init_svg();
+      init_tooltip();
+      TOOL_ICONS = {
+        select: "#iD-icon-inspect",
+        marquee: "#iD-icon-area",
+        quickselect: "#iD-icon-point",
+        magicwand: "#iD-icon-framed-dot",
+        pen: "#iD-icon-line"
+      };
     }
   });
 
@@ -78075,6 +79266,10 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
       overMap = content.append("div").attr("class", "over-map");
       overMap.append("div").attr("class", "select-trap").text("t");
       overMap.call(uiMapInMap(context)).call(uiNotice(context));
+      overMap.call(uiBetteridToolPalette(context));
+      context.install(behaviorBetteridSelectTools(context));
+      context.install(behaviorBetteridPen(context));
+      context.install(behaviorBetteridAdobe(context));
       overMap.append("div").attr("class", "spinner").call(uiSpinner(context));
       var controlsWrap = overMap.append("div").attr("class", "map-controls-wrap");
       var controls = controlsWrap.append("div").attr("class", "map-controls");
@@ -78362,6 +79557,9 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
       init_localizer();
       init_presets();
       init_behavior();
+      init_betterid_select_tools();
+      init_betterid_pen();
+      init_betterid_adobe();
       init_browse();
       init_svg();
       init_detect();
@@ -78391,6 +79589,7 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
       init_status();
       init_tooltip();
       init_top_toolbar();
+      init_betterid_toolbar();
       init_version();
       init_zoom3();
       init_zoom_to_selection();
@@ -101036,6 +102235,9 @@ this.ifd0Offset: ${this.ifd0Offset}, file.byteLength: ${e3.byteLength}`), e3.tif
         "../actions/unrestrict_turn.ts": () => Promise.resolve().then(() => (init_unrestrict_turn(), unrestrict_turn_exports)),
         "../actions/upgrade_tags.ts": () => Promise.resolve().then(() => (init_upgrade_tags(), upgrade_tags_exports)),
         "../behavior/add_way.js": () => Promise.resolve().then(() => (init_add_way(), add_way_exports)),
+        "../behavior/betterid_adobe.js": () => Promise.resolve().then(() => (init_betterid_adobe(), betterid_adobe_exports)),
+        "../behavior/betterid_pen.js": () => Promise.resolve().then(() => (init_betterid_pen(), betterid_pen_exports)),
+        "../behavior/betterid_select_tools.js": () => Promise.resolve().then(() => (init_betterid_select_tools(), betterid_select_tools_exports)),
         "../behavior/breathe.js": () => Promise.resolve().then(() => (init_breathe(), breathe_exports)),
         "../behavior/drag.js": () => Promise.resolve().then(() => (init_drag2(), drag_exports)),
         "../behavior/draw.js": () => Promise.resolve().then(() => (init_draw(), draw_exports)),
@@ -101050,6 +102252,7 @@ this.ifd0Offset: ${this.ifd0Offset}, file.byteLength: ${e3.byteLength}`), e3.tif
         "../behavior/paste.js": () => Promise.resolve().then(() => (init_paste2(), paste_exports2)),
         "../behavior/select.js": () => Promise.resolve().then(() => (init_select4(), select_exports)),
         "../core/betterid_preferences.js": () => Promise.resolve().then(() => (init_betterid_preferences(), betterid_preferences_exports)),
+        "../core/betterid_tools.js": () => Promise.resolve().then(() => (init_betterid_tools(), betterid_tools_exports)),
         "../core/change_batches.js": () => Promise.resolve().then(() => (init_change_batches(), change_batches_exports)),
         "../core/context.ts": () => Promise.resolve().then(() => (init_context2(), context_exports)),
         "../core/difference.ts": () => Promise.resolve().then(() => (init_difference4(), difference_exports)),
@@ -101188,6 +102391,7 @@ this.ifd0Offset: ${this.ifd0Offset}, file.byteLength: ${e3.byteLength}`), e3.tif
         "../svg/vertices.js": () => Promise.resolve().then(() => (init_vertices(), vertices_exports)),
         "../ui/account.js": () => Promise.resolve().then(() => (init_account(), account_exports)),
         "../ui/attribution.js": () => Promise.resolve().then(() => (init_attribution(), attribution_exports)),
+        "../ui/betterid_toolbar.js": () => Promise.resolve().then(() => (init_betterid_toolbar(), betterid_toolbar_exports)),
         "../ui/changeset_editor.js": () => Promise.resolve().then(() => (init_changeset_editor(), changeset_editor_exports)),
         "../ui/cmd.ts": () => Promise.resolve().then(() => (init_cmd(), cmd_exports)),
         "../ui/cmd_sequence.ts": () => Promise.resolve().then(() => (init_cmd_sequence(), cmd_sequence_exports)),
@@ -101336,6 +102540,7 @@ this.ifd0Offset: ${this.ifd0Offset}, file.byteLength: ${e3.byteLength}`), e3.tif
         "../util/aes.ts": () => Promise.resolve().then(() => (init_aes(), aes_exports)),
         "../util/ai_status.js": () => Promise.resolve().then(() => (init_ai_status(), ai_status_exports)),
         "../util/array.ts": () => Promise.resolve().then(() => (init_array3(), array_exports)),
+        "../util/betterid_selection.js": () => Promise.resolve().then(() => (init_betterid_selection(), betterid_selection_exports)),
         "../util/bind_once.js": () => Promise.resolve().then(() => (init_bind_once(), bind_once_exports)),
         "../util/changeset_summary.js": () => Promise.resolve().then(() => (init_changeset_summary(), changeset_summary_exports)),
         "../util/clean_tags.ts": () => Promise.resolve().then(() => (init_clean_tags(), clean_tags_exports)),

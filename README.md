@@ -98,6 +98,16 @@ Full notes: [0.1.4 changelog](CHANGELOG.md#betterid-014).
 - 移动端点/线绘制手势、全宽侧栏和触控布局优化。
 - 实验功能包括双影像、本地照片底图以及 walk/fly 两种 WASD 导航模式。
 
+### Photoshop 风格工具栏与 Adobe 快捷键
+
+- 地图左侧工具面板：框选（矩形/椭圆）、快速选择（笔刷）、魔棒（容差 + 连通，按标签相似度扩展）和钢笔
+  （单击角点、拖动出曲线，曲线按 12px 采样成 OSM 节点；`Alt` 单击断手柄、`Backspace` 退格、`Enter` 完成）。
+- 选择修饰键与 Photoshop 一致：`Shift` 加选、`Alt` 减选、`Shift+Alt` 交集。
+- 可开关的 Adobe 快捷键层：滚轮上下滚动、`Ctrl`+滚轮左右滚动、`Alt`+滚轮在指针处缩放、
+  按住空格拖动平移、`Alt`+单击吸取指针处 hex 颜色并复制；`Ctrl+T` 自由变换、`Ctrl+J` 复制、
+  `Ctrl+Shift+V` 原位粘贴、`Ctrl+Shift+T` / `Ctrl+Alt+Shift+T` 重复变换。
+  设计与调研见 [docs/BETTERID_PHOTOSHOP_TOOLS.md](docs/BETTERID_PHOTOSHOP_TOOLS.md)。
+
 ### 编辑导入导出与隐私编辑
 
 - 提交面板可将当前改动导出为 `osmChange`（`.osc`）文件，也可反过来导入

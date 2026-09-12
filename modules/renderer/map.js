@@ -7,6 +7,7 @@ import { select as d3_select } from 'd3-selection';
 import { zoom as d3_zoom, zoomIdentity as d3_zoomIdentity } from 'd3-zoom';
 
 import { prefs } from '../core/preferences';
+import { adobeShortcutsEnabled } from '../core/betterid_tools';
 import { t } from '../core/localizer';
 import {
     BETTERID_PREFS, betteridBool, experimentalFeatureEnabled, getSnapTolerance
@@ -625,6 +626,8 @@ export function rendererMap(context) {
 
     function handleZoomKeydown(d3_event, key) {
         if (!navigationEnabled() || key !== 'space') return false;
+        // the Adobe shortcut layer owns Space (temporary hand tool) when enabled
+        if (adobeShortcutsEnabled()) return false;
 
         d3_event.preventDefault();
         d3_event.stopImmediatePropagation();

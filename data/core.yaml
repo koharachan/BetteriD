@@ -1309,6 +1309,28 @@ en:
     remove: Remove
     disclaimer: Verify suggestions against on-the-ground knowledge and OSM documentation before applying them.
   betterid:
+    tools:
+      title: Tools
+      active: "Tool: {tool}"
+      select: Select tool
+      select_key: V
+      marquee: Marquee tool
+      marquee_key: M
+      marquee_rect: Rectangle
+      marquee_ellipse: Ellipse
+      quickselect: Quick selection tool
+      quickselect_key: W
+      magicwand: Magic wand tool
+      magicwand_key: Shift+W
+      pen: Pen tool
+      pen_key: P
+      pen_hint: "Click to add a corner point, drag to pull out a curve. Enter finishes, Backspace removes the last point, Esc cancels."
+      brush_size: Brush size
+      tolerance: Tolerance
+      contiguous: Contiguous
+      adobe_shortcuts: Adobe shortcuts
+      adobe_shortcuts_hint: "Wheel scrolls, Ctrl+wheel scrolls sideways, Alt+wheel zooms, hold Space to pan, Alt+click picks a colour. Ctrl+T transforms, Ctrl+J duplicates, Ctrl+Shift+V pastes in place, Ctrl+Alt+Shift+T repeats the transform."
+      eyedropper_copied: "Colour {color} copied"
     military_warning:
       title: Military-area editing is unavailable here
       message: Are you sure you want to do this? BetteriD does not allow creating or modifying military areas in China, including their member points. If you genuinely need to make this edit, continue on the official OpenStreetMap website.
