@@ -220,7 +220,10 @@ impl OsmProxy {
             return Ok(self.serve_id_landing(&method).await);
         }
         if let Some(relative) = path.strip_prefix("/id/dist/") {
-            return Ok(self.serve_static_file(relative, &method).await);
+            let query = req.uri().query().map(str::to_string);
+            return Ok(self
+                .serve_static_file(relative, &method, req.headers(), query.as_deref())
+                .await);
         }
         if matches!(path.as_str(), "/edit" | "/editor" | "/iD") {
             return Ok(Self::serve_editor_bridge(&method));
@@ -1160,7 +1163,13 @@ impl OsmProxy {
         )
     }
 
-    async fn serve_static_file(&self, relative: &str, method: &Method) -> Response<HyperBody> {
+    async fn serve_static_file(
+        &self,
+        relative: &str,
+        method: &Method,
+        headers: &HeaderMap,
+        query: Option<&str>,
+    ) -> Response<HyperBody> {
         if method != Method::GET && method != Method::HEAD {
             return Self::empty_response(StatusCode::METHOD_NOT_ALLOWED);
         }
@@ -1181,7 +1190,26 @@ impl OsmProxy {
         } else {
             self.rewrite_urls(&data, content_type, &format!("/id/dist/{relative}"), None)
         };
-        Self::file_response(StatusCode::OK, content_type, data, "public, max-age=3600")
+
+        let (data, encoding) = if method == Method::HEAD {
+            (data, None)
+        } else {
+            Self::maybe_compress(data, content_type, headers)
+        };
+
+        // iD requests its build outputs with a `?v=<build>` cache buster, so a
+        // versioned asset can be cached for a long time (the CDN keeps js/css
+        // even longer); everything else stays on the short default.
+        let versioned = query
+            .map(|value| value.split('&').any(|pair| pair.starts_with("v=")))
+            .unwrap_or(false);
+        let cache_control = if versioned {
+            "public, max-age=604800, immutable"
+        } else {
+            "public, max-age=3600"
+        };
+
+        Self::file_response_encoded(StatusCode::OK, content_type, data, cache_control, encoding)
     }
 
     fn content_type(path: &Path) -> &'static str {
@@ -1243,14 +1271,122 @@ impl OsmProxy {
         data: Vec<u8>,
         cache_control: &str,
     ) -> Response<HyperBody> {
-        Response::builder()
+        Self::file_response_encoded(status, content_type, data, cache_control, None)
+    }
+
+    fn file_response_encoded(
+        status: StatusCode,
+        content_type: &str,
+        data: Vec<u8>,
+        cache_control: &str,
+        content_encoding: Option<&'static str>,
+    ) -> Response<HyperBody> {
+        let mut builder = Response::builder()
             .status(status)
             .header("content-type", content_type)
             .header("cache-control", cache_control)
             .header("content-length", data.len())
-            .header("x-content-type-options", "nosniff")
+            .header("x-content-type-options", "nosniff");
+        if let Some(encoding) = content_encoding {
+            builder = builder
+                .header("content-encoding", encoding)
+                .header("vary", "Accept-Encoding");
+        }
+        builder
             .body(HyperBody::from(data))
             .expect("valid file response")
+    }
+
+    /// Preferred compression for a response body, based on `Accept-Encoding`.
+    fn preferred_encoding(headers: &HeaderMap) -> Option<&'static str> {
+        let value = headers
+            .get(http::header::ACCEPT_ENCODING)
+            .and_then(|item| item.to_str().ok())?;
+
+        let accepts = |token: &str| {
+            value.split(',').any(|part| {
+                let mut pieces = part.split(';');
+                let name = pieces.next().unwrap_or_default().trim();
+                if !name.eq_ignore_ascii_case(token) {
+                    return false;
+                }
+                let quality = pieces
+                    .find_map(|piece| piece.trim().strip_prefix("q="))
+                    .and_then(|raw| raw.trim().parse::<f32>().ok())
+                    .unwrap_or(1.0);
+                quality > 0.0
+            })
+        };
+
+        if accepts("br") {
+            Some("br")
+        } else if accepts("gzip") {
+            Some("gzip")
+        } else {
+            None
+        }
+    }
+
+    fn brotli_compress(data: &[u8]) -> Vec<u8> {
+        use std::io::Write;
+        let mut out = Vec::with_capacity(data.len() / 3 + 64);
+        {
+            // quality 5 keeps the origin's CPU cost low while still cutting
+            // JavaScript by ~4x; the CDN caches the compressed variant anyway.
+            let mut writer = brotli::CompressorWriter::new(&mut out, 4096, 5, 22);
+            if writer.write_all(data).is_err() {
+                return Vec::new();
+            }
+        }
+        out
+    }
+
+    fn gzip_compress(data: &[u8]) -> Vec<u8> {
+        use flate2::Compression;
+        use flate2::write::GzEncoder;
+        use std::io::Write;
+        let mut encoder = GzEncoder::new(Vec::with_capacity(data.len() / 3 + 64), Compression::new(6));
+        if encoder.write_all(data).is_err() {
+            return Vec::new();
+        }
+        encoder.finish().unwrap_or_default()
+    }
+
+    /// Compress a static asset for the client, so the CDN pulls fewer bytes from
+    /// the origin. Compressed variants are cached by the edge (they are sent with
+    /// `Vary: Accept-Encoding`).
+    fn maybe_compress(
+        data: Vec<u8>,
+        content_type: &str,
+        headers: &HeaderMap,
+    ) -> (Vec<u8>, Option<&'static str>) {
+        let compressible = content_type.starts_with("text/")
+            || content_type.starts_with("application/javascript")
+            || content_type.starts_with("application/json")
+            || content_type.starts_with("image/svg");
+        if !compressible || data.len() < 1024 {
+            return (data, None);
+        }
+
+        match Self::preferred_encoding(headers) {
+            Some("br") => {
+                let compressed = Self::brotli_compress(&data);
+                if compressed.is_empty() || compressed.len() >= data.len() {
+                    (data, None)
+                } else {
+                    (compressed, Some("br"))
+                }
+            }
+            Some("gzip") => {
+                let compressed = Self::gzip_compress(&data);
+                if compressed.is_empty() || compressed.len() >= data.len() {
+                    (data, None)
+                } else {
+                    (compressed, Some("gzip"))
+                }
+            }
+            _ => (data, None),
+        }
     }
 
     fn should_cache(&self, method: &Method, path: &str) -> bool {
@@ -2057,6 +2193,24 @@ fn is_private_host(host: &str) -> bool {
 }
 
 #[cfg(test)]
+struct ProxyTestHelper;
+
+#[cfg(test)]
+impl ProxyTestHelper {
+    fn encoding(headers: &HeaderMap) -> Option<&'static str> {
+        OsmProxy::preferred_encoding(headers)
+    }
+
+    fn compress(
+        data: Vec<u8>,
+        content_type: &str,
+        headers: &HeaderMap,
+    ) -> (Vec<u8>, Option<&'static str>) {
+        OsmProxy::maybe_compress(data, content_type, headers)
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::cache::SmartCache;
@@ -2081,6 +2235,49 @@ mod tests {
             false,
             PrivacyUploader::from_config(&config),
         )
+    }
+
+    #[test]
+    fn test_preferred_encoding() {
+        let headers = |value: &str| {
+            let mut map = HeaderMap::new();
+            map.insert(http::header::ACCEPT_ENCODING, value.parse().unwrap());
+            map
+        };
+
+        assert_eq!(ProxyTestHelper::encoding(&headers("gzip, deflate, br")), Some("br"));
+        assert_eq!(ProxyTestHelper::encoding(&headers("gzip, deflate")), Some("gzip"));
+        assert_eq!(ProxyTestHelper::encoding(&headers("identity")), None);
+        assert_eq!(ProxyTestHelper::encoding(&headers("br;q=0, gzip;q=1")), Some("gzip"));
+        assert_eq!(ProxyTestHelper::encoding(&headers("br;q=0")), None);
+        let empty = HeaderMap::new();
+        assert_eq!(ProxyTestHelper::encoding(&empty), None);
+    }
+
+    #[test]
+    fn test_maybe_compress_static_asset() {
+        let source = "(function(){ /* a fairly repetitive script body */ })();".repeat(400);
+        let data = source.into_bytes();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(http::header::ACCEPT_ENCODING, "gzip, br".parse().unwrap());
+        let (compressed, encoding) =
+            ProxyTestHelper::compress(data.clone(), "application/javascript; charset=utf-8", &headers);
+        assert_eq!(encoding, Some("br"));
+        assert!(compressed.len() < data.len() / 2);
+
+        // a client that asks for nothing gets the raw body
+        let (raw, none) = ProxyTestHelper::compress(data.clone(), "application/javascript; charset=utf-8", &HeaderMap::new());
+        assert_eq!(none, None);
+        assert_eq!(raw.len(), data.len());
+
+        // tiny or binary bodies are passed through
+        let small = b"a".to_vec();
+        let (tiny, tiny_encoding) = ProxyTestHelper::compress(small, "application/javascript", &headers);
+        assert!(tiny_encoding.is_none());
+        assert_eq!(tiny.len(), 1);
+        let (png, png_encoding) = ProxyTestHelper::compress(data, "image/png", &headers);
+        assert!(png_encoding.is_none());
     }
 
     #[test]

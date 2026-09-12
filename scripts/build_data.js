@@ -21,7 +21,16 @@ dotenv.config({ quiet: true });
 
 const presetsVersion = packageJson.devDependencies['@openstreetmap/id-tagging-schema'];
 /* eslint-disable no-process-env */
-const presetsUrl = (process.env.ID_PRESETS_CDN_URL || '../node_modules/@openstreetmap/id-tagging-schema').replace('{presets_version}', presetsVersion);
+// The same variable configures the runtime CDN URL (config/envs.js) and the
+// source of the preset data used while building. A browser-style URL
+// (`/id/dist/...` or `https://…`) cannot be read with `fetch`/`import` while
+// building, so those builds take the data from the installed package; a
+// relative checkout path (used by the staging workflow) still wins.
+const configuredPresetsUrl = process.env.ID_PRESETS_CDN_URL || '';
+const presetsUrl = (configuredPresetsUrl.startsWith('.')
+    ? configuredPresetsUrl
+    : '../node_modules/@openstreetmap/id-tagging-schema'
+).replace('{presets_version}', presetsVersion);
 /* eslint-enable no-process-env */
 
 let _currBuild = null;

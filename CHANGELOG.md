@@ -89,6 +89,16 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   focus enabled it explains which floors are pinned, e.g.
   `当前聚焦楼层：1;2;3;4;5;6`, instead of dimming other floors without explanation.
 
+#### :hourglass: Performance
+* Serve Brotli/gzip from the origin for text assets (`Vary: Accept-Encoding`), so
+  the CDN pulls ~4-8x fewer bytes on a cache miss: `iD.min.js` 2.16MB → 600KB,
+  `nsi.min.json` 12.2MB → 1.5MB, `iD.css` 297KB → 43KB.
+* Load presets and the name-suggestion-index from our own origin/CDN instead of
+  jsDelivr (`ID_PRESETS_CDN_URL`, `ID_NSI_CDN_URL` + a new `dist:nsi` copy step),
+  removing ~23MB of cross-border third-party requests.
+* Cache versioned build outputs for a week (`max-age=604800, immutable`) and
+  raise the CDN's `json|xml` rule from 1 hour to 7 days.
+
 #### :bug: Bugfixes
 * Fix the privacy upload never showing the "upload complete" screen and leaving
   the changes in place: the result was finished through the uploader

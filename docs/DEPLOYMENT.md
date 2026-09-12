@@ -30,6 +30,26 @@ OpenStreetMap 同源代理、OAuth 回调、AI 与翻译接口。文档只写通
 - 一个已注册的 OpenStreetMap OAuth 2 应用，回调地址与线上域名一致
 - 至少一个文本提供商密钥（`DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `MIMO_*`）
 
+## 性能与静态资源
+
+生产构建要把预设与名称索引指向自己的源站（浏览器不再跨境外请求 jsDelivr，
+数据经过 CDN 缓存与 Brotli 压缩）：
+
+```bash
+ID_PRESETS_CDN_URL='https://<domain>/id/dist/tagging-schema/' \
+ID_NSI_CDN_URL='https://<domain>/id/dist/nsi/' \
+pnpm run all
+```
+
+- 预设来自 `node_modules/@openstreetmap/id-tagging-schema`（`scripts/build_data.js`
+  在 URL 不是相对检出路径时改用本地包），名称索引由 `pnpm run dist:nsi` 复制到
+  `dist/nsi/`（同一个 `dist:*` 管线，构建产物不入库）。
+- 代理对文本类静态资源做 Brotli / gzip（`Accept-Encoding` 决定，`Vary` 标出），
+  `?v=` 版本化的资源返回 `max-age=604800, immutable`；效果例如
+  `iD.min.js` 2.16MB → 600KB、`nsi.min.json` 12.2MB → 1.5MB。
+- 边缘（CDN）侧确认：静态资源命中缓存、压缩已开启、动态接口（`/api/*`）因上游
+  `no-store` 不被缓存；`json|xml` 规则缓存 7 天可减少大文件回源。
+
 ## 构建与发布
 
 1. 在仓库根目录产出编辑器静态资源：

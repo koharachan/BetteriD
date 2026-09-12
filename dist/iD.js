@@ -22921,11 +22921,11 @@ ${source}
   var init_id = __esm({
     "config/id.js"() {
       "use strict";
-      presetsCdnUrl = "https://cdn.jsdelivr.net/npm/@openstreetmap/id-tagging-schema@{presets_version}/";
+      presetsCdnUrl = "https://map.osm.asia/id/dist/tagging-schema/";
       presetTranslationsUrl = "tagging-schema/dist/translations";
       ociCdnUrl = "https://cdn.jsdelivr.net/npm/osm-community-index@{version}/";
       wmfSitematrixCdnUrl = "https://cdn.jsdelivr.net/npm/wmf-sitematrix@{version}/";
-      nsiCdnUrl = "https://cdn.jsdelivr.net/npm/name-suggestion-index@{version}/";
+      nsiCdnUrl = "https://map.osm.asia/id/dist/nsi/";
       defaultOsmApiConnections = {
         live: {
           url: "https://www.openstreetmap.org",
@@ -38790,6 +38790,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
           "dist:mapillary": "shx mkdir -p dist/mapillary-js && shx cp -R node_modules/mapillary-js/dist/* dist/mapillary-js/",
           "dist:pannellum": "shx mkdir -p dist/pannellum && shx cp -R node_modules/pannellum/build/* dist/pannellum/",
           "dist:tagging-schema": "shx mkdir -p dist/tagging-schema && shx cp -R node_modules/@openstreetmap/id-tagging-schema/dist dist/tagging-schema/ && shx cp node_modules/@openstreetmap/id-tagging-schema/package.json dist/tagging-schema/",
+          "dist:nsi": "shx mkdir -p dist/nsi/dist/json dist/nsi/dist/wikidata && shx cp node_modules/name-suggestion-index/dist/json/nsi.min.json node_modules/name-suggestion-index/dist/json/featureCollection.min.json node_modules/name-suggestion-index/dist/json/genericWords.min.json node_modules/name-suggestion-index/dist/json/replacements.min.json node_modules/name-suggestion-index/dist/json/trees.min.json dist/nsi/dist/json/ && shx cp node_modules/name-suggestion-index/dist/wikidata/wikidata.min.json node_modules/name-suggestion-index/dist/wikidata/dissolved.min.json dist/nsi/dist/wikidata/",
           "dist:min": "node config/esbuild.config.min.js",
           "dist:svg:iD": 'svg-sprite --symbol --symbol-dest . --shape-id-generator "iD-%s" --symbol-sprite dist/img/iD-sprite.svg "svg/iD-sprite/**/*.svg"',
           "dist:svg:community": 'svg-sprite --symbol --symbol-dest . --shape-id-generator "community-%s" --symbol-sprite dist/img/community-sprite.svg node_modules/osm-community-index/dist/img/*.svg',
