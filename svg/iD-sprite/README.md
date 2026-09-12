@@ -43,3 +43,22 @@ Elsewhere, in CSS:
 This gives iD a lot of flexibility to control the runtime styling of the graphics.
 
 The above example means that classing a button as `.disabled` will automatically grey out the colors (you don't need to make separate grey versions of every button).
+
+### BetteriD tool palette icons
+
+The Photoshop-style tool palette uses stroke icons from
+[Lucide](https://lucide.dev) (ISC licence, see the header of each file):
+
+| file | used for |
+| --- | --- |
+| `icons/icon-betterid-select.svg` | select / inspect tool |
+| `icons/icon-betterid-marquee-rect.svg` | rectangular marquee |
+| `icons/icon-betterid-marquee-ellipse.svg` | elliptical marquee |
+| `icons/icon-betterid-quickselect.svg` | quick selection (brush) |
+| `icons/icon-betterid-magicwand.svg` | magic wand |
+| `icons/icon-betterid-pen.svg` | pen tool |
+| `icons/icon-betterid-lasso.svg` | spare lasso (not wired up yet) |
+
+They are the only stroke-based (not fill-only) graphics here: the wrapper `<g>`
+sets `fill="none" stroke="currentColor"`, which overrides the inherited
+`fill: currentColor` from `.icon` and keeps them themable.

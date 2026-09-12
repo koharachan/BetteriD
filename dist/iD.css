@@ -10974,7 +10974,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 150px;
   padding: 6px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -10987,6 +10986,25 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+/* The options of a tool live in a panel beside the palette, so switching tools
+   never changes the width of the icon strip itself. */
+.ideditor .betterid-tool-options {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 0;
+  width: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--transparent-bg-color);
+  box-shadow: 0 2px 6px var(--shadow-color);
+  font-size: 11px;
+  color: var(--text-color);
 }
 
 .ideditor .betterid-tool-button {
@@ -11019,16 +11037,6 @@
   color: var(--link-focus-color);
 }
 
-.ideditor .betterid-tool-options {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 2px 0;
-  border-top: 1px solid var(--border-color);
-  font-size: 11px;
-  color: var(--text-color);
-}
-
 .ideditor .betterid-tool-option,
 .ideditor .betterid-tool-check {
   display: flex;
@@ -11048,23 +11056,70 @@
   color: var(--muted-text-color);
 }
 
-.ideditor .betterid-tool-shape {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 6px;
+/* Photoshop's fly-out menu: right-click a group button to pick its variants */
+.ideditor .betterid-tool-menu {
+  position: absolute;
+  left: calc(100% + 6px);
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 4px;
   border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--transparent-bg-color);
+  box-shadow: 0 2px 6px var(--shadow-color);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.ideditor .betterid-tool-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: none;
   border-radius: 4px;
-  background: var(--bg-color);
+  background: none;
   color: var(--text-color);
   font-size: 11px;
+  text-align: left;
   cursor: pointer;
 }
 
-.ideditor .betterid-tool-shape .icon {
-  width: 14px;
-  height: 14px;
-  fill: currentColor;
+.ideditor .betterid-tool-menu-item .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ideditor .betterid-tool-menu-item:hover {
+  background: var(--active-bg-color);
+}
+
+.ideditor .betterid-tool-menu-item.active {
+  background: var(--selected-bg-color);
+  color: var(--link-focus-color);
+}
+
+.ideditor .betterid-tool-menu-item kbd {
+  margin-left: auto;
+  color: var(--muted-text-color);
+  font-size: 10px;
+}
+
+/* a group with more members gets the little corner triangle Photoshop uses */
+.ideditor .betterid-tool-button {
+  position: relative;
+}
+
+.ideditor .betterid-tool-button.has-variants::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  border-left: 4px solid transparent;
+  border-bottom: 4px solid currentColor;
+  opacity: 0.55;
 }
 
 /* map cursors */
@@ -11123,6 +11178,17 @@
   pointer-events: none;
 }
 
+/* the not-yet-committed segment that still follows the pointer */
+.ideditor .betterid-pen-preview .betterid-pen-rubber {
+  fill: none;
+  stroke: #418741;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  stroke-linecap: round;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 .ideditor .betterid-pen-preview .betterid-pen-point {
   fill: #fff;
   stroke: #333;
@@ -11141,6 +11207,65 @@
     top: auto;
     bottom: 70px;
     transform: none;
-    max-width: 150px;
   }
+
+  /* a side panel would run off screen: put the options under the tool strip */
+  .ideditor .betterid-tool-options {
+    left: 0;
+    top: calc(100% + 6px);
+    width: 150px;
+  }
+}
+
+/* Photoshop's marching ants around the current selection */
+.ideditor .betterid-ants {
+  pointer-events: none;
+}
+
+.ideditor .betterid-ants-halo,
+.ideditor .betterid-ants-line {
+  fill: none;
+  pointer-events: none;
+}
+
+.ideditor .betterid-ants-halo {
+  stroke: #ffffff;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.ideditor .betterid-ants-line {
+  stroke: #333333;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  stroke-linejoin: round;
+  animation: betterid-ants-march 0.7s linear infinite;
+}
+
+@keyframes betterid-ants-march {
+  to { stroke-dashoffset: -9; }
+}
+
+/* right click on a selection: Photoshop's "convert to path" */
+.ideditor .betterid-selection-menu {
+  position: absolute;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--transparent-bg-color);
+  box-shadow: 0 2px 6px var(--shadow-color);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.ideditor .betterid-selection-menu .betterid-tool-menu-item kbd {
+  margin-left: 8px;
+}
+
+/* while Alt/Ctrl turn the pen into the direct selection tool */
+.ideditor .betterid-pen-direct .main-map {
+  cursor: move;
 }

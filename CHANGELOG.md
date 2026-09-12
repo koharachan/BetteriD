@@ -20,6 +20,7 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 #### :camera: Street-Level
 #### :white_check_mark: Validation
 #### :bug: Bugfixes
+
 #### :earth_asia: Localization
 #### :hourglass: Performance
 #### :mortar_board: Walkthrough / Help
@@ -39,7 +40,9 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 #### :mega: Release Highlights
 * A Photoshop-style tool palette on the left edge of the map: marquee (rectangle /
   ellipse), quick selection (brush), magic wand (connected similar features) and
-  a pen tool that flattens bezier curves into OSM way nodes.
+  a pen tool that flattens bezier curves into OSM way nodes. Like Photoshop, a
+  group shows the tool (or marquee shape) used last and its other members are one
+  right-click away, with `V`/`M`/`W`/`Shift+W`/`P` as the tool keys.
 * Optional Adobe shortcut layer: wheel scrolls, Ctrl+wheel scrolls sideways,
   Alt+wheel zooms at the pointer, hold Space to pan, Alt+click copies the hex
   colour under the pointer, Ctrl+T transforms, Ctrl+J duplicates,
@@ -109,6 +112,24 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   first visitor after a CDN eviction no longer pays for the cold pull.
 
 #### :bug: Bugfixes
+* The pen preview is now drawn in map space: panning or zooming re-projects it
+  (it used to stay stuck to the viewport), the dragged anchor previews its real
+  handles so the curve no longer jumps on release, the pending segment is shown
+  as a rubber band, `Enter`/double-click commits an anchor that is still being
+  dragged, and `Ctrl+Z` removes the last anchor while a path is in progress.
+* The marquee selects nodes only; ways and areas are left to the quick
+  selection and magic wand tools, which is what a box drawn around points means.
+* The quick selection and magic wand tools now work on the base imagery, the way
+  Photoshop works on pixels: colour-similarity selection with `Shift`/`Alt` to
+  add or subtract, marching-ant outlines, `Ctrl+D` to deselect, `Alt+click` to
+  copy the hex colour under the pointer, and a right-click / `Alt+Del`
+  "convert selection to path" that traces the selection into a closed OSM way.
+  Imagery without CORS headers reports that it cannot be sampled.
+* The Adobe shortcut layer scrolls in the document direction (scrolling down
+  moves the map up) instead of the opposite.
+* Switching tools no longer changes the width of the tool palette: the tool
+  options moved into a panel beside the icon strip, and the palette uses
+  Photoshop-style stroke icons (Lucide, ISC) for every tool.
 * Fix the privacy upload never showing the "upload complete" screen and leaving
   the changes in place: the result was finished through the uploader
   (`privatelyUploaded`), but `saveEnded` fired without a matching `saveStarted`,

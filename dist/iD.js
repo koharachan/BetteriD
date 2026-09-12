@@ -43944,7 +43944,10 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     BETTERID_BRUSH_SIZE_PREF: () => BETTERID_BRUSH_SIZE_PREF,
     BETTERID_MARQUEE_SHAPES: () => BETTERID_MARQUEE_SHAPES,
     BETTERID_MARQUEE_SHAPE_PREF: () => BETTERID_MARQUEE_SHAPE_PREF,
+    BETTERID_SELECTION_LAST_PREF: () => BETTERID_SELECTION_LAST_PREF,
+    BETTERID_SELECTION_TOOLS: () => BETTERID_SELECTION_TOOLS,
     BETTERID_TOOLS: () => BETTERID_TOOLS,
+    BETTERID_TOOL_GROUPS: () => BETTERID_TOOL_GROUPS,
     BETTERID_TOOL_PREF: () => BETTERID_TOOL_PREF,
     BETTERID_WAND_CONTIGUOUS_PREF: () => BETTERID_WAND_CONTIGUOUS_PREF,
     BETTERID_WAND_TOLERANCE_PREF: () => BETTERID_WAND_TOLERANCE_PREF,
@@ -43953,12 +43956,15 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     brushSize: () => brushSize,
     combineSelection: () => combineSelection,
     cycleMarqueeShape: () => cycleMarqueeShape,
+    groupTool: () => groupTool,
     marqueeShape: () => marqueeShape,
     selectionMode: () => selectionMode,
+    selectionTool: () => selectionTool,
     setAdobeShortcuts: () => setAdobeShortcuts,
     setBetteridTool: () => setBetteridTool,
     setBrushSize: () => setBrushSize,
     setMarqueeShape: () => setMarqueeShape,
+    setSelectionTool: () => setSelectionTool,
     setWandContiguous: () => setWandContiguous,
     setWandTolerance: () => setWandTolerance,
     wandContiguous: () => wandContiguous,
@@ -43974,7 +43980,11 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     return BETTERID_TOOLS.indexOf(value) === -1 ? "select" : value;
   }
   function setBetteridTool(tool) {
-    corePreferences(BETTERID_TOOL_PREF, BETTERID_TOOLS.indexOf(tool) === -1 ? "select" : tool);
+    const resolved = BETTERID_TOOLS.indexOf(tool) === -1 ? "select" : tool;
+    corePreferences(BETTERID_TOOL_PREF, resolved);
+    if (BETTERID_SELECTION_TOOLS.indexOf(resolved) !== -1) {
+      corePreferences(BETTERID_SELECTION_LAST_PREF, resolved);
+    }
   }
   function marqueeShape() {
     const value = corePreferences(BETTERID_MARQUEE_SHAPE_PREF);
@@ -43986,6 +43996,22 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
   function cycleMarqueeShape() {
     const index2 = BETTERID_MARQUEE_SHAPES.indexOf(marqueeShape());
     setMarqueeShape(BETTERID_MARQUEE_SHAPES[(index2 + 1) % BETTERID_MARQUEE_SHAPES.length]);
+  }
+  function selectionTool() {
+    const value = corePreferences(BETTERID_SELECTION_LAST_PREF);
+    return BETTERID_SELECTION_TOOLS.indexOf(value) === -1 ? "quickselect" : value;
+  }
+  function setSelectionTool(tool) {
+    if (BETTERID_SELECTION_TOOLS.indexOf(tool) === -1) return;
+    corePreferences(BETTERID_SELECTION_LAST_PREF, tool);
+  }
+  function groupTool(groupID) {
+    const group2 = BETTERID_TOOL_GROUPS.find((entry) => entry.id === groupID);
+    if (!group2) return "select";
+    const active = betteridTool();
+    if (group2.tools.indexOf(active) !== -1) return active;
+    if (groupID === "selection") return selectionTool();
+    return group2.tools[0];
   }
   function brushSize() {
     return clampedInt(corePreferences(BETTERID_BRUSH_SIZE_PREF), TOOL_DEFAULTS.brushSize, 8, 200);
@@ -44040,7 +44066,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     }
     return Array.from(incoming);
   }
-  var BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF, BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF, BETTERID_ADOBE_SHORTCUTS_PREF, BETTERID_TOOLS, BETTERID_MARQUEE_SHAPES, TOOL_DEFAULTS;
+  var BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF, BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF, BETTERID_SELECTION_LAST_PREF, BETTERID_ADOBE_SHORTCUTS_PREF, BETTERID_TOOLS, BETTERID_MARQUEE_SHAPES, TOOL_DEFAULTS, BETTERID_TOOL_GROUPS, BETTERID_SELECTION_TOOLS;
   var init_betterid_tools = __esm({
     "modules/core/betterid_tools.js"() {
       "use strict";
@@ -44050,6 +44076,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       BETTERID_BRUSH_SIZE_PREF = "betterid.tools.brush_size";
       BETTERID_WAND_TOLERANCE_PREF = "betterid.tools.wand_tolerance";
       BETTERID_WAND_CONTIGUOUS_PREF = "betterid.tools.wand_contiguous";
+      BETTERID_SELECTION_LAST_PREF = "betterid.tools.selection_last";
       BETTERID_ADOBE_SHORTCUTS_PREF = "betterid.editing.adobe_shortcuts";
       BETTERID_TOOLS = ["select", "marquee", "quickselect", "magicwand", "pen"];
       BETTERID_MARQUEE_SHAPES = ["rect", "ellipse"];
@@ -44061,6 +44088,13 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
         wandContiguous: true,
         adobeShortcuts: true
       };
+      BETTERID_TOOL_GROUPS = Object.freeze([
+        { id: "select", tools: ["select"] },
+        { id: "marquee", tools: ["marquee"] },
+        { id: "selection", tools: ["quickselect", "magicwand"] },
+        { id: "pen", tools: ["pen"] }
+      ]);
+      BETTERID_SELECTION_TOOLS = Object.freeze(["quickselect", "magicwand"]);
     }
   });
 
@@ -44240,6 +44274,286 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     }
   });
 
+  // modules/util/betterid_imagery.js
+  var betterid_imagery_exports = {};
+  __export(betterid_imagery_exports, {
+    brushSelect: () => brushSelect,
+    captureImagery: () => captureImagery,
+    floodSelect: () => floodSelect,
+    maskOutline: () => maskOutline,
+    maskPolygons: () => maskPolygons,
+    pixelColor: () => pixelColor,
+    pixelHex: () => pixelHex
+  });
+  function tileImages() {
+    return Array.from(document.querySelectorAll("img.tile"));
+  }
+  async function captureImagery(context) {
+    const mapNode = context.container().select(".main-map").node();
+    if (!mapNode) return null;
+    const base = mapNode.getBoundingClientRect();
+    const width = Math.round(base.width);
+    const height = Math.round(base.height);
+    if (width < 8 || height < 8 || width * height > MAX_CANVAS_PIXELS) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    const tiles = tileImages().filter((image) => {
+      const rect = image.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
+      if (!image.complete || !image.naturalWidth) return false;
+      return rect.right > base.left && rect.left < base.right && rect.bottom > base.top && rect.top < base.bottom;
+    });
+    if (!tiles.length) return null;
+    const bitmaps = await Promise.all(tiles.map((image) => loadBitmap(image)));
+    let drawn = 0;
+    bitmaps.forEach((bitmap, index2) => {
+      if (!bitmap) return;
+      const rect = tiles[index2].getBoundingClientRect();
+      ctx.drawImage(
+        bitmap.source,
+        bitmap.x,
+        bitmap.y,
+        bitmap.width,
+        bitmap.height,
+        rect.left - base.left,
+        rect.top - base.top,
+        rect.width,
+        rect.height
+      );
+      drawn++;
+    });
+    if (!drawn) return null;
+    return { canvas, width, height };
+  }
+  async function loadBitmap(image) {
+    const usable = {
+      source: image,
+      x: 0,
+      y: 0,
+      width: image.naturalWidth,
+      height: image.naturalHeight
+    };
+    const src = image.currentSrc || image.src;
+    if (!src) return null;
+    const crossOrigin = (() => {
+      try {
+        return new URL(src, window.location.href).origin !== window.location.origin;
+      } catch {
+        return true;
+      }
+    })();
+    if (crossOrigin) {
+      try {
+        const response = await fetch(src, { mode: "cors", credentials: "omit" });
+        if (!response.ok) return null;
+        const blob = await response.blob();
+        if (typeof createImageBitmap !== "function") return null;
+        const bitmap = await createImageBitmap(blob);
+        return { source: bitmap, x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+      } catch {
+        return null;
+      }
+    }
+    return usable;
+  }
+  function pixelHex(imageData, x3, y3) {
+    const { width, height, data } = imageData;
+    if (x3 < 0 || y3 < 0 || x3 >= width || y3 >= height) return null;
+    const i3 = (y3 * width + x3) * 4;
+    const value = data[i3] << 16 | data[i3 + 1] << 8 | data[i3 + 2];
+    return "#" + value.toString(16).padStart(6, "0").toUpperCase();
+  }
+  function colorLimit(tolerance) {
+    return Math.max(0, tolerance) * 20;
+  }
+  function colorDistance(data, i3, r2, g3, b11) {
+    const dr = data[i3] - r2;
+    const dg = data[i3 + 1] - g3;
+    const db = data[i3 + 2] - b11;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+  }
+  function floodSelect(imageData, options) {
+    const { width, height, data } = imageData;
+    const mask = new Uint8Array(width * height);
+    const seedX = Math.round(options.x);
+    const seedY = Math.round(options.y);
+    if (seedX < 0 || seedY < 0 || seedX >= width || seedY >= height) return mask;
+    const seed = (seedY * width + seedX) * 4;
+    const r2 = data[seed];
+    const g3 = data[seed + 1];
+    const b11 = data[seed + 2];
+    const limit = colorLimit(options.tolerance);
+    if (!options.contiguous) {
+      for (let p2 = 0; p2 < width * height; p2++) {
+        if (colorDistance(data, p2 * 4, r2, g3, b11) <= limit) mask[p2] = 1;
+      }
+      return mask;
+    }
+    const stack = [seedY * width + seedX];
+    mask[stack[0]] = 1;
+    while (stack.length) {
+      const p2 = stack.pop();
+      const x3 = p2 % width;
+      const y3 = (p2 - x3) / width;
+      if (x3 > 0 && !mask[p2 - 1] && colorDistance(data, (p2 - 1) * 4, r2, g3, b11) <= limit) {
+        mask[p2 - 1] = 1;
+        stack.push(p2 - 1);
+      }
+      if (x3 < width - 1 && !mask[p2 + 1] && colorDistance(data, (p2 + 1) * 4, r2, g3, b11) <= limit) {
+        mask[p2 + 1] = 1;
+        stack.push(p2 + 1);
+      }
+      if (y3 > 0 && !mask[p2 - width] && colorDistance(data, (p2 - width) * 4, r2, g3, b11) <= limit) {
+        mask[p2 - width] = 1;
+        stack.push(p2 - width);
+      }
+      if (y3 < height - 1 && !mask[p2 + width] && colorDistance(data, (p2 + width) * 4, r2, g3, b11) <= limit) {
+        mask[p2 + width] = 1;
+        stack.push(p2 + width);
+      }
+    }
+    return mask;
+  }
+  function brushSelect(imageData, mask, options) {
+    const { width, height, data } = imageData;
+    const radius = Math.max(1, options.radius || 8);
+    const limit = colorLimit(options.tolerance);
+    const seed = options.seed;
+    if (!seed) return mask;
+    options.points.forEach((point3) => {
+      const cx = Math.round(point3[0]);
+      const cy = Math.round(point3[1]);
+      const minX = Math.max(0, Math.round(cx - radius));
+      const maxX = Math.min(width - 1, Math.round(cx + radius));
+      const minY = Math.max(0, Math.round(cy - radius));
+      const maxY = Math.min(height - 1, Math.round(cy + radius));
+      const radiusSq = radius * radius;
+      for (let y3 = minY; y3 <= maxY; y3++) {
+        for (let x3 = minX; x3 <= maxX; x3++) {
+          const dx = x3 - cx;
+          const dy = y3 - cy;
+          if (dx * dx + dy * dy > radiusSq) continue;
+          const p2 = y3 * width + x3;
+          if (mask[p2]) continue;
+          if (colorDistance(data, p2 * 4, seed[0], seed[1], seed[2]) <= limit) mask[p2] = 1;
+        }
+      }
+    });
+    return mask;
+  }
+  function pixelColor(imageData, x3, y3) {
+    const { width, height, data } = imageData;
+    if (x3 < 0 || y3 < 0 || x3 >= width || y3 >= height) return null;
+    const i3 = (Math.round(y3) * width + Math.round(x3)) * 4;
+    return [data[i3], data[i3 + 1], data[i3 + 2]];
+  }
+  function maskOutline(mask, width, height) {
+    const runs = [];
+    for (let y3 = 0; y3 <= height; y3++) {
+      let start2 = -1;
+      for (let x3 = 0; x3 <= width; x3++) {
+        const above = y3 > 0 ? mask[(y3 - 1) * width + x3] : 0;
+        const below = y3 < height ? mask[y3 * width + x3] : 0;
+        const edge = x3 < width && above !== below;
+        if (edge && start2 === -1) {
+          start2 = x3;
+        } else if (!edge && start2 !== -1) {
+          runs.push([start2, y3, x3, y3]);
+          start2 = -1;
+        }
+      }
+    }
+    for (let x3 = 0; x3 <= width; x3++) {
+      let start2 = -1;
+      for (let y3 = 0; y3 <= height; y3++) {
+        const left = x3 > 0 ? mask[y3 * width + (x3 - 1)] : 0;
+        const right = x3 < width ? mask[y3 * width + x3] : 0;
+        const edge = y3 < height && left !== right;
+        if (edge && start2 === -1) {
+          start2 = y3;
+        } else if (!edge && start2 !== -1) {
+          runs.push([x3, start2, x3, y3]);
+          start2 = -1;
+        }
+      }
+    }
+    return runs;
+  }
+  function simplify(points2, tolerance) {
+    if (points2.length < 3) return points2;
+    const first = points2[0];
+    const last3 = points2[points2.length - 1];
+    let index2 = -1;
+    let maxDistance = tolerance;
+    const dx = last3[0] - first[0];
+    const dy = last3[1] - first[1];
+    const norm = Math.hypot(dx, dy);
+    for (let i3 = 1; i3 < points2.length - 1; i3++) {
+      const point3 = points2[i3];
+      const distance = norm === 0 ? Math.hypot(point3[0] - first[0], point3[1] - first[1]) : Math.abs(dy * point3[0] - dx * point3[1] + last3[0] * first[1] - last3[1] * first[0]) / norm;
+      if (distance > maxDistance) {
+        index2 = i3;
+        maxDistance = distance;
+      }
+    }
+    if (index2 === -1) return [first, last3];
+    const head3 = simplify(points2.slice(0, index2 + 1), tolerance);
+    const tail3 = simplify(points2.slice(index2), tolerance);
+    return head3.slice(0, -1).concat(tail3);
+  }
+  function maskPolygons(mask, width, height) {
+    const edges = /* @__PURE__ */ new Map();
+    const addEdge = (x12, y12, x22, y22) => {
+      const key = x12 + "," + y12;
+      const list = edges.get(key);
+      if (list) list.push([x22, y22]);
+      else edges.set(key, [[x22, y22]]);
+    };
+    for (let y3 = 0; y3 < height; y3++) {
+      for (let x3 = 0; x3 < width; x3++) {
+        if (!mask[y3 * width + x3]) continue;
+        if (y3 === 0 || !mask[(y3 - 1) * width + x3]) addEdge(x3, y3, x3 + 1, y3);
+        if (x3 === width - 1 || !mask[y3 * width + x3 + 1]) addEdge(x3 + 1, y3, x3 + 1, y3 + 1);
+        if (y3 === height - 1 || !mask[(y3 + 1) * width + x3]) addEdge(x3 + 1, y3 + 1, x3, y3 + 1);
+        if (x3 === 0 || !mask[y3 * width + x3 - 1]) addEdge(x3, y3 + 1, x3, y3);
+      }
+    }
+    const polygons2 = [];
+    const startKeys = Array.from(edges.keys());
+    startKeys.forEach((startKey) => {
+      while (edges.has(startKey) && edges.get(startKey).length) {
+        const points2 = [];
+        let key = startKey;
+        let guard = 0;
+        while (key && edges.has(key) && edges.get(key).length && guard++ < 2e5) {
+          const [x3, y3] = key.split(",").map(Number);
+          points2.push([x3, y3]);
+          const next = edges.get(key).pop();
+          if (!edges.get(key).length) edges.delete(key);
+          key = next[0] + "," + next[1];
+          if (key === startKey) break;
+        }
+        if (points2.length >= 4) {
+          const tolerance = Math.max(1, Math.round(Math.min(width, height) / 200));
+          const simplified = simplify(points2.concat([points2[0]]), tolerance);
+          polygons2.push(simplified.slice(0, -1));
+        }
+      }
+    });
+    polygons2.sort((a2, b11) => b11.length - a2.length);
+    return polygons2;
+  }
+  var MAX_CANVAS_PIXELS;
+  var init_betterid_imagery = __esm({
+    "modules/util/betterid_imagery.js"() {
+      "use strict";
+      MAX_CANVAS_PIXELS = 4e3 * 4e3;
+    }
+  });
+
   // modules/behavior/betterid_select_tools.js
   var betterid_select_tools_exports = {};
   __export(betterid_select_tools_exports, {
@@ -44252,9 +44566,17 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     var _shape = select_default2(null);
     var _brush = select_default2(null);
     var _liveMode = "replace";
+    var _ants = select_default2(null);
+    var _menu = select_default2(null);
+    var _pixels = null;
+    var _baseline = null;
     function activeTool() {
       var tool = betteridTool();
       return tool === "marquee" || tool === "quickselect" || tool === "magicwand" ? tool : null;
+    }
+    function pixelTool() {
+      var tool = activeTool();
+      return PIXEL_TOOLS.indexOf(tool) === -1 ? null : tool;
     }
     function mapNode() {
       return context.container().select(".main-map").node();
@@ -44294,87 +44616,351 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     function drawBrush(point3) {
       _brush.attr("cx", point3[0]).attr("cy", point3[1]).attr("r", brushSize() / 2);
     }
-    function datumEntity(target) {
-      var element = target;
-      while (element && element !== document.body) {
-        var datum2 = element.__data__;
-        if (datum2) {
-          if (datum2.properties && datum2.properties.entity) return datum2.properties.entity;
-          if (datum2.entity) return datum2.entity;
-          if (datum2.id && datum2.type) return datum2;
-        }
-        element = element.parentNode;
-      }
-      return null;
-    }
-    function wandSeed(point3, d3_event) {
-      var entity = datumEntity(d3_event.target);
-      if (entity && context.hasEntity(entity.id)) return entity.id;
-      var ids = entitiesInBrush(context, {
-        centerX: point3[0],
-        centerY: point3[1],
-        radius: Math.max(8, brushSize() / 2)
-      });
-      return ids.length ? ids[0] : null;
-    }
     function marqueeResult(start2, current) {
+      var nodesOnly = (matches2) => matches2.filter((entity) => entity && entity.type === "node").map((entity) => entity.id);
       if (marqueeShape() === "ellipse") {
         var radiusX = Math.abs(current[0] - start2[0]) / 2;
         var radiusY = Math.abs(current[1] - start2[1]) / 2;
         if (radiusX < 1 || radiusY < 1) return [];
-        return entitiesInEllipse(context, {
+        return nodesOnly(entitiesInEllipse(context, {
           centerX: (start2[0] + current[0]) / 2,
           centerY: (start2[1] + current[1]) / 2,
           radiusX,
           radiusY
-        }).map((entity) => entity.id);
+        }));
       }
       if (Math.abs(current[0] - start2[0]) < 1 || Math.abs(current[1] - start2[1]) < 1) return [];
-      return entitiesInRect(context, {
+      return nodesOnly(entitiesInRect(context, {
         minX: Math.min(start2[0], current[0]),
         minY: Math.min(start2[1], current[1]),
         maxX: Math.max(start2[0], current[0]),
         maxY: Math.max(start2[1], current[1])
-      }).map((entity) => entity.id);
-    }
-    function quickSelectResult(start2, current) {
-      var radius = brushSize() / 2;
-      var points2 = [start2];
-      if (current) {
-        var distance = Math.hypot(current[0] - start2[0], current[1] - start2[1]);
-        var steps = Math.max(1, Math.ceil(distance / Math.max(1, radius / 2)));
-        for (var i3 = 1; i3 <= steps; i3++) {
-          points2.push([
-            start2[0] + (current[0] - start2[0]) * i3 / steps,
-            start2[1] + (current[1] - start2[1]) * i3 / steps
-          ]);
-        }
-      }
-      var ids = /* @__PURE__ */ new Set();
-      points2.forEach((point3) => {
-        entitiesInBrush(context, {
-          centerX: point3[0],
-          centerY: point3[1],
-          radius
-        }).forEach((id2) => ids.add(id2));
-      });
-      if (!ids.size) return [];
-      return expandBySimilarity(context.graph(), Array.from(ids), {
-        tolerance: wandTolerance(),
-        contiguous: true,
-        sameGeometry: true
-      });
-    }
-    function wandResult(seedID) {
-      if (!seedID) return [];
-      return expandBySimilarity(context.graph(), [seedID], {
-        tolerance: wandTolerance(),
-        contiguous: wandContiguous(),
-        sameGeometry: true
-      });
+      }));
     }
     function stopListeners() {
       select_default2(window).on(prefix + "move.betteridSelectTools", null).on(prefix + "up.betteridSelectTools", null).on("pointercancel.betteridSelectTools", null);
+    }
+    function maskFrame() {
+      if (!_pixels) return null;
+      var p02 = context.projection(_pixels.originGeo);
+      var step = [
+        _pixels.originGeo[0] + _pixels.perPixel[0],
+        _pixels.originGeo[1] + _pixels.perPixel[1]
+      ];
+      var p1 = context.projection(step);
+      var k2 = Math.hypot(p1[0] - p02[0], p1[1] - p02[1]) || 1;
+      return { p0: p02, k: k2 };
+    }
+    function pixelOutlinePath() {
+      if (!_pixels) return null;
+      var frame2 = maskFrame();
+      if (!frame2) return null;
+      var runs = maskOutline(_pixels.mask, _pixels.width, _pixels.height);
+      if (!runs.length) return null;
+      var p02 = frame2.p0;
+      var k2 = frame2.k;
+      var parts = [];
+      for (var i3 = 0; i3 < runs.length; i3++) {
+        var r2 = runs[i3];
+        var x12 = p02[0] + r2[0] * k2;
+        var y12 = p02[1] + r2[1] * k2;
+        var x22 = p02[0] + r2[2] * k2;
+        var y22 = p02[1] + r2[3] * k2;
+        parts.push("M" + x12.toFixed(1) + "," + y12.toFixed(1) + "L" + x22.toFixed(1) + "," + y22.toFixed(1));
+      }
+      return parts.join("");
+    }
+    function clearPixels() {
+      _pixels = null;
+      _baseline = null;
+    }
+    function combineMask(mask, mode2) {
+      if (!_baseline) return mask;
+      var out = new Uint8Array(mask.length);
+      for (var i3 = 0; i3 < mask.length; i3++) {
+        var had = _baseline[i3];
+        var add2 = mask[i3];
+        out[i3] = mode2 === "add" ? had || add2 ? 1 : 0 : mode2 === "subtract" ? had && !add2 ? 1 : 0 : mode2 === "intersect" ? had && add2 ? 1 : 0 : add2;
+      }
+      return out;
+    }
+    function withImagery(work) {
+      var tool = pixelTool();
+      if (!tool) return;
+      if (context.container().classed("betterid-imagery-busy")) return;
+      context.container().classed("betterid-imagery-busy", true);
+      captureSheet().then(function(sheet) {
+        context.container().classed("betterid-imagery-busy", false);
+        if (!sheet) {
+          context.ui().flash.duration(4e3).iconName("#iD-icon-alert").iconClass("operation").label(_t("betterid.tools.imagery_unreadable"))();
+          return;
+        }
+        var ctx = sheet.canvas.getContext("2d", { willReadFrequently: true });
+        var imageData = ctx.getImageData(0, 0, sheet.width, sheet.height);
+        var originGeo = context.projection.invert([0, 0]);
+        var edge = context.projection.invert([1, 1]);
+        var perPixel = [edge[0] - originGeo[0], edge[1] - originGeo[1]];
+        work(imageData, {
+          width: sheet.width,
+          height: sheet.height,
+          originGeo,
+          perPixel,
+          imageData
+        });
+      }).catch(function() {
+        context.container().classed("betterid-imagery-busy", false);
+      });
+    }
+    function captureSheet() {
+      var attempts = 0;
+      function attempt3() {
+        return captureImagery(context).then(function(sheet) {
+          if (sheet) return sheet;
+          attempts++;
+          if (attempts >= 5) return null;
+          return new Promise(function(resolve) {
+            setTimeout(function() {
+              resolve(attempt3());
+            }, 500);
+          });
+        });
+      }
+      return attempt3();
+    }
+    function startWand(point3, d3_event) {
+      var mode2 = selectionMode(d3_event);
+      withImagery(function(imageData, sheet) {
+        var mask = floodSelect(imageData, {
+          x: point3[0],
+          y: point3[1],
+          tolerance: wandTolerance(),
+          contiguous: wandContiguous()
+        });
+        _pixels = {
+          mask: combineMask(mask, mode2),
+          width: sheet.width,
+          height: sheet.height,
+          originGeo: sheet.originGeo,
+          perPixel: sheet.perPixel
+        };
+        _baseline = _pixels.mask;
+        drawAnts();
+      });
+    }
+    function startBrush(gesture, mode2) {
+      var point3 = gesture.start;
+      withImagery(function(imageData, sheet) {
+        if (_gesture !== gesture) return;
+        var seed = pixelColor(imageData, point3[0], point3[1]) || [0, 0, 0];
+        var mask = new Uint8Array(sheet.width * sheet.height);
+        brushSelect(imageData, mask, {
+          points: gesture.points.slice(),
+          radius: brushSize() / 2,
+          tolerance: wandTolerance(),
+          seed
+        });
+        _pixels = {
+          mask: combineMask(mask, mode2),
+          width: sheet.width,
+          height: sheet.height,
+          originGeo: sheet.originGeo,
+          perPixel: sheet.perPixel
+        };
+        _baseline = _pixels.mask;
+        gesture.imageData = imageData;
+        gesture.seed = seed;
+        gesture.mask = _pixels.mask.slice();
+        gesture.pending = false;
+        drawAnts();
+      });
+    }
+    function eyedropper(point3) {
+      withImagery(function(imageData) {
+        var hex2 = pixelHex(imageData, Math.round(point3[0]), Math.round(point3[1]));
+        if (!hex2) return;
+        context.ui().flash.duration(3e3).iconName("#iD-icon-apply").iconClass("operation").label(_t("betterid.tools.eyedropper_copied", { color: hex2 }))();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(hex2).catch(function() {
+          });
+        }
+      });
+    }
+    function ensureAnts() {
+      if (!_ants.empty()) return;
+      _ants = context.surface().selectAll(".betterid-ants").data([0]).enter().append("g").attr("class", "betterid-ants");
+    }
+    function selectionOutlines() {
+      var graph = context.graph();
+      var projection2 = context.projection;
+      var outlines = [];
+      context.selectedIDs().forEach(function(id2) {
+        var entity = context.entity(id2);
+        if (!entity) return;
+        if (entity.type === "node") {
+          var p2 = projection2(entity.loc);
+          var s2 = 4;
+          outlines.push("M" + (p2[0] - s2) + "," + (p2[1] - s2) + "h" + 2 * s2 + "v" + 2 * s2 + "h" + -2 * s2 + "Z");
+        } else if (entity.type === "way") {
+          var points2 = entity.nodes.map(function(nodeID) {
+            var node = graph.entity(nodeID);
+            return node ? projection2(node.loc) : null;
+          }).filter(Boolean);
+          if (points2.length < 2) return;
+          outlines.push("M" + points2.map(function(q3) {
+            return q3[0] + "," + q3[1];
+          }).join(" L") + (entity.isClosed() ? " Z" : ""));
+        }
+      });
+      return outlines;
+    }
+    function drawAnts() {
+      var outlines = activeTool() ? selectionOutlines() : [];
+      var ants = pixelOutlinePath();
+      if (ants) outlines.push(ants);
+      if (!outlines.length) {
+        if (!_ants.empty()) _ants.selectAll("*").remove();
+        return;
+      }
+      ensureAnts();
+      var halos = _ants.selectAll(".betterid-ants-halo").data(outlines);
+      halos.exit().remove();
+      halos.enter().append("path").attr("class", "betterid-ants-halo").merge(halos).attr("d", (d3) => d3);
+      var lines = _ants.selectAll(".betterid-ants-line").data(outlines);
+      lines.exit().remove();
+      lines.enter().append("path").attr("class", "betterid-ants-line").merge(lines).attr("d", (d3) => d3);
+    }
+    function keydown(d3_event) {
+      if (!activeTool()) return;
+      var target = d3_event.target;
+      if (target && target.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      var key = (d3_event.key || "").toLowerCase();
+      var command = (d3_event.ctrlKey || d3_event.metaKey) && !d3_event.altKey;
+      if (command && key === "d") {
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        clearPixels();
+        context.enter(modeSelect(context, []));
+        drawAnts();
+      } else if (d3_event.altKey && (key === "delete" || key === "backspace")) {
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        convertSelectionToPath();
+      }
+    }
+    function convertSelectionToPath() {
+      if (_pixels) {
+        convertPixelsToPath();
+        return;
+      }
+      var graph = context.graph();
+      var candidates = [];
+      var seen = {};
+      context.selectedIDs().forEach(function(id2) {
+        var entity = context.entity(id2);
+        if (!entity) return;
+        if (entity.type === "node") {
+          if (!seen[id2]) {
+            seen[id2] = true;
+            candidates.push(entity);
+          }
+        } else if (entity.type === "way") {
+          entity.nodes.forEach(function(nodeID) {
+            var node2 = graph.entity(nodeID);
+            if (node2 && !seen[nodeID]) {
+              seen[nodeID] = true;
+              candidates.push(node2);
+            }
+          });
+        }
+      });
+      if (candidates.length < 2) return;
+      var remaining = candidates.slice();
+      remaining.sort(function(a2, b11) {
+        return a2.loc[0] - b11.loc[0];
+      });
+      var chain = [remaining.shift()];
+      while (remaining.length) {
+        var last3 = chain[chain.length - 1].loc;
+        var best = 0;
+        var bestDistance = Infinity;
+        for (var i3 = 0; i3 < remaining.length; i3++) {
+          var node = remaining[i3];
+          var distance = Math.pow(node.loc[0] - last3[0], 2) + Math.pow(node.loc[1] - last3[1], 2);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = i3;
+          }
+        }
+        chain.push(remaining.splice(best, 1)[0]);
+      }
+      var way = new osmWay({ nodes: chain.map(function(node2) {
+        return node2.id;
+      }), tags: {} });
+      context.perform(actionAddEntity(way), _t("betterid.tools.convert_to_path"));
+      context.enter(modeSelect(context, [way.id]));
+      drawAnts();
+    }
+    function convertPixelsToPath() {
+      var polygons2 = maskPolygons(_pixels.mask, _pixels.width, _pixels.height).filter((polygon2) => polygon2.length >= 3);
+      if (!polygons2.length) return;
+      var nodes = [];
+      var ways = [];
+      polygons2.forEach(function(polygon2) {
+        var wayNodes = [];
+        polygon2.forEach(function(point3) {
+          var loc = [
+            _pixels.originGeo[0] + point3[0] * _pixels.perPixel[0],
+            _pixels.originGeo[1] + point3[1] * _pixels.perPixel[1]
+          ];
+          var node = new osmNode({ loc, tags: {} });
+          nodes.push(node);
+          wayNodes.push(node.id);
+        });
+        if (wayNodes.length < 3) return;
+        wayNodes.push(wayNodes[0]);
+        ways.push(new osmWay({ nodes: wayNodes, tags: {} }));
+      });
+      if (!ways.length) return;
+      var actions = nodes.map((node) => actionAddEntity(node));
+      ways.forEach((way) => actions.push(actionAddEntity(way)));
+      context.perform.apply(context, actions.concat([_t("betterid.tools.convert_to_path")]));
+      clearPixels();
+      context.enter(modeSelect(context, [ways[0].id]));
+      drawAnts();
+    }
+    function closeSelectionMenu() {
+      if (!_menu.empty()) _menu.remove();
+      _menu = select_default2(null);
+      select_default2(window).on("pointerdown.betteridSelectionMenu", null);
+    }
+    function openSelectionMenu(d3_event) {
+      closeSelectionMenu();
+      if (!activeTool() || !context.selectedIDs().length && !_pixels) return;
+      var point3 = mouseLoc(d3_event);
+      var host = context.container().select(".main-map");
+      if (host.empty()) return;
+      _menu = host.append("div").attr("class", "betterid-selection-menu").style("left", point3[0] + "px").style("top", point3[1] + "px");
+      var item = _menu.append("button").attr("type", "button").attr("class", "betterid-tool-menu-item").on("click", function(click_event) {
+        click_event.preventDefault();
+        click_event.stopPropagation();
+        convertSelectionToPath();
+        closeSelectionMenu();
+      });
+      item.append("span").call(_t.append("betterid.tools.convert_to_path"));
+      item.append("kbd").text(_t("betterid.tools.convert_to_path_key"));
+      select_default2(window).on("pointerdown.betteridSelectionMenu", function(down_event) {
+        var target = down_event.target;
+        if (target && target.closest && target.closest(".betterid-selection-menu")) return;
+        closeSelectionMenu();
+      }, true);
+    }
+    function contextmenu(d3_event) {
+      if (!activeTool()) return;
+      var target = d3_event.target;
+      if (!target || !target.closest || !target.closest(".main-map")) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      openSelectionMenu(d3_event);
     }
     function finishGesture(d3_event) {
       var gesture = _gesture;
@@ -44384,29 +44970,26 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       context.container().classed("betterid-tool-dragging", false);
       if (!gesture) return;
       var mode2 = selectionMode(d3_event);
-      var ids = [];
-      if (gesture.tool === "marquee") {
-        var dragged = Math.hypot(
-          gesture.current[0] - gesture.start[0],
-          gesture.current[1] - gesture.start[1]
-        ) >= MIN_MARQUEE;
-        var current = gesture.current;
-        if (dragged && marqueeShape() === "ellipse" && d3_event.shiftKey && !d3_event.altKey) {
-          var size2 = Math.max(
-            Math.abs(current[0] - gesture.start[0]),
-            Math.abs(current[1] - gesture.start[1])
-          );
-          current = [
-            gesture.start[0] + Math.sign(current[0] - gesture.start[0] || 1) * size2,
-            gesture.start[1] + Math.sign(current[1] - gesture.start[1] || 1) * size2
-          ];
-        }
-        ids = dragged ? marqueeResult(gesture.start, current) : [];
-      } else if (gesture.tool === "quickselect") {
-        ids = gesture.currentIDs || quickSelectResult(gesture.start, null);
-      } else if (gesture.tool === "magicwand") {
-        ids = wandResult(gesture.seed);
+      if (PIXEL_TOOLS.indexOf(gesture.tool) !== -1) {
+        drawAnts();
+        return;
       }
+      var dragged = Math.hypot(
+        gesture.current[0] - gesture.start[0],
+        gesture.current[1] - gesture.start[1]
+      ) >= MIN_MARQUEE;
+      var current = gesture.current;
+      if (dragged && marqueeShape() === "ellipse" && d3_event.shiftKey && !d3_event.altKey) {
+        var size2 = Math.max(
+          Math.abs(current[0] - gesture.start[0]),
+          Math.abs(current[1] - gesture.start[1])
+        );
+        current = [
+          gesture.start[0] + Math.sign(current[0] - gesture.start[0] || 1) * size2,
+          gesture.start[1] + Math.sign(current[1] - gesture.start[1] || 1) * size2
+        ];
+      }
+      var ids = dragged ? marqueeResult(gesture.start, current) : [];
       var combined = combineSelection(context.selectedIDs(), ids, mode2);
       context.enter(modeSelect(context, combined));
     }
@@ -44419,26 +45002,60 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (!target || !target.closest || !target.closest(".main-map")) return;
       if (context.container().classed("betterid-hand-tool")) return;
       if (!context.map().withinEditableZoom()) return;
-      var osmLayer = context.layers().layer("osm");
-      if (osmLayer && !osmLayer.enabled()) return;
+      if (PIXEL_TOOLS.indexOf(tool) === -1) {
+        var osmLayer = context.layers().layer("osm");
+        if (osmLayer && !osmLayer.enabled()) return;
+      }
       var point3 = mouseLoc(d3_event);
       _liveMode = selectionMode(d3_event);
+      if (d3_event.altKey && PIXEL_TOOLS.indexOf(tool) !== -1 && !adobeShortcutsEnabled()) {
+        eyedropper(point3);
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
+      }
+      if (tool === "magicwand") {
+        _baseline = _pixels ? _pixels.mask : null;
+        startWand(point3, d3_event);
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
+      }
+      if (tool === "quickselect") {
+        _baseline = _pixels ? _pixels.mask : null;
+        _gesture = {
+          tool: "quickselect",
+          start: point3,
+          current: point3,
+          points: [point3],
+          pending: true,
+          seed: null,
+          mask: null,
+          imageData: null,
+          currentIDs: null
+        };
+        showOverlay();
+        drawBrush(point3);
+        context.container().classed("betterid-tool-dragging", true);
+        select_default2(window).on(prefix + "move.betteridSelectTools", pointermove).on(prefix + "up.betteridSelectTools", finishGesture).on("pointercancel.betteridSelectTools", finishGesture);
+        startBrush(_gesture, selectionMode(d3_event));
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
+      }
+      if (tool === "marquee") {
+        showOverlay();
+        drawMarquee(point3, point3);
+      } else {
+        hideOverlay();
+      }
       _gesture = {
         tool,
         start: point3,
         current: point3,
-        seed: tool === "magicwand" ? wandSeed(point3, d3_event) : null,
+        seed: null,
         currentIDs: null
       };
-      if (tool === "marquee") {
-        showOverlay();
-        drawMarquee(point3, point3);
-      } else if (tool === "quickselect") {
-        showOverlay();
-        drawBrush(point3);
-      } else {
-        hideOverlay();
-      }
       context.container().classed("betterid-tool-dragging", true);
       select_default2(window).on(prefix + "move.betteridSelectTools", pointermove).on(prefix + "up.betteridSelectTools", finishGesture).on("pointercancel.betteridSelectTools", finishGesture);
       d3_event.preventDefault();
@@ -44455,16 +45072,37 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       } else if (_gesture.tool === "quickselect") {
         showOverlay();
         drawBrush(point3);
-        _gesture.currentIDs = quickSelectResult(_gesture.start, point3);
+        _gesture.points.push(point3);
+        if (!_gesture.pending && _gesture.imageData && _pixels) {
+          brushSelect(_gesture.imageData, _pixels.mask, {
+            points: [point3],
+            radius: brushSize() / 2,
+            tolerance: wandTolerance(),
+            seed: _gesture.seed
+          });
+          drawAnts();
+        }
       }
       d3_event.preventDefault();
       d3_event.stopPropagation();
     }
     function behavior() {
-      select_default2(window).on(prefix + "down.betteridSelectTools", pointerdown, true);
+      select_default2(window).on(prefix + "down.betteridSelectTools", pointerdown, true).on("contextmenu.betteridSelectTools", contextmenu, true).on("keydown.betteridSelectTools", keydown, true);
+      context.map().on("drawn.betteridSelectTools", drawAnts);
+      context.history().on("change.betteridSelectTools", drawAnts);
+      corePreferences.onChange(BETTERID_TOOL_PREF, function() {
+        if (PIXEL_TOOLS.indexOf(betteridTool()) === -1) clearPixels();
+        drawAnts();
+      });
+      drawAnts();
     }
     behavior.off = function() {
-      select_default2(window).on(prefix + "down.betteridSelectTools", null, true);
+      select_default2(window).on(prefix + "down.betteridSelectTools", null, true).on("contextmenu.betteridSelectTools", null, true).on("keydown.betteridSelectTools", null, true);
+      context.map().on("drawn.betteridSelectTools", null);
+      context.history().on("change.betteridSelectTools", null);
+      closeSelectionMenu();
+      if (!_ants.empty()) _ants.remove();
+      _ants = select_default2(null);
       stopListeners();
       hideOverlay();
       _gesture = null;
@@ -44472,16 +45110,22 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     };
     return behavior;
   }
-  var MIN_MARQUEE;
+  var MIN_MARQUEE, PIXEL_TOOLS;
   var init_betterid_select_tools = __esm({
     "modules/behavior/betterid_select_tools.js"() {
       "use strict";
       init_src6();
       init_betterid_tools();
+      init_add_entity();
+      init_osm();
+      init_preferences();
+      init_localizer();
       init_select5();
       init_util2();
       init_betterid_selection();
+      init_betterid_imagery();
       MIN_MARQUEE = 4;
+      PIXEL_TOOLS = ["quickselect", "magicwand"];
     }
   });
 
@@ -44494,9 +45138,12 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     var prefix = "PointerEvent" in window ? "pointer" : "mouse";
     var _anchors = [];
     var _draft = null;
+    var _direct = null;
     var _closed = false;
+    var _cursor = null;
     var _overlay = select_default2(null);
     var _preview = select_default2(null);
+    var _rubber = select_default2(null);
     var _handles = select_default2(null);
     var _points = select_default2(null);
     function active() {
@@ -44515,12 +45162,14 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       _overlay = context.surface().selectAll(".betterid-pen-preview").data([0]).enter().append("g").attr("class", "betterid-pen-preview");
       _handles = _overlay.append("g").attr("class", "betterid-pen-handles");
       _preview = _overlay.append("path").attr("class", "betterid-pen-path");
+      _rubber = _overlay.append("path").attr("class", "betterid-pen-rubber");
       _points = _overlay.append("g").attr("class", "betterid-pen-points");
     }
     function clearOverlay() {
       if (_overlay.empty()) return;
       _overlay.classed("hide", true);
       _preview.attr("d", null);
+      _rubber.attr("d", null);
       _handles.selectAll("*").remove();
       _points.selectAll("*").remove();
     }
@@ -44532,23 +45181,23 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (!offset) return null;
       return context.projection(geoVecAdd(anchor.loc, offset));
     }
-    function curvePoints(anchors, closed, cursorScreen) {
+    function curvePoints(anchors, closed, tail3) {
       var list = anchors.slice();
-      if (!closed && cursorScreen) {
-        list = list.concat([{ loc: context.projection.invert(cursorScreen) }]);
-      }
+      if (!closed && tail3) list.push(tail3);
+      if (!list.length) return [];
       if (list.length < 2) return list.map(anchorScreen);
-      var segments = list.length - 1;
+      var segments = closed ? list.length : list.length - 1;
       var sampled = [anchorScreen(list[0])];
       for (var i3 = 0; i3 < segments; i3++) {
         var a2 = list[i3];
-        var b11 = list[i3 + 1];
+        var b11 = list[(i3 + 1) % list.length];
         var p02 = anchorScreen(a2);
         var p3 = anchorScreen(b11);
         var c1 = handleScreen(a2, "handleOut") || p02;
         var c2 = handleScreen(b11, "handleIn") || p3;
         var chord = Math.hypot(p3[0] - p02[0], p3[1] - p02[1]);
         var steps = Math.max(1, Math.round(chord / NODE_SPACING_PX));
+        if (closed && i3 === segments - 1) steps = Math.max(1, steps - 1);
         for (var step = 1; step <= steps; step++) {
           var t4 = step / steps;
           var mt2 = 1 - t4;
@@ -44559,22 +45208,35 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       }
       return sampled;
     }
+    function committedAnchors() {
+      var list = _anchors.slice();
+      if (_draft) list.push(_draft.anchor);
+      return list;
+    }
+    function toPathD(points2, close) {
+      if (!points2 || points2.length < 2) return null;
+      return "M" + points2.map((p2) => `${p2[0]},${p2[1]}`).join(" L") + (close ? " Z" : "");
+    }
     function draw(cursorScreen) {
       ensureOverlay();
       _overlay.classed("hide", false);
-      var visible = _anchors.slice();
-      if (_draft && _draft.moved) visible.push(_draft.anchor);
-      var sampled = curvePoints(_anchors, _closed || !cursorScreen, _closed ? null : cursorScreen);
-      if (sampled.length) {
-        _preview.attr("d", "M" + sampled.map((p2) => `${p2[0]},${p2[1]}`).join(" L") + (_closed ? " Z" : ""));
-      } else {
-        _preview.attr("d", null);
+      if (cursorScreen) _cursor = cursorScreen;
+      var anchors = committedAnchors();
+      _preview.attr("d", toPathD(curvePoints(anchors, _closed, null), _closed));
+      var rubber = null;
+      if (!_closed && _cursor && anchors.length) {
+        rubber = toPathD(curvePoints(
+          [anchors[anchors.length - 1]],
+          false,
+          { loc: context.projection.invert(_cursor) }
+        ), false);
       }
-      var points2 = _points.selectAll("circle").data(visible, (d3, i3) => i3);
+      _rubber.attr("d", rubber);
+      var points2 = _points.selectAll("circle").data(anchors, (d3, i3) => i3);
       points2.exit().remove();
       points2.enter().append("circle").attr("class", "betterid-pen-point").attr("r", 4).merge(points2).attr("cx", (d3) => anchorScreen(d3)[0]).attr("cy", (d3) => anchorScreen(d3)[1]);
       var handleLines = [];
-      visible.forEach((anchor) => {
+      anchors.forEach((anchor) => {
         var center = anchorScreen(anchor);
         ["handleIn", "handleOut"].forEach((which) => {
           var point3 = handleScreen(anchor, which);
@@ -44590,11 +45252,17 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       return geoVecSubtract(toLoc, fromLoc);
     }
     function finishPath() {
+      if (_draft) {
+        _anchors.push(_draft.anchor);
+        _draft = null;
+      }
       var anchors = _anchors.slice();
       var closed = _closed;
       _anchors = [];
-      _draft = null;
+      _cursor = null;
       _closed = false;
+      _direct = null;
+      context.container().classed("betterid-pen-direct", false);
       clearOverlay();
       if (anchors.length < 1) return;
       var sampled = curvePoints(anchors, closed, null);
@@ -44608,7 +45276,9 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
         nodes.push(new osmNode({ loc, tags: {} }));
       });
       if (nodes.length < 2) return;
-      var way = new osmWay({ nodes: nodes.map((node) => node.id), tags: {} });
+      var wayNodes = nodes.map((node) => node.id);
+      if (closed) wayNodes.push(nodes[0].id);
+      var way = new osmWay({ nodes: wayNodes, tags: {} });
       var actions = nodes.map((node) => actionAddEntity(node));
       actions.push(actionAddEntity(way));
       context.perform.apply(context, actions);
@@ -44619,8 +45289,15 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     function cancelPath() {
       _anchors = [];
       _draft = null;
+      _direct = null;
+      _cursor = null;
       _closed = false;
+      context.container().classed("betterid-pen-direct", false);
       clearOverlay();
+    }
+    function redraw() {
+      if (!_anchors.length && !_draft && !_direct) return;
+      draw(_cursor || context.map().mouse());
     }
     function pointerdown(d3_event) {
       if (!active()) return;
@@ -44629,18 +45306,29 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (!target || !target.closest || !target.closest(".main-map")) return;
       if (context.container().classed("betterid-hand-tool")) return;
       if (!context.map().withinEditableZoom()) return;
-      if (d3_event.ctrlKey || d3_event.metaKey || d3_event.shiftKey) return;
+      if (d3_event.shiftKey) return;
       var point3 = mouseLoc(d3_event);
-      if (d3_event.altKey) {
-        var existing = findAnchorNear(point3);
-        if (existing !== -1) {
-          _anchors[existing].handleIn = null;
-          _anchors[existing].handleOut = null;
-          draw(point3);
-          d3_event.preventDefault();
-          d3_event.stopPropagation();
-          return;
+      var direct = d3_event.altKey || d3_event.ctrlKey || d3_event.metaKey;
+      if (direct) {
+        var handle = findHandleNear(point3);
+        if (handle) {
+          _direct = { anchor: handle.anchor, which: handle.which, moved: false, start: point3 };
+        } else {
+          var index2 = findAnchorNear(point3);
+          if (index2 === -1) return;
+          _direct = {
+            anchor: _anchors[index2],
+            index: index2,
+            moved: false,
+            start: point3,
+            trimOnClick: d3_event.altKey
+          };
         }
+        context.container().classed("betterid-pen-direct", true);
+        select_default2(window).on(prefix + "move.betteridPen", pointermove).on(prefix + "up.betteridPen", pointerup);
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
       }
       if (_anchors.length > 1) {
         var first = anchorScreen(_anchors[0]);
@@ -44669,9 +45357,48 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       }
       return -1;
     }
+    function findHandleNear(point3) {
+      for (var i3 = 0; i3 < _anchors.length; i3++) {
+        var anchor = _anchors[i3];
+        var which = ["handleIn", "handleOut"];
+        for (var h2 = 0; h2 < which.length; h2++) {
+          var screen = handleScreen(anchor, which[h2]);
+          if (!screen) continue;
+          if (Math.hypot(screen[0] - point3[0], screen[1] - point3[1]) <= CLOSE_RADIUS_PX) {
+            return { anchor, which: which[h2] };
+          }
+        }
+      }
+      return null;
+    }
+    function trimAnchor(index2) {
+      var anchor = _anchors[index2];
+      if (!anchor) return;
+      if (index2 === _anchors.length - 1) {
+        anchor.handleOut = null;
+      } else {
+        anchor.handleIn = null;
+        anchor.handleOut = null;
+      }
+    }
     function pointermove(d3_event) {
-      if (!_draft) return;
+      if (!_draft && !_direct) return;
       var point3 = mouseLoc(d3_event);
+      if (_direct) {
+        var from = _direct.start;
+        if (Math.hypot(point3[0] - from[0], point3[1] - from[1]) > HANDLE_THRESHOLD_PX) {
+          _direct.moved = true;
+        }
+        if (_direct.which) {
+          _direct.anchor[_direct.which] = screenToGeoOffset(_direct.anchor.loc, point3);
+        } else if (_direct.moved) {
+          _direct.anchor.loc = context.projection.invert(point3);
+        }
+        draw(point3);
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
+      }
       var distance = Math.hypot(point3[0] - _draft.start[0], point3[1] - _draft.start[1]);
       if (distance > HANDLE_THRESHOLD_PX) {
         _draft.moved = true;
@@ -44684,8 +45411,19 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       d3_event.stopPropagation();
     }
     function pointerup(d3_event) {
-      if (!_draft) return;
+      if (!_draft && !_direct) return;
       select_default2(window).on(prefix + "move.betteridPen", null).on(prefix + "up.betteridPen", null);
+      if (_direct) {
+        if (_direct.trimOnClick && !_direct.moved && _direct.index !== void 0) {
+          trimAnchor(_direct.index);
+        }
+        _direct = null;
+        context.container().classed("betterid-pen-direct", false);
+        draw(context.map().mouse());
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
+      }
       _anchors.push(_draft.anchor);
       _draft = null;
       draw();
@@ -44693,7 +45431,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       d3_event.stopPropagation();
     }
     function dblclick(d3_event) {
-      if (!active() || !_anchors.length) return;
+      if (!active() || !_anchors.length && !_draft) return;
       d3_event.preventDefault();
       d3_event.stopPropagation();
       finishPath();
@@ -44702,29 +45440,52 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (!active()) return;
       var isTextEntry = d3_event.target && /^(INPUT|TEXTAREA|SELECT)$/.test(d3_event.target.tagName);
       if (isTextEntry) return;
+      var undoKey = (d3_event.ctrlKey || d3_event.metaKey) && !d3_event.altKey && (d3_event.key === "z" || d3_event.key === "Z");
+      var redoKey = undoKey && d3_event.shiftKey;
+      if (undoKey && !redoKey && (_anchors.length || _draft)) {
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        if (_draft) {
+          _draft = null;
+        } else {
+          _anchors.pop();
+        }
+        if (!_anchors.length && !_draft) {
+          clearOverlay();
+        } else {
+          draw(_cursor || context.map().mouse());
+        }
+        return;
+      }
       if (d3_event.key === "Enter") {
-        if (!_anchors.length) return;
+        if (!_anchors.length && !_draft && !_direct) return;
         d3_event.preventDefault();
         d3_event.stopPropagation();
         finishPath();
       } else if (d3_event.key === "Escape") {
-        if (!_anchors.length) return;
+        if (!_anchors.length && !_draft && !_direct) return;
         d3_event.preventDefault();
         d3_event.stopPropagation();
         cancelPath();
       } else if (d3_event.key === "Backspace") {
-        if (!_anchors.length) return;
+        if (!_anchors.length && !_draft && !_direct) return;
         d3_event.preventDefault();
         d3_event.stopPropagation();
-        _anchors.pop();
+        if (_draft) {
+          _draft = null;
+        } else {
+          _anchors.pop();
+        }
         draw(context.map().mouse());
       }
     }
     function behavior() {
       select_default2(window).on(prefix + "down.betteridPen", pointerdown, true).on("dblclick.betteridPen", dblclick, true).on("keydown.betteridPen", keydown, true);
+      context.map().on("drawn.betteridPen", redraw);
     }
     behavior.off = function() {
       select_default2(window).on(prefix + "down.betteridPen", null, true).on("dblclick.betteridPen", null, true).on("keydown.betteridPen", null, true).on(prefix + "move.betteridPen", null).on(prefix + "up.betteridPen", null);
+      context.map().on("drawn.betteridPen", null);
       cancelPath();
     };
     return behavior;
@@ -45525,9 +46286,9 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (d3_event.altKey) {
         zoomAtPointer(d3_event, Math.exp(-deltaY * WHEEL_ZOOM_FACTOR));
       } else if (d3_event.ctrlKey || d3_event.metaKey) {
-        context.map().pan([deltaY * WHEEL_PAN_FACTOR, 0]);
+        context.map().pan([-deltaY * WHEEL_PAN_FACTOR, 0]);
       } else {
-        context.map().pan([0, deltaY * WHEEL_PAN_FACTOR]);
+        context.map().pan([0, -deltaY * WHEEL_PAN_FACTOR]);
       }
     }
     function zoomAtPointer(d3_event, factor) {
@@ -74814,7 +75575,7 @@ ${tag}` : tag;
   });
 
   // node_modules/.pnpm/osm-community-index@6.2.0/node_modules/osm-community-index/dist/js/oci.mjs
-  function simplify(str) {
+  function simplify2(str) {
     if (typeof str !== "string")
       return "";
     return import_diacritics.default.remove(str.replace(/&/g, "and").replace(/(İ|i̇)/ig, "i").replace(/[\s\-=_!"#%'*{},.\/:;?\(\)\[\]@\\$\^*+<>«»~`’\u00a1\u00a7\u00b6\u00b7\u00bf\u037e\u0387\u055a-\u055f\u0589\u05c0\u05c3\u05c6\u05f3\u05f4\u0609\u060a\u060c\u060d\u061b\u061e\u061f\u066a-\u066d\u06d4\u0700-\u070d\u07f7-\u07f9\u0830-\u083e\u085e\u0964\u0965\u0970\u0af0\u0df4\u0e4f\u0e5a\u0e5b\u0f04-\u0f12\u0f14\u0f85\u0fd0-\u0fd4\u0fd9\u0fda\u104a-\u104f\u10fb\u1360-\u1368\u166d\u166e\u16eb-\u16ed\u1735\u1736\u17d4-\u17d6\u17d8-\u17da\u1800-\u1805\u1807-\u180a\u1944\u1945\u1a1e\u1a1f\u1aa0-\u1aa6\u1aa8-\u1aad\u1b5a-\u1b60\u1bfc-\u1bff\u1c3b-\u1c3f\u1c7e\u1c7f\u1cc0-\u1cc7\u1cd3\u2000-\u206f\u2cf9-\u2cfc\u2cfe\u2cff\u2d70\u2e00-\u2e7f\u3001-\u3003\u303d\u30fb\ua4fe\ua4ff\ua60d-\ua60f\ua673\ua67e\ua6f2-\ua6f7\ua874-\ua877\ua8ce\ua8cf\ua8f8-\ua8fa\ua92e\ua92f\ua95f\ua9c1-\ua9cd\ua9de\ua9df\uaa5c-\uaa5f\uaade\uaadf\uaaf0\uaaf1\uabeb\ufe10-\ufe16\ufe19\ufe30\ufe45\ufe46\ufe49-\ufe4c\ufe50-\ufe52\ufe54-\ufe57\ufe5f-\ufe61\ufe68\ufe6a\ufe6b\ufeff\uff01-\uff03\uff05-\uff07\uff0a\uff0c\uff0e\uff0f\uff1a\uff1b\uff1f\uff20\uff3c\uff61\uff64\uff65]+/g, "").toLowerCase());
@@ -74825,7 +75586,7 @@ ${tag}` : tag;
     const anyToken = new RegExp(/(\{\w+\})/, "gi");
     if (localizerFn) {
       if (itemStrings.community) {
-        const communityID = simplify(itemStrings.community);
+        const communityID = simplify2(itemStrings.community);
         itemStrings.community = localizerFn(`_communities.${communityID}`);
       }
       for (const prop of ["name", "description", "extendedDescription"]) {
@@ -75972,11 +76733,43 @@ ${tag}` : tag;
   __export(betterid_toolbar_exports, {
     uiBetteridToolPalette: () => uiBetteridToolPalette
   });
+  function toolIcon(tool) {
+    if (tool === "marquee") return MARQUEE_ICONS[marqueeShape()];
+    return TOOL_ICONS[tool];
+  }
+  function groupEntries(group2) {
+    if (group2.id === "marquee") {
+      return BETTERID_MARQUEE_SHAPES.map((shape) => ({
+        id: shape,
+        icon: MARQUEE_ICONS[shape],
+        label: "betterid.tools.marquee_" + shape,
+        selected: marqueeShape() === shape,
+        apply: () => {
+          setMarqueeShape(shape);
+          setBetteridTool("marquee");
+        }
+      }));
+    }
+    if (group2.id === "selection") {
+      return group2.tools.map((tool) => ({
+        id: tool,
+        icon: TOOL_ICONS[tool],
+        label: "betterid.tools." + tool,
+        key: "betterid.tools." + tool + "_key",
+        selected: groupTool("selection") === tool,
+        apply: () => {
+          setSelectionTool(tool);
+          setBetteridTool(tool);
+        }
+      }));
+    }
+    return [];
+  }
   function uiBetteridToolPalette(context) {
     var _container = select_default2(null);
     function chooseTool(tool) {
       setBetteridTool(betteridTool() === tool && tool !== "select" ? "select" : tool);
-      context.ui().flash.duration(1500).iconName(TOOL_ICONS[betteridTool()]).iconClass("operation").label(_t("betterid.tools.active", { tool: _t("betterid.tools." + betteridTool()) }))();
+      context.ui().flash.duration(1500).iconName(toolIcon(betteridTool())).iconClass("operation").label(_t("betterid.tools.active", { tool: _t("betterid.tools." + betteridTool()) }))();
     }
     function optionRow(container, label, value, min4, max4, step, onInput) {
       var row = container.append("label").attr("class", "betterid-tool-option");
@@ -75987,28 +76780,74 @@ ${tag}` : tag;
       row.append("output").text(value);
       return row;
     }
+    function openGroupMenu(d3_event, group2) {
+      closeGroupMenu();
+      var entries2 = groupEntries(group2);
+      if (!entries2.length) return;
+      var palette2 = _container.select(".betterid-tool-palette");
+      if (palette2.empty()) return;
+      var button = select_default2(d3_event.currentTarget);
+      var buttonNode = button.node();
+      var menu = palette2.append("div").attr("class", "betterid-tool-menu").attr("role", "menu");
+      entries2.forEach(function(entry) {
+        var item = menu.append("button").attr("type", "button").attr("class", "betterid-tool-menu-item").attr("role", "menuitem").classed("active", entry.selected).on("click", function(click_event) {
+          click_event.preventDefault();
+          click_event.stopPropagation();
+          entry.apply();
+          closeGroupMenu();
+        });
+        item.call(svgIcon(entry.icon));
+        item.append("span").call(_t.append(entry.label));
+        if (entry.key) item.append("kbd").text(_t(entry.key));
+      });
+      var top = buttonNode ? buttonNode.offsetTop : 0;
+      var rect = buttonNode ? buttonNode.getBoundingClientRect() : null;
+      if (rect && rect.top > window.innerHeight - 140) {
+        top = Math.max(0, top - 110);
+      }
+      menu.style("top", top + "px");
+      select_default2(window).on("keydown.betteridToolMenu", function(key_event) {
+        if (key_event.key === "Escape") {
+          key_event.preventDefault();
+          closeGroupMenu();
+        }
+      });
+      select_default2(window).on("pointerdown.betteridToolMenu", function(down_event) {
+        var target = down_event.target;
+        if (target && target.closest && target.closest(".betterid-tool-menu")) return;
+        closeGroupMenu();
+      }, true);
+    }
+    function closeGroupMenu() {
+      _container.selectAll(".betterid-tool-menu").remove();
+      select_default2(window).on("keydown.betteridToolMenu", null).on("pointerdown.betteridToolMenu", null);
+    }
     function render(selection2) {
+      closeGroupMenu();
       selection2.selectAll(".betterid-tool-palette").remove();
       context.container().classed("betterid-tool-active", betteridTool() !== "select");
       var palette2 = selection2.append("div").attr("class", "betterid-tool-palette");
       var tools = palette2.append("div").attr("class", "betterid-tool-buttons");
-      BETTERID_TOOLS.forEach(function(tool2) {
-        var button = tools.append("button").attr("type", "button").attr("class", "betterid-tool-button betterid-tool-" + tool2).classed("active", betteridTool() === tool2).on("click", function(d3_event) {
+      BETTERID_TOOL_GROUPS.forEach(function(group2) {
+        var shown = groupTool(group2.id);
+        var entries2 = groupEntries(group2);
+        var button = tools.append("button").attr("type", "button").attr("class", "betterid-tool-button betterid-tool-group betterid-tool-" + shown).attr("data-group", group2.id).attr("data-tools", group2.tools.join(" ")).classed("active", group2.tools.indexOf(betteridTool()) !== -1).classed("has-variants", entries2.length > 1).on("click", function(d3_event) {
           d3_event.preventDefault();
-          chooseTool(tool2);
+          closeGroupMenu();
+          chooseTool(shown);
+        }).on("contextmenu", function(d3_event) {
+          if (entries2.length < 2) return;
+          d3_event.preventDefault();
+          d3_event.stopPropagation();
+          openGroupMenu(d3_event, group2);
         });
-        button.call(svgIcon(TOOL_ICONS[tool2]));
-        button.call(uiTooltip().placement("right").title(() => _t.append("betterid.tools." + tool2)).keys([_t("betterid.tools." + tool2 + "_key")]).scrollContainer(context.container().select(".over-map")));
+        button.call(svgIcon(toolIcon(shown)));
+        var keys4 = group2.tools.map((tool2) => _t("betterid.tools." + tool2 + "_key")).filter(Boolean);
+        button.call(uiTooltip().placement("right").title(() => _t.append("betterid.tools." + shown)).keys(keys4).scrollContainer(context.container().select(".over-map")));
       });
       var options = palette2.append("div").attr("class", "betterid-tool-options");
       var tool = betteridTool();
-      if (tool === "marquee") {
-        var shapeButton = options.append("button").attr("type", "button").attr("class", "betterid-tool-shape").on("click", function(d3_event) {
-          d3_event.preventDefault();
-          cycleMarqueeShape();
-        }).call(svgIcon("#iD-icon-area"));
-        shapeButton.append("span").call(_t.append(marqueeShape() === "ellipse" ? "betterid.tools.marquee_ellipse" : "betterid.tools.marquee_rect"));
-      } else if (tool === "quickselect") {
+      if (tool === "quickselect") {
         optionRow(options, "betterid.tools.brush_size", brushSize(), 8, 200, 4, function(value) {
           setBrushSize(value);
         });
@@ -76032,31 +76871,70 @@ ${tag}` : tag;
         BETTERID_MARQUEE_SHAPE_PREF,
         BETTERID_BRUSH_SIZE_PREF,
         BETTERID_WAND_TOLERANCE_PREF,
-        BETTERID_WAND_CONTIGUOUS_PREF
+        BETTERID_WAND_CONTIGUOUS_PREF,
+        BETTERID_SELECTION_LAST_PREF
       ].forEach(function(key) {
         corePreferences.onChange(key, function() {
           if (!_container.empty()) render(_container);
         });
       });
+      select_default2(window).on("keydown.betteridToolKeys", keydown, true);
+    }
+    function keydown(d3_event) {
+      if (d3_event.ctrlKey || d3_event.metaKey || d3_event.altKey) return;
+      var target = d3_event.target;
+      if (target && target.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      var key = (d3_event.key || "").toLowerCase();
+      var tool;
+      if (key === "v") tool = "select";
+      else if (key === "m") tool = "marquee";
+      else if (key === "p") tool = "pen";
+      else if (key === "w") tool = d3_event.shiftKey ? "magicwand" : "quickselect";
+      else return;
+      if (key === "w" && experimentalFeatureEnabled(BETTERID_PREFS.wasdNavigation)) return;
+      d3_event.preventDefault();
+      d3_event.stopPropagation();
+      var cycle = betteridTool() === tool;
+      if (!cycle) {
+        setBetteridTool(tool);
+      } else if (tool === "marquee") {
+        cycleMarqueeShape();
+      } else if (tool === "quickselect") {
+        setSelectionTool("magicwand");
+        setBetteridTool("magicwand");
+      } else if (tool === "magicwand") {
+        setSelectionTool("quickselect");
+        setBetteridTool("quickselect");
+      } else {
+        chooseTool(tool);
+      }
+      if (tool === "marquee" && d3_event.shiftKey && betteridTool() === "marquee") {
+        cycleMarqueeShape();
+      }
     }
     return palette;
   }
-  var TOOL_ICONS;
+  var TOOL_ICONS, MARQUEE_ICONS;
   var init_betterid_toolbar = __esm({
     "modules/ui/betterid_toolbar.js"() {
       "use strict";
       init_src6();
       init_betterid_tools();
+      init_betterid_preferences();
       init_preferences();
       init_localizer();
       init_svg();
       init_tooltip();
       TOOL_ICONS = {
-        select: "#iD-icon-inspect",
-        marquee: "#iD-icon-area",
-        quickselect: "#iD-icon-point",
-        magicwand: "#iD-icon-framed-dot",
-        pen: "#iD-icon-line"
+        select: "#iD-icon-betterid-select",
+        marquee: "#iD-icon-betterid-marquee-rect",
+        quickselect: "#iD-icon-betterid-quickselect",
+        magicwand: "#iD-icon-betterid-magicwand",
+        pen: "#iD-icon-betterid-pen"
+      };
+      MARQUEE_ICONS = {
+        rect: "#iD-icon-betterid-marquee-rect",
+        ellipse: "#iD-icon-betterid-marquee-ellipse"
       };
     }
   });
@@ -88638,7 +89516,7 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
   });
 
   // node_modules/.pnpm/name-suggestion-index@8.0.20260729/node_modules/name-suggestion-index/dist/js/nsi.mjs
-  function simplify2(str) {
+  function simplify3(str) {
     if (typeof str !== "string")
       return "";
     return import_diacritics2.default.remove(str.replace(/&/g, "and").replace(/(İ|i̇)/ig, "i").replace(/[\s\-=_!"#%'*{},.\/:;?\(\)\[\]@\\$\^*+<>«»~`’\u00a1\u00a7\u00b6\u00b7\u00bf\u037e\u0387\u055a-\u055f\u0589\u05c0\u05c3\u05c6\u05f3\u05f4\u0609\u060a\u060c\u060d\u061b\u061e\u061f\u066a-\u066d\u06d4\u0700-\u070d\u07f7-\u07f9\u0830-\u083e\u085e\u0964\u0965\u0970\u0af0\u0df4\u0e4f\u0e5a\u0e5b\u0f04-\u0f12\u0f14\u0f85\u0fd0-\u0fd4\u0fd9\u0fda\u104a-\u104f\u10fb\u1360-\u1368\u166d\u166e\u16eb-\u16ed\u1735\u1736\u17d4-\u17d6\u17d8-\u17da\u1800-\u1805\u1807-\u180a\u1944\u1945\u1a1e\u1a1f\u1aa0-\u1aa6\u1aa8-\u1aad\u1b5a-\u1b60\u1bfc-\u1bff\u1c3b-\u1c3f\u1c7e\u1c7f\u1cc0-\u1cc7\u1cd3\u2000-\u206f\u2cf9-\u2cfc\u2cfe\u2cff\u2d70\u2e00-\u2e7f\u3001-\u3003\u303d\u30fb\ua4fe\ua4ff\ua60d-\ua60f\ua673\ua67e\ua6f2-\ua6f7\ua874-\ua877\ua8ce\ua8cf\ua8f8-\ua8fa\ua92e\ua92f\ua95f\ua9c1-\ua9cd\ua9de\ua9df\uaa5c-\uaa5f\uaade\uaadf\uaaf0\uaaf1\uabeb\ufe10-\ufe16\ufe19\ufe30\ufe45\ufe46\ufe49-\ufe4c\ufe50-\ufe52\ufe54-\ufe57\ufe5f-\ufe61\ufe68\ufe6a\ufe6b\ufeff\uff01-\uff03\uff05-\uff07\uff0a\uff0c\uff0e\uff0f\uff1a\uff1b\uff1f\uff20\uff3c\uff61\uff64\uff65]+/g, "").toLowerCase());
@@ -88656,7 +89534,7 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
       /(shop|store)/ig
     ];
     str = noise.reduce((acc, regex) => acc.replace(regex, ""), str);
-    return simplify2(str);
+    return simplify3(str);
   }
   function sortObject(obj) {
     if (!obj)
@@ -89434,15 +90312,15 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
                   continue;
                 if (primaryName.test(osmkey)) {
                   for (const kv of kvTags)
-                    insertName("primary", t4, kv, simplify2(osmvalue), item.id);
+                    insertName("primary", t4, kv, simplify3(osmvalue), item.id);
                 } else if (alternateName.test(osmkey)) {
                   for (const kv of kvTags)
-                    insertName("alternate", t4, kv, simplify2(osmvalue), item.id);
+                    insertName("alternate", t4, kv, simplify3(osmvalue), item.id);
                 }
               }
               const keepMatchNames = /* @__PURE__ */ new Set();
               for (const matchName of item.matchNames || []) {
-                const nsimple = simplify2(matchName);
+                const nsimple = simplify3(matchName);
                 for (const kv of kvTags) {
                   const branch2 = matchIndex.get(kv);
                   const primaryLeaf = branch2 && branch2.primary.get(nsimple);
@@ -89489,7 +90367,7 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
           if (Array.isArray(loc) && loco) {
             validHere = loco.locationSetsAt(loc);
           }
-          const nsimple = simplify2(n3);
+          const nsimple = simplify3(n3);
           const seen = /* @__PURE__ */ new Set();
           const results = [];
           const byAreaAscending = (hitA, hitB) => {
@@ -102555,6 +103433,7 @@ this.ifd0Offset: ${this.ifd0Offset}, file.byteLength: ${e3.byteLength}`), e3.tif
         "../util/aes.ts": () => Promise.resolve().then(() => (init_aes(), aes_exports)),
         "../util/ai_status.js": () => Promise.resolve().then(() => (init_ai_status(), ai_status_exports)),
         "../util/array.ts": () => Promise.resolve().then(() => (init_array3(), array_exports)),
+        "../util/betterid_imagery.js": () => Promise.resolve().then(() => (init_betterid_imagery(), betterid_imagery_exports)),
         "../util/betterid_selection.js": () => Promise.resolve().then(() => (init_betterid_selection(), betterid_selection_exports)),
         "../util/bind_once.js": () => Promise.resolve().then(() => (init_bind_once(), bind_once_exports)),
         "../util/changeset_summary.js": () => Promise.resolve().then(() => (init_changeset_summary(), changeset_summary_exports)),

@@ -83,13 +83,16 @@ export function behaviorBetteridAdobe(context) {
         d3_event.stopPropagation();
 
         if (d3_event.altKey) {
+            // wheel up (deltaY < 0) zooms in, like Photoshop
             zoomAtPointer(d3_event, Math.exp(-deltaY * WHEEL_ZOOM_FACTOR));
 
         } else if (d3_event.ctrlKey || d3_event.metaKey) {
-            context.map().pan([deltaY * WHEEL_PAN_FACTOR, 0]);
+            // Scrolling follows the document convention: scrolling down moves the
+            // map content up (and sideways for the horizontal wheel).
+            context.map().pan([-deltaY * WHEEL_PAN_FACTOR, 0]);
 
         } else {
-            context.map().pan([0, deltaY * WHEEL_PAN_FACTOR]);
+            context.map().pan([0, -deltaY * WHEEL_PAN_FACTOR]);
         }
     }
 

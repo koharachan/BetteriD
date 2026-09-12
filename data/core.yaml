@@ -1329,6 +1329,9 @@ en:
       brush_size: Brush size
       tolerance: Tolerance
       contiguous: Contiguous
+      imagery_unreadable: This background imagery cannot be read (no CORS headers), so the pixel tools cannot sample it.
+      convert_to_path: Convert selection to path
+      convert_to_path_key: Alt+Del
       eyedropper_copied: "Colour {color} copied"
     military_warning:
       title: Military-area editing is unavailable here

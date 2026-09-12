@@ -24,9 +24,12 @@ export function behaviorBetteridPen(context) {
     var prefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
     var _anchors = [];
     var _draft = null;
+    var _direct = null;      // direct-selection gesture (Alt / Ctrl held)
     var _closed = false;
+    var _cursor = null;          // last pointer position, in screen space
     var _overlay = d3_select(null);
     var _preview = d3_select(null);
+    var _rubber = d3_select(null);
     var _handles = d3_select(null);
     var _points = d3_select(null);
 
@@ -60,6 +63,9 @@ export function behaviorBetteridPen(context) {
 
         _handles = _overlay.append('g').attr('class', 'betterid-pen-handles');
         _preview = _overlay.append('path').attr('class', 'betterid-pen-path');
+        // the segment that is still following the pointer is drawn as a light
+        // rubber band, so it is obvious which part is already committed
+        _rubber = _overlay.append('path').attr('class', 'betterid-pen-rubber');
         _points = _overlay.append('g').attr('class', 'betterid-pen-points');
     }
 
@@ -68,6 +74,7 @@ export function behaviorBetteridPen(context) {
         if (_overlay.empty()) return;
         _overlay.classed('hide', true);
         _preview.attr('d', null);
+        _rubber.attr('d', null);
         _handles.selectAll('*').remove();
         _points.selectAll('*').remove();
     }
@@ -85,19 +92,20 @@ export function behaviorBetteridPen(context) {
     }
 
 
-    function curvePoints(anchors, closed, cursorScreen) {
+    function curvePoints(anchors, closed, tail) {
         var list = anchors.slice();
-        if (!closed && cursorScreen) {
-            list = list.concat([{ loc: context.projection.invert(cursorScreen) }]);
-        }
+        if (!closed && tail) list.push(tail);
+        if (!list.length) return [];
         if (list.length < 2) return list.map(anchorScreen);
 
-        var segments = list.length - 1;
+        // a closed path also bends the segment from the last anchor back to the
+        // first one (its end point *is* the first anchor, so it is not repeated)
+        var segments = closed ? list.length : list.length - 1;
         var sampled = [anchorScreen(list[0])];
 
         for (var i = 0; i < segments; i++) {
             var a = list[i];
-            var b = list[i + 1];
+            var b = list[(i + 1) % list.length];
             var p0 = anchorScreen(a);
             var p3 = anchorScreen(b);
             var c1 = handleScreen(a, 'handleOut') || p0;
@@ -105,6 +113,7 @@ export function behaviorBetteridPen(context) {
 
             var chord = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
             var steps = Math.max(1, Math.round(chord / NODE_SPACING_PX));
+            if (closed && i === segments - 1) steps = Math.max(1, steps - 1);
 
             for (var step = 1; step <= steps; step++) {
                 var t = step / steps;
@@ -119,24 +128,42 @@ export function behaviorBetteridPen(context) {
     }
 
 
+    /** Anchors that will end up in the way, including the one being dragged. */
+    function committedAnchors() {
+        var list = _anchors.slice();
+        if (_draft) list.push(_draft.anchor);
+        return list;
+    }
+
+
+    function toPathD(points, close) {
+        if (!points || points.length < 2) return null;
+        return 'M' + points.map(p => `${p[0]},${p[1]}`).join(' L') + (close ? ' Z' : '');
+    }
+
+
     function draw(cursorScreen) {
         ensureOverlay();
         _overlay.classed('hide', false);
 
-        // the anchor being dragged is not committed yet, but its handle should
-        // be visible while the pointer moves
-        var visible = _anchors.slice();
-        if (_draft && _draft.moved) visible.push(_draft.anchor);
+        if (cursorScreen) _cursor = cursorScreen;
+        var anchors = committedAnchors();
 
-        var sampled = curvePoints(_anchors, _closed || !cursorScreen, _closed ? null : cursorScreen);
-        if (sampled.length) {
-            _preview.attr('d', 'M' + sampled.map(p => `${p[0]},${p[1]}`).join(' L') + (_closed ? ' Z' : ''));
-        } else {
-            _preview.attr('d', null);
+        // Committed geometry: exactly what `finishPath()` will flatten, which is
+        // why the dragged anchor contributes its real handles instead of the
+        // pointer position (that mismatch used to change the curve on release).
+        _preview.attr('d', toPathD(curvePoints(anchors, _closed, null), _closed));
+
+        // Rubber band: the segment that still follows the pointer.
+        var rubber = null;
+        if (!_closed && _cursor && anchors.length) {
+            rubber = toPathD(curvePoints([anchors[anchors.length - 1]], false,
+                { loc: context.projection.invert(_cursor) }), false);
         }
+        _rubber.attr('d', rubber);
 
         // anchors and their direction handles
-        var points = _points.selectAll('circle').data(visible, (d, i) => i);
+        var points = _points.selectAll('circle').data(anchors, (d, i) => i);
         points.exit().remove();
         points.enter().append('circle')
             .attr('class', 'betterid-pen-point')
@@ -146,7 +173,7 @@ export function behaviorBetteridPen(context) {
             .attr('cy', d => anchorScreen(d)[1]);
 
         var handleLines = [];
-        visible.forEach(anchor => {
+        anchors.forEach(anchor => {
             var center = anchorScreen(anchor);
             ['handleIn', 'handleOut'].forEach(which => {
                 var point = handleScreen(anchor, which);
@@ -171,11 +198,21 @@ export function behaviorBetteridPen(context) {
 
 
     function finishPath() {
+        // Enter, a double click or a click on the first anchor can arrive while
+        // the pointer is still down on the anchor being dragged: commit it first,
+        // otherwise the last segment is silently dropped.
+        if (_draft) {
+            _anchors.push(_draft.anchor);
+            _draft = null;
+        }
+
         var anchors = _anchors.slice();
         var closed = _closed;
         _anchors = [];
-        _draft = null;
+        _cursor = null;
         _closed = false;
+        _direct = null;
+        context.container().classed('betterid-pen-direct', false);
         clearOverlay();
 
         if (anchors.length < 1) return;
@@ -195,7 +232,12 @@ export function behaviorBetteridPen(context) {
 
         if (nodes.length < 2) return;
 
-        var way = new osmWay({ nodes: nodes.map(node => node.id), tags: {} });
+        // A closed path reuses its first node as the last one, so the way is
+        // really closed (`isClosed()`), which is also what makes it an area.
+        var wayNodes = nodes.map(node => node.id);
+        if (closed) wayNodes.push(nodes[0].id);
+
+        var way = new osmWay({ nodes: wayNodes, tags: {} });
 
         var actions = nodes.map(node => actionAddEntity(node));
         actions.push(actionAddEntity(way));
@@ -210,8 +252,21 @@ export function behaviorBetteridPen(context) {
     function cancelPath() {
         _anchors = [];
         _draft = null;
+        _direct = null;
+        _cursor = null;
         _closed = false;
+        context.container().classed('betterid-pen-direct', false);
         clearOverlay();
+    }
+
+
+    /**
+     * The preview is drawn in screen space, so panning or zooming the map has to
+     * re-project it: without this the path stayed glued to the viewport.
+     */
+    function redraw() {
+        if (!_anchors.length && !_draft && !_direct) return;
+        draw(_cursor || context.map().mouse());
     }
 
 
@@ -223,22 +278,39 @@ export function behaviorBetteridPen(context) {
         if (!target || !target.closest || !target.closest('.main-map')) return;
         if (context.container().classed('betterid-hand-tool')) return;
         if (!context.map().withinEditableZoom()) return;
-        if (d3_event.ctrlKey || d3_event.metaKey || d3_event.shiftKey) return;
+        if (d3_event.shiftKey) return;
 
         var point = mouseLoc(d3_event);
+        var direct = d3_event.altKey || d3_event.ctrlKey || d3_event.metaKey;
 
-        // Alt+click on an existing anchor breaks its handles (Photoshop's
-        // convert-point behaviour)
-        if (d3_event.altKey) {
-            var existing = findAnchorNear(point);
-            if (existing !== -1) {
-                _anchors[existing].handleIn = null;
-                _anchors[existing].handleOut = null;
-                draw(point);
-                d3_event.preventDefault();
-                d3_event.stopPropagation();
-                return;
+        // Alt / Ctrl turn the pen into the direct selection tool for this gesture:
+        // grab a direction handle to reshape one side only, or grab an anchor to
+        // move it. (Ctrl is Photoshop's "temporarily use the direct selection
+        // tool" while the pen is active.)
+        if (direct) {
+            var handle = findHandleNear(point);
+            if (handle) {
+                _direct = { anchor: handle.anchor, which: handle.which, moved: false, start: point };
+            } else {
+                var index = findAnchorNear(point);
+                if (index === -1) return;
+                _direct = {
+                    anchor: _anchors[index],
+                    index: index,
+                    moved: false,
+                    start: point,
+                    trimOnClick: d3_event.altKey
+                };
             }
+
+            context.container().classed('betterid-pen-direct', true);
+            d3_select(window)
+                .on(prefix + 'move.betteridPen', pointermove)
+                .on(prefix + 'up.betteridPen', pointerup);
+
+            d3_event.preventDefault();
+            d3_event.stopPropagation();
+            return;
         }
 
         // click on the first anchor closes the path
@@ -278,10 +350,65 @@ export function behaviorBetteridPen(context) {
     }
 
 
+    /** The direction handle under the pointer, if any. */
+    function findHandleNear(point) {
+        for (var i = 0; i < _anchors.length; i++) {
+            var anchor = _anchors[i];
+            var which = ['handleIn', 'handleOut'];
+            for (var h = 0; h < which.length; h++) {
+                var screen = handleScreen(anchor, which[h]);
+                if (!screen) continue;
+                if (Math.hypot(screen[0] - point[0], screen[1] - point[1]) <= CLOSE_RADIUS_PX) {
+                    return { anchor: anchor, which: which[h] };
+                }
+            }
+        }
+        return null;
+    }
+
+
+    /**
+     * Photoshop's convert-point click: an end anchor only loses its outgoing
+     * handle (its incoming curve stays), a middle anchor becomes a corner.
+     */
+    function trimAnchor(index) {
+        var anchor = _anchors[index];
+        if (!anchor) return;
+        if (index === _anchors.length - 1) {
+            anchor.handleOut = null;
+        } else {
+            anchor.handleIn = null;
+            anchor.handleOut = null;
+        }
+    }
+
+
     function pointermove(d3_event) {
-        if (!_draft) return;
+        if (!_draft && !_direct) return;
 
         var point = mouseLoc(d3_event);
+
+        if (_direct) {
+            var from = _direct.start;
+            if (Math.hypot(point[0] - from[0], point[1] - from[1]) > HANDLE_THRESHOLD_PX) {
+                _direct.moved = true;
+            }
+
+            if (_direct.which) {
+                // one side only: no mirrored handle while dragging a handle
+                _direct.anchor[_direct.which] = screenToGeoOffset(_direct.anchor.loc, point);
+            } else if (_direct.moved) {
+                // handles are stored relative to the anchor, so moving the anchor
+                // carries its curve along
+                _direct.anchor.loc = context.projection.invert(point);
+            }
+
+            draw(point);
+            d3_event.preventDefault();
+            d3_event.stopPropagation();
+            return;
+        }
+
         var distance = Math.hypot(point[0] - _draft.start[0], point[1] - _draft.start[1]);
         if (distance > HANDLE_THRESHOLD_PX) {
             _draft.moved = true;
@@ -297,11 +424,24 @@ export function behaviorBetteridPen(context) {
 
 
     function pointerup(d3_event) {
-        if (!_draft) return;
+        if (!_draft && !_direct) return;
 
         d3_select(window)
             .on(prefix + 'move.betteridPen', null)
             .on(prefix + 'up.betteridPen', null);
+
+        if (_direct) {
+            // an Alt *click* (no drag) trims the anchor's forward handle
+            if (_direct.trimOnClick && !_direct.moved && _direct.index !== undefined) {
+                trimAnchor(_direct.index);
+            }
+            _direct = null;
+            context.container().classed('betterid-pen-direct', false);
+            draw(context.map().mouse());
+            d3_event.preventDefault();
+            d3_event.stopPropagation();
+            return;
+        }
 
         // dragging the last anchor also tweaks the incoming handle of the new
         // point, so the curve into it stays smooth
@@ -315,7 +455,7 @@ export function behaviorBetteridPen(context) {
 
 
     function dblclick(d3_event) {
-        if (!active() || !_anchors.length) return;
+        if (!active() || (!_anchors.length && !_draft)) return;
         d3_event.preventDefault();
         d3_event.stopPropagation();
         finishPath();
@@ -327,23 +467,50 @@ export function behaviorBetteridPen(context) {
         var isTextEntry = d3_event.target && /^(INPUT|TEXTAREA|SELECT)$/.test(d3_event.target.tagName);
         if (isTextEntry) return;
 
+        var undoKey = (d3_event.ctrlKey || d3_event.metaKey) &&
+            !d3_event.altKey && (d3_event.key === 'z' || d3_event.key === 'Z');
+        var redoKey = undoKey && d3_event.shiftKey;
+
+        if (undoKey && !redoKey && (_anchors.length || _draft)) {
+            // While a path is being drawn, Ctrl+Z is the pen's own undo: it drops
+            // the last anchor (Photoshop does the same). With no path in progress
+            // the event falls through to iD's normal undo.
+            d3_event.preventDefault();
+            d3_event.stopPropagation();
+            if (_draft) {
+                _draft = null;
+            } else {
+                _anchors.pop();
+            }
+            if (!_anchors.length && !_draft) {
+                clearOverlay();
+            } else {
+                draw(_cursor || context.map().mouse());
+            }
+            return;
+        }
+
         if (d3_event.key === 'Enter') {
-            if (!_anchors.length) return;
+            if (!_anchors.length && !_draft && !_direct) return;
             d3_event.preventDefault();
             d3_event.stopPropagation();
             finishPath();
 
         } else if (d3_event.key === 'Escape') {
-            if (!_anchors.length) return;
+            if (!_anchors.length && !_draft && !_direct) return;
             d3_event.preventDefault();
             d3_event.stopPropagation();
             cancelPath();
 
         } else if (d3_event.key === 'Backspace') {
-            if (!_anchors.length) return;
+            if (!_anchors.length && !_draft && !_direct) return;
             d3_event.preventDefault();
             d3_event.stopPropagation();
-            _anchors.pop();
+            if (_draft) {
+                _draft = null;
+            } else {
+                _anchors.pop();
+            }
             draw(context.map().mouse());
         }
     }
@@ -354,6 +521,9 @@ export function behaviorBetteridPen(context) {
             .on(prefix + 'down.betteridPen', pointerdown, true)
             .on('dblclick.betteridPen', dblclick, true)
             .on('keydown.betteridPen', keydown, true);
+
+        // keep the preview projected onto the map while it moves or zooms
+        context.map().on('drawn.betteridPen', redraw);
     }
 
 
@@ -364,6 +534,7 @@ export function behaviorBetteridPen(context) {
             .on('keydown.betteridPen', null, true)
             .on(prefix + 'move.betteridPen', null)
             .on(prefix + 'up.betteridPen', null);
+        context.map().on('drawn.betteridPen', null);
         cancelPath();
     };
 

@@ -13,6 +13,7 @@ export const BETTERID_MARQUEE_SHAPE_PREF = 'betterid.tools.marquee_shape';
 export const BETTERID_BRUSH_SIZE_PREF = 'betterid.tools.brush_size';
 export const BETTERID_WAND_TOLERANCE_PREF = 'betterid.tools.wand_tolerance';
 export const BETTERID_WAND_CONTIGUOUS_PREF = 'betterid.tools.wand_contiguous';
+export const BETTERID_SELECTION_LAST_PREF = 'betterid.tools.selection_last';
 export const BETTERID_ADOBE_SHORTCUTS_PREF = 'betterid.editing.adobe_shortcuts';
 
 export const BETTERID_TOOLS = ['select', 'marquee', 'quickselect', 'magicwand', 'pen'];
@@ -42,7 +43,11 @@ export function betteridTool() {
 
 
 export function setBetteridTool(tool) {
-    prefs(BETTERID_TOOL_PREF, BETTERID_TOOLS.indexOf(tool) === -1 ? 'select' : tool);
+    const resolved = BETTERID_TOOLS.indexOf(tool) === -1 ? 'select' : tool;
+    prefs(BETTERID_TOOL_PREF, resolved);
+    if (BETTERID_SELECTION_TOOLS.indexOf(resolved) !== -1) {
+        prefs(BETTERID_SELECTION_LAST_PREF, resolved);
+    }
 }
 
 
@@ -60,6 +65,44 @@ export function setMarqueeShape(shape) {
 export function cycleMarqueeShape() {
     const index = BETTERID_MARQUEE_SHAPES.indexOf(marqueeShape());
     setMarqueeShape(BETTERID_MARQUEE_SHAPES[(index + 1) % BETTERID_MARQUEE_SHAPES.length]);
+}
+
+
+/**
+ * Photoshop-style tool groups: one button per group, holding the tool (or, for
+ * the marquee, the shape) that was used last; the other members are reachable
+ * from the button's context menu.
+ */
+export const BETTERID_TOOL_GROUPS = Object.freeze([
+    { id: 'select', tools: ['select'] },
+    { id: 'marquee', tools: ['marquee'] },
+    { id: 'selection', tools: ['quickselect', 'magicwand'] },
+    { id: 'pen', tools: ['pen'] }
+]);
+
+export const BETTERID_SELECTION_TOOLS = Object.freeze(['quickselect', 'magicwand']);
+
+
+export function selectionTool() {
+    const value = prefs(BETTERID_SELECTION_LAST_PREF);
+    return BETTERID_SELECTION_TOOLS.indexOf(value) === -1 ? 'quickselect' : value;
+}
+
+
+export function setSelectionTool(tool) {
+    if (BETTERID_SELECTION_TOOLS.indexOf(tool) === -1) return;
+    prefs(BETTERID_SELECTION_LAST_PREF, tool);
+}
+
+
+/** The tool a group's button stands for: the active one, else the last used. */
+export function groupTool(groupID) {
+    const group = BETTERID_TOOL_GROUPS.find(entry => entry.id === groupID);
+    if (!group) return 'select';
+    const active = betteridTool();
+    if (group.tools.indexOf(active) !== -1) return active;
+    if (groupID === 'selection') return selectionTool();
+    return group.tools[0];
 }
 
 
