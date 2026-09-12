@@ -61,6 +61,9 @@ pub struct ProxyConfig {
     pub enable_smart_split: bool,
     pub split_strategy: SplitStrategy,
     pub proxy_all_tiles: bool,
+    /// Absolute base (e.g. `https://wap.map.osm.asia`) of a dedicated tile host;
+    /// empty means tiles are served from this origin.
+    pub tile_proxy_base: String,
     // Privacy ("anonymous") upload: the editor can push a changeset through this
     // proxy using a dedicated OpenStreetMap account instead of the visitor's own
     // login. Credentials are server-side only and never reach the browser.
@@ -110,6 +113,7 @@ impl Default for ProxyConfig {
             enable_smart_split: false,
             split_strategy: SplitStrategy::default(),
             proxy_all_tiles: true,
+            tile_proxy_base: String::new(),
             privacy_client_id: None,
             privacy_access_token: None,
             privacy_refresh_token: None,
@@ -151,6 +155,9 @@ impl ProxyConfig {
         }
         if let Some(v) = value("OSM_ID_DIST_DIR") {
             config.id_static_dir = v;
+        }
+        if let Some(v) = value("OSM_TILE_PROXY_BASE") {
+            config.tile_proxy_base = v.trim_end_matches('/').to_string();
         }
         if let Some(v) = value("OSM_OAUTH_CLIENT_ID") {
             config.osm_oauth_client_id = v;

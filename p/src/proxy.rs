@@ -69,6 +69,7 @@ pub struct OsmProxy {
     ai_request_slots: Arc<Semaphore>,
     visual_request_slots: Arc<Semaphore>,
     proxy_all_tiles: bool,
+    tile_proxy_base: String,
     privacy: PrivacyUploader,
 }
 
@@ -124,6 +125,7 @@ impl OsmProxy {
         photo_upload_dir: PathBuf,
         trusted_proxy_ips: Vec<IpAddr>,
         proxy_all_tiles: bool,
+        tile_proxy_base: String,
         privacy: PrivacyUploader,
     ) -> Self {
         let client = ReqwestClient::builder()
@@ -152,6 +154,7 @@ impl OsmProxy {
             ai_request_slots: Arc::new(Semaphore::new(AI_MAX_CONCURRENT_REQUESTS)),
             visual_request_slots: Arc::new(Semaphore::new(AI_MAX_CONCURRENT_VISUAL_REQUESTS)),
             proxy_all_tiles,
+            tile_proxy_base,
             privacy,
         }
     }
@@ -1104,9 +1107,21 @@ impl OsmProxy {
         html = html.replace("dist/iD.js?v=", "dist/iD.min.js?v=");
         let runtime_config = self.id_runtime_config(asset_version);
         let sw_snippet = if self.proxy_all_tiles {
-            "<script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/betterid/tile-sw.js',{scope:'/'});</script>"
+            if self.tile_proxy_base.is_empty() {
+                "<script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/betterid/tile-sw.js',{scope:'/'});</script>".to_string()
+            } else {
+                // a dedicated tile host: the worker falls back to this origin
+                // whenever that host is unreachable
+                let base = self
+                    .tile_proxy_base
+                    .replace(':', "%3A")
+                    .replace('/', "%2F");
+                format!(
+                    "<script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/betterid/tile-sw.js?base={base}',{{scope:'/'}});</script>"
+                )
+            }
         } else {
-            ""
+            String::new()
         };
         html = html.replace("</head>", &format!("{runtime_config}{sw_snippet}</head>"));
         Self::file_response(
@@ -1469,6 +1484,17 @@ impl OsmProxy {
             }
             response.headers_mut().remove("pragma");
             response.headers_mut().remove("expires");
+            // Tiles can be served from a dedicated host (see `OSM_TILE_PROXY_BASE`),
+            // so the editor fetches them cross-origin.
+            if !response
+                .headers()
+                .contains_key("access-control-allow-origin")
+            {
+                response.headers_mut().insert(
+                    "access-control-allow-origin",
+                    HeaderValue::from_static("*"),
+                );
+            }
         }
     }
 
@@ -2109,6 +2135,11 @@ impl OsmProxy {
                 {
                     headers.insert("content-type", ct);
                 }
+                // a dedicated tile host (wap.map.osm.asia) is fetched cross-origin
+                headers.insert(
+                    "access-control-allow-origin",
+                    HeaderValue::from_static("*"),
+                );
                 if blocked_tile {
                     headers.insert("cache-control", HeaderValue::from_static("no-store"));
                 } else if !headers.contains_key("cache-control") {

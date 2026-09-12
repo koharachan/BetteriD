@@ -65,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from(&config.photo_upload_dir),
         config.trusted_proxy_ips.clone(),
         config.proxy_all_tiles,
+        config.tile_proxy_base.clone(),
         privacy,
     );
 
