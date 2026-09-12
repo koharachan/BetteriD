@@ -9,6 +9,7 @@ import { osmChangeset } from '../osm';
 import { svgIcon } from '../svg/icon';
 import { services } from '../services';
 import { uiTooltip } from './tooltip';
+import { utilPrivacyUpload, utilPrivacyUploadAvailable } from './privacy_upload';
 import { uiChangesetEditor } from './changeset_editor';
 import { uiSectionChanges } from './sections/changes';
 import { uiCommitWarnings } from './commit_warnings';
@@ -43,6 +44,83 @@ export function uiCommit(context) {
         .expandedByDefault(true);
     var commitChanges = uiSectionChanges(context);
     var commitWarnings = uiCommitWarnings(context);
+
+    // Privacy ("anonymous") upload: server-side OSM credential, see
+    // modules/ui/privacy_upload.js. `null` means "not answered yet".
+    var _privacyAvailable = null;
+    var _privacyBusy = false;
+    utilPrivacyUploadAvailable().then(function(available) {
+        _privacyAvailable = available;
+        updatePrivacyButton();
+    });
+
+
+    function updatePrivacyButton() {
+        if (!_selection) return;
+        var button = _selection.selectAll('.privacy-button');
+        if (button.empty()) return;
+
+        var blocked = privacyBlockerMessage();
+        button
+            .classed('disabled', blocked !== null)
+            .classed('busy', _privacyBusy);
+
+        uiTooltip().destroyAny(button);
+        if (blocked) {
+            button.call(uiTooltip().title(() => blocked).placement('top'));
+        }
+    }
+
+
+    function privacyBlockerMessage() {
+        if (_privacyAvailable === null) return t('commit.privacy_checking');
+        if (!_privacyAvailable) return t('commit.privacy_unavailable');
+        if (!context.history().hasChanges()) return t('commit.privacy_no_changes');
+        return null;
+    }
+
+
+    function privacyUpload() {
+        if (_privacyBusy || privacyBlockerMessage() !== null) return;
+
+        var tags = Object.assign({}, (context.changeset && context.changeset.tags) || {});
+        for (var key in tags) {
+            // remove any empty keys before upload
+            if (!key) delete tags[key];
+        }
+
+        _privacyBusy = true;
+        updatePrivacyButton();
+
+        context.ui().flash
+            .duration(2000)
+            .iconName('#iD-icon-save')
+            .iconClass('operation')
+            .label(t('commit.privacy_uploading'))();
+
+        utilPrivacyUpload(context, tags)
+            .then(function(result) {
+                _privacyBusy = false;
+                context.history().clearSaved();
+                context.ui().flash
+                    .duration(6000)
+                    .iconName('#iD-icon-save')
+                    .iconClass('operation')
+                    .label(t('commit.privacy_success', { changeset: result.changeset }) + ' ' + result.url)();
+                window.setTimeout(function() {
+                    context.flush();   // reset iD
+                }, 2500);
+            })
+            .catch(function(err) {
+                _privacyBusy = false;
+                updatePrivacyButton();
+                context.ui().flash
+                    .duration(6000)
+                    .iconName('#iD-icon-no')
+                    .iconClass('operation disabled')
+                    .label(t('commit.privacy_failed', { message: err.message }))();
+            });
+    }
 
 
     function commit(selection) {
@@ -495,6 +573,15 @@ export function uiCommit(context) {
             .attr('class', 'label')
             .call(t.append('commit.save'));
 
+        var privacyButton = buttonEnter
+            .append('button')
+            .attr('class', 'secondary-action button privacy-button')
+            .attr('type', 'button');
+
+        privacyButton.append('span')
+            .attr('class', 'label')
+            .call(t.append('commit.privacy_save'));
+
         var uploadBlockerTooltipText = getUploadBlockerMessage();
 
         // update
@@ -530,6 +617,13 @@ export function uiCommit(context) {
                     .title(() => uploadBlockerTooltipText)
                     .placement('top'));
         }
+
+        buttonSection.selectAll('.privacy-button')
+            .on('click.privacy', function() {
+                privacyUpload();
+            });
+
+        updatePrivacyButton();
 
         // Raw Tag Editor
         var tagSection = body.selectAll('.tag-section.raw-tag-editor')

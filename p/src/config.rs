@@ -58,6 +58,14 @@ pub struct ProxyConfig {
     pub enable_smart_split: bool,
     pub split_strategy: SplitStrategy,
     pub proxy_all_tiles: bool,
+    // Privacy ("anonymous") upload: the editor can push a changeset through this
+    // proxy using a dedicated OpenStreetMap account instead of the visitor's own
+    // login. Credentials are server-side only and never reach the browser.
+    pub privacy_client_id: Option<String>,
+    pub privacy_access_token: Option<String>,
+    pub privacy_refresh_token: Option<String>,
+    pub privacy_token_url: String,
+    pub privacy_api_url: String,
 }
 
 impl Default for ProxyConfig {
@@ -98,6 +106,11 @@ impl Default for ProxyConfig {
             enable_smart_split: false,
             split_strategy: SplitStrategy::default(),
             proxy_all_tiles: true,
+            privacy_client_id: None,
+            privacy_access_token: None,
+            privacy_refresh_token: None,
+            privacy_token_url: "https://www.openstreetmap.org/oauth2/token".to_string(),
+            privacy_api_url: "https://api.openstreetmap.org".to_string(),
         }
     }
 }
@@ -242,8 +255,34 @@ impl ProxyConfig {
         if let Some(v) = value("OSM_CACHE_DEFAULT_TTL").and_then(|item| item.parse().ok()) {
             config.cache_default_ttl = v;
         }
+        if let Some(v) = value("OSM_PRIVACY_CLIENT_ID") {
+            config.privacy_client_id = Some(v);
+        }
+        if let Some(v) = value("OSM_PRIVACY_ACCESS_TOKEN") {
+            config.privacy_access_token = Some(v);
+        }
+        if let Some(v) = value("OSM_PRIVACY_REFRESH_TOKEN") {
+            config.privacy_refresh_token = Some(v);
+        }
+        if let Some(v) = value("OSM_PRIVACY_TOKEN_URL") {
+            config.privacy_token_url = v;
+        }
+        if let Some(v) = value("OSM_PRIVACY_API_URL") {
+            config.privacy_api_url = v;
+        }
 
         config
+    }
+
+    /// True when a server-side privacy (anonymous) upload credential is present.
+    pub fn privacy_configured(&self) -> bool {
+        self.privacy_access_token.is_some() || self.privacy_refresh_token.is_some()
+    }
+
+    pub fn privacy_client_id(&self) -> &str {
+        self.privacy_client_id
+            .as_deref()
+            .unwrap_or(&self.osm_oauth_client_id)
     }
 }
 

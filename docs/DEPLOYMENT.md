@@ -39,39 +39,18 @@ OpenStreetMap 同源代理、OAuth 回调、AI 与翻译接口。文档只写通
    pnpm run all
    ```
 
-2. 构建镜像。仓库不内置 Dockerfile，构建上下文需要包含 `p/`、`dist/`、
-   `index.html`、`land.html`：
-
-   ```dockerfile
-   FROM rust:1.97-bookworm AS builder
-   ENV CARGO_BUILD_JOBS=2
-   RUN apt-get update \
-       && apt-get install -y --no-install-recommends pkg-config libssl-dev \
-       && rm -rf /var/lib/apt/lists/*
-   WORKDIR /app
-   COPY p/Cargo.toml p/Cargo.lock ./
-   COPY p/src ./src
-   COPY p/web ./web
-   RUN cargo build --release
-
-   FROM debian:bookworm-slim
-   RUN apt-get update \
-       && apt-get install -y --no-install-recommends ca-certificates libssl3 \
-       && rm -rf /var/lib/apt/lists/*
-   WORKDIR /app
-   COPY --from=builder /app/target/release/osm ./osm
-   COPY dist ./dist
-   COPY index.html land.html ./
-   ENV OSM_LISTEN_ADDR=0.0.0.0:9178 \
-       OSM_ID_DIST_DIR=/app/dist \
-       OSM_CACHE_DIR=/app/cache \
-       OSM_PHOTO_UPLOAD_DIR=/app/photo-uploads
-   EXPOSE 9178
-   CMD ["./osm"]
-   ```
+2. 构建镜像。镜像定义在仓库根目录的 `Dockerfile`（多阶段：`rust:1.97-bookworm` 编译 `p/`，
+   再拷进 `debian:bookworm-slim` 并带上 `dist/`、`index.html`、`land.html`）。
 
    ```bash
    docker build -t betterid:latest .
+   ```
+
+   没有 Docker 的构建机也可以在服务器上用 Podman 构建，只需要把构建上下文
+   （`Dockerfile`、`p/`、`dist/`、`index.html`、`land.html`）传上去：
+
+   ```bash
+   podman build -t betterid:latest .
    ```
 
 3. 迁移已有实例时可以直接搬镜像，避免在目标机装 Rust 工具链：
@@ -99,6 +78,10 @@ OSM_OAUTH_REDIRECT_URI=https://<domain>/callback
 DEEPSEEK_API_KEY=<provider key>
 BING_TRANSLATE_API_KEY=
 BING_TRANSLATE_REGION=
+# 隐私编辑（可选）：由服务器持有的匿名 OSM 账号代传改动
+OSM_PRIVACY_CLIENT_ID=<oauth client id>
+OSM_PRIVACY_ACCESS_TOKEN=<oauth access token>
+OSM_PRIVACY_REFRESH_TOKEN=<optional refresh token>
 ENV
 chmod 600 /opt/betterid/betterid.env
 ```

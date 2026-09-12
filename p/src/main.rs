@@ -7,6 +7,7 @@ use log::{error, info};
 use crate::ai::AiRouter;
 use crate::cache::SmartCache;
 use crate::config::ProxyConfig;
+use crate::privacy::PrivacyUploader;
 use crate::proxy::OsmProxy;
 use crate::translate::Translator;
 
@@ -15,6 +16,7 @@ mod cache;
 mod config;
 mod kimi;
 mod photos;
+mod privacy;
 mod providers;
 mod proxy;
 mod rules;
@@ -49,6 +51,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("One or more AI providers are configured");
     }
 
+    let privacy = PrivacyUploader::from_config(&config);
+
     let proxy = OsmProxy::new(
         cache.clone(),
         translator,
@@ -61,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from(&config.photo_upload_dir),
         config.trusted_proxy_ips.clone(),
         config.proxy_all_tiles,
+        privacy,
     );
 
     let cache_for_stats = cache.clone();

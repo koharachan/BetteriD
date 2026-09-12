@@ -47,9 +47,10 @@ export function operationDelete(context, selectedIDs) {
             }
         }
 
-        context.perform(action, operation.annotation());
-        context.validator().validate();
-
+        // Move the selection off the deleted entities before performing the
+        // action: the history `change` event rebuilds the operation list from
+        // `selectedIDs`, and any operation that looks its selection up in the
+        // new graph would throw and abort that dispatch (and its redraw).
         if (nextSelectedID && nextSelectedLoc) {
             if (context.hasEntity(nextSelectedID)) {
                 context.enter(modeSelect(context, [nextSelectedID]).follow(true));
@@ -60,6 +61,9 @@ export function operationDelete(context, selectedIDs) {
         } else {
             context.enter(modeBrowse(context));
         }
+
+        context.perform(action, operation.annotation());
+        context.validator().validate();
 
     };
 

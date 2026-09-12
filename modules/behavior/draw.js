@@ -5,7 +5,6 @@ import {
 } from 'd3-selection';
 
 import { presetManager } from '../presets';
-import { getSnapTolerance } from '../core/betterid_preferences';
 import { behaviorEdit } from './edit';
 import { behaviorHover } from './hover';
 import { geoChooseEdge, geoVecLength } from '../geo';
@@ -28,6 +27,10 @@ export function behaviorDraw(context) {
         .on('hover', context.ui().sidebar.hover);
     var _edit = behaviorEdit(context);
 
+    // click vs. drag threshold. This must stay small and fixed: it decides
+    // whether a press places a vertex or starts a drag, so scaling it with the
+    // user's snap range swallowed clicks whenever the pointer drifted slightly.
+    var _closeTolerance = 4;
     var _tolerance = 12;
     var _mobileDoubleTapDelay = 350;
     var _mobileDoubleTapTolerance = 24;
@@ -102,7 +105,13 @@ export function behaviorDraw(context) {
                 window.clearTimeout(previousTap.timer);
                 _pendingMobileTaps.pop();
                 d3_event.preventDefault();
-                dispatch.call('finish', this);
+                // Commit the deferred vertex before finishing. A double tap
+                // means "place this vertex, then end the line", so dropping the
+                // queued tap here would swallow the point the user placed.
+                performClick(previousTap.event, previousTap.loc);
+                if (context.mode().id === 'draw-line') {
+                    dispatch.call('finish', this);
+                }
                 return;
             }
 
@@ -111,7 +120,7 @@ export function behaviorDraw(context) {
             return;
         }
 
-        if (dist < getSnapTolerance() / 2 ||
+        if (dist < _closeTolerance ||
             (dist < _tolerance && (t2 - downPointer.downTime) < 500)) {
             performClick(d3_event, p2);
         }
@@ -123,7 +132,7 @@ export function behaviorDraw(context) {
             !_downPointer.isCancelled) {
             var p2 = _downPointer.pointerLocGetter(d3_event);
             var dist = geoVecLength(_downPointer.downLoc, p2);
-            if (dist >= getSnapTolerance() / 2) {
+            if (dist >= _closeTolerance) {
                 _downPointer.isCancelled = true;
                 dispatch.call('downcancel', this);
             }

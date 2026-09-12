@@ -2,6 +2,7 @@ import { select as d3_select } from 'd3-selection';
 
 import { presetManager } from '../../presets';
 import { fileFetcher } from '../../core/file_fetcher';
+import { coreImportEdits } from '../../core/import_edits';
 import { t } from '../../core/localizer';
 import { JXON } from '../../util/jxon';
 import { actionDiscardTags } from '../../actions/discard_tags';
@@ -121,6 +122,62 @@ export function uiSectionChanges(context) {
             .call(svgIcon('#iD-icon-load', 'inline'))
             .append('span')
             .call(t.append('commit.download_changes'));
+
+
+        // Import changes link (osmChange / OSM XML -> pending edits)
+        var fileInput = container.selectAll('.import-changes-input')
+            .data([0])
+            .enter()
+            .append('input')
+            .attr('class', 'import-changes-input')
+            .attr('type', 'file')
+            .attr('accept', '.osc,.osm,.xml,text/xml,application/xml')
+            .style('display', 'none')
+            .on('change', function(d3_event) {
+                var input = d3_event.target;
+                var file = input.files && input.files[0];
+                if (!file) return;
+
+                var reader = new FileReader();
+                reader.onload = function() {
+                    try {
+                        var result = coreImportEdits(context, String(reader.result));
+                        context.ui().flash
+                            .duration(4000)
+                            .iconName('#iD-icon-load')
+                            .iconClass('operation')
+                            .label(t('commit.import_success', {
+                                imported: result.imported,
+                                deleted: result.deleted,
+                                skipped: result.skipped
+                            }))();
+                        context.ui().sidebar.hover.cancel();
+                    } catch (err) {
+                        context.ui().flash
+                            .duration(5000)
+                            .iconName('#iD-icon-no')
+                            .iconClass('operation disabled')
+                            .label(t('commit.import_failed', { message: err.message }))();
+                    }
+                };
+                reader.readAsText(file);
+                input.value = '';   // allow importing the same file again
+            });
+
+        var importButton = container.selectAll('.import-changes')
+            .data([0])
+            .enter()
+            .append('button')
+            .attr('class', 'import-changes')
+            .attr('type', 'button')
+            .on('click', function() {
+                fileInput.node().click();
+            });
+
+        importButton
+            .call(svgIcon('#iD-icon-data', 'inline'))
+            .append('span')
+            .call(t.append('commit.import_changes'));
 
 
         function mouseover(d3_event, d) {

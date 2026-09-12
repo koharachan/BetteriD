@@ -25,10 +25,12 @@ use crate::kimi::{TagSuggestionError, TagSuggestionRequest};
 use crate::photos::{
     MAX_PHOTO_BODY, PhotoAnalyzeRequest, PhotoStore, PhotoUploadRequest, decode_and_reencode,
 };
+use crate::privacy::{PrivacyError, PrivacyUploader};
 use crate::providers::deserialize_provider_order;
 use crate::translate::{FreeTranslator, Translator};
 
 const AI_BODY_LIMIT: usize = 64 * 1024;
+const PRIVACY_BODY_LIMIT: usize = 8 * 1024 * 1024;
 const AI_RATE_LIMIT: usize = 30;
 const AI_RATE_WINDOW: Duration = Duration::from_secs(60);
 const AI_RATE_BUCKET_LIMIT: usize = 10_000;
@@ -67,6 +69,7 @@ pub struct OsmProxy {
     ai_request_slots: Arc<Semaphore>,
     visual_request_slots: Arc<Semaphore>,
     proxy_all_tiles: bool,
+    privacy: PrivacyUploader,
 }
 
 struct AiRateLimitState {
@@ -98,6 +101,16 @@ struct SummaryApiRequest {
     provider_order: Vec<String>,
 }
 
+#[derive(Deserialize)]
+struct PrivacyUploadApiRequest {
+    #[serde(default)]
+    comment: String,
+    #[serde(default)]
+    tags: HashMap<String, String>,
+    #[serde(rename = "osmChange")]
+    osm_change: String,
+}
+
 impl OsmProxy {
     pub fn new(
         cache: CacheHandle,
@@ -111,6 +124,7 @@ impl OsmProxy {
         photo_upload_dir: PathBuf,
         trusted_proxy_ips: Vec<IpAddr>,
         proxy_all_tiles: bool,
+        privacy: PrivacyUploader,
     ) -> Self {
         let client = ReqwestClient::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -138,6 +152,7 @@ impl OsmProxy {
             ai_request_slots: Arc::new(Semaphore::new(AI_MAX_CONCURRENT_REQUESTS)),
             visual_request_slots: Arc::new(Semaphore::new(AI_MAX_CONCURRENT_VISUAL_REQUESTS)),
             proxy_all_tiles,
+            privacy,
         }
     }
 
@@ -297,6 +312,7 @@ impl OsmProxy {
                     "translate": true,
                     "search": self.ai_router.search_configured(),
                     "visual": self.ai_router.visual_configured(),
+                    "privacy": self.privacy.configured(),
                     "providers": self.ai_router.configured_providers()
                 }),
             );
@@ -349,13 +365,10 @@ impl OsmProxy {
             None
         };
 
-        let body_limit = if matches!(
-            path.as_str(),
-            "/api/osm-ai/photo-upload" | "/api/osm-ai/photos/upload"
-        ) {
-            MAX_PHOTO_BODY
-        } else {
-            AI_BODY_LIMIT
+        let body_limit = match path.as_str() {
+            "/api/osm-ai/photo-upload" | "/api/osm-ai/photos/upload" => MAX_PHOTO_BODY,
+            "/api/osm-ai/privacy/upload" => PRIVACY_BODY_LIMIT,
+            _ => AI_BODY_LIMIT,
         };
         let body = match Self::read_body_limited(req.into_body(), body_limit).await {
             Ok(body) => body,
@@ -379,12 +392,65 @@ impl OsmProxy {
             "/api/osm-ai/photo-analyze" | "/api/osm-ai/photos/analyze" => {
                 self.handle_photo_analyze(&body).await
             }
+            "/api/osm-ai/privacy/upload" => self.handle_privacy_upload(&body).await,
             _ => Self::json_response(
                 StatusCode::NOT_FOUND,
                 serde_json::json!({
                     "error": "Not found"
                 }),
             ),
+        }
+    }
+
+    async fn handle_privacy_upload(&self, body: &[u8]) -> Response<HyperBody> {
+        let Ok(request) = serde_json::from_slice::<PrivacyUploadApiRequest>(body) else {
+            return Self::json_response(
+                StatusCode::BAD_REQUEST,
+                serde_json::json!({ "error": "Invalid privacy upload request" }),
+            );
+        };
+
+        if !self.privacy.configured() {
+            return Self::json_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                serde_json::json!({
+                    "error": "Privacy upload is not configured on this server"
+                }),
+            );
+        }
+
+        let extra_tags: Vec<(String, String)> = request
+            .tags
+            .into_iter()
+            .filter(|(key, _)| !key.trim().is_empty())
+            .collect();
+
+        match self
+            .privacy
+            .upload(&request.comment, &extra_tags, &request.osm_change)
+            .await
+        {
+            Ok(result) => Self::json_response(
+                StatusCode::OK,
+                serde_json::json!({
+                    "changeset": result.changeset,
+                    "url": result.url,
+                    "created": result.created,
+                    "modified": result.modified,
+                    "deleted": result.deleted
+                }),
+            ),
+            Err(PrivacyError::InvalidRequest(message)) => Self::json_response(
+                StatusCode::BAD_REQUEST,
+                serde_json::json!({ "error": message }),
+            ),
+            Err(err) => {
+                error!("Privacy upload failed: {}", err.message());
+                Self::json_response(
+                    StatusCode::BAD_GATEWAY,
+                    serde_json::json!({ "error": err.message() }),
+                )
+            }
         }
     }
 

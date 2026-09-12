@@ -7,6 +7,7 @@ import { select as d3_select } from 'd3-selection';
 import { zoom as d3_zoom, zoomIdentity as d3_zoomIdentity } from 'd3-zoom';
 
 import { prefs } from '../core/preferences';
+import { t } from '../core/localizer';
 import {
     BETTERID_PREFS, betteridBool, experimentalFeatureEnabled, getSnapTolerance
 } from '../core/betterid_preferences';
@@ -55,6 +56,7 @@ export function rendererMap(context) {
     var supersurface = d3_select(null);
     var wrapper = d3_select(null);
     var surface = d3_select(null);
+    var _statusEl = d3_select(null);
 
     var _dimensions = [1, 1];
     var _dblClickZoomEnabled = true;
@@ -157,6 +159,15 @@ export function rendererMap(context) {
 
     function map(selection) {
         _selection = selection;
+
+        // small read-only status line in the top-left corner of the map, used to
+        // explain render state that is otherwise invisible (indoor focus levels)
+        _statusEl = _selection.selectAll('.betterid-map-status')
+            .data([0])
+            .enter()
+            .append('div')
+            .attr('class', 'betterid-map-status')
+            .attr('hidden', true);
 
         context
             .on('change.map', immediateRedraw);
@@ -526,7 +537,17 @@ export function rendererMap(context) {
     function handleDelayedNavigationKeydown(d3_event, key) {
         if (_delayedNavigationPresses.has(key) || d3_event.repeat) return;
 
-        if (!navigationEnabled()) return;
+        if (!navigationEnabled()) {
+            // WASD movement is off: keep the tap shortcuts usable.
+            // W toggles the area fill / wireframe, and A keeps propagating so the
+            // mode keybinding can still run "Continue".
+            if (key === 'w') {
+                d3_event.preventDefault();
+                d3_event.stopImmediatePropagation();
+                map.toggleWireframe();
+            }
+            return;
+        }
 
         d3_event.preventDefault();
         d3_event.stopImmediatePropagation();
@@ -835,6 +856,34 @@ export function rendererMap(context) {
     }
 
 
+    function updateIndoorStatus(enabled, selectedCount, isIndoorSelection, focusValues) {
+        if (_statusEl.empty()) return;
+
+        if (!enabled) {
+            _statusEl.attr('hidden', true).text('');
+            return;
+        }
+
+        if (!selectedCount || !isIndoorSelection) {
+            _statusEl
+                .attr('hidden', null)
+                .text(t('betterid.map_status.indoor_focus_idle'));
+            return;
+        }
+
+        const levels = Array.from(focusValues.level).join(';');
+        const layers = Array.from(focusValues.layer).join(';');
+        const parts = [];
+        if (levels) parts.push(t('betterid.map_status.indoor_focus_levels', { levels }));
+        if (layers) parts.push(t('betterid.map_status.indoor_focus_layers', { layers }));
+        if (!parts.length) parts.push(t('betterid.map_status.indoor_focus_idle'));
+
+        _statusEl
+            .attr('hidden', null)
+            .text(parts.join('  '));
+    }
+
+
     function updateIndoorFocus(data, graph) {
         const enabled = betteridBool(BETTERID_PREFS.indoorFocus, false);
         const selected = context.selectedIDs()
@@ -890,6 +939,7 @@ export function rendererMap(context) {
         const active = Boolean(enabled && selected.length && isIndoorSelection);
         const wasActive = _indoorFocusActive;
         _indoorFocusActive = active;
+        updateIndoorStatus(enabled, selected.length, isIndoorSelection, focusValues);
         _selection.classed('betterid-indoor-focus', active);
         context.container().classed('betterid-indoor-focus', active);
         if (!active) {

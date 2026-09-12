@@ -112,7 +112,8 @@ describe('mobile drawing gestures', function() {
         up.call(window, { ...event, timeStamp: 2 });
 
         return delay(400).then(() => {
-            expect(clicks).toBe(0);
+            // a double tap places the deferred vertex first, then finishes
+            expect(clicks).toBe(1);
             expect(finishes).toBe(1);
 
             surface.call(draw.off).remove();

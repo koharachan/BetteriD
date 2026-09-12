@@ -32,6 +32,48 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
+# Unreleased
+
+#### :tada: New Features
+* Import pending edits from an `osmChange` (`.osc`) or OSM XML (`.osm`) file.
+  Imported features appear as unsaved changes in the commit panel, the import is
+  a single undoable step, and ways/relations whose children are missing from both
+  the file and the current graph are skipped and reported in the flash message.
+* Privacy (anonymous) editing: the commit panel can upload the pending changeset
+  through the server, which holds a dedicated OpenStreetMap account credential
+  (`OSM_PRIVACY_ACCESS_TOKEN` / `OSM_PRIVACY_REFRESH_TOKEN`). The browser only
+  sends the `osmChange` document and never sees the token; the button stays
+  disabled unless `/api/osm-ai/status` reports `"privacy": true`.
+* Add `scripts/osm_privacy_token.js` to obtain that token with a PKCE OAuth 2
+  flow, and document the new `POST /api/osm-ai/privacy/upload` endpoint.
+* Add a read-only status line in the top-left corner of the map. With indoor
+  focus enabled it explains which floors are pinned, e.g.
+  `当前聚焦楼层：1;2;3;4;5;6`, instead of dimming other floors without explanation.
+
+#### :bug: Bugfixes
+* Fix the uploaded (local photo) background being impossible to drag or
+  wheel-zoom: it sat below the OSM data layer (`z-index: 2` vs `3`), so the map
+  surface swallowed the pointer and the map panned/zoomed instead. While
+  adjusting, the photo layer is raised above the data layer and only the image
+  itself stays interactive.
+* Fix the `W` / `A` tap shortcuts when WASD movement is disabled. They used to be
+  dropped because the delayed-navigation handler returned early: `W` now still
+  toggles the area fill and `A` still reaches the mode keybinding (Continue).
+* Fix stale geometry after deleting a node. `operationCircularize.available()`
+  looked the selection up with `graph.entity()`, which throws for an id that the
+  delete had just removed; because that check runs from `mode.operations()` while
+  the history `change` event is being dispatched, the exception aborted the rest
+  of the dispatch — including the map redraw — so ways kept their old shape until
+  the next pan or zoom. The lookup is guarded, and delete now moves the selection
+  off the deleted entity before performing the action.
+* Fix swallowed vertices while drawing: the click-vs-drag threshold was derived
+  from the user's snap range (`getSnapTolerance() / 2`, as low as 1 px), so a
+  slight pointer drift cancelled the press and the vertex was silently dropped.
+  It is back to the fixed 4 px used by upstream iD.
+* Fix mobile double-tap drawing discarding the queued vertex: a double tap now
+  places the deferred point first and then finishes the line, instead of popping
+  the queued tap and ending the line with the point missing.
+
 # BetteriD 0.1.6
 ##### 2026-Aug-17
 

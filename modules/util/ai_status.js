@@ -2,7 +2,8 @@ let _statusPromise;
 
 const unavailable = Object.freeze({
     ai: false,
-    translate: false
+    translate: false,
+    privacy: false
 });
 
 export function utilAIStatus() {
@@ -15,7 +16,8 @@ export function utilAIStatus() {
         })
         .then(status => ({
             ai: status.ai === true,
-            translate: status.translate === true
+            translate: status.translate === true,
+            privacy: status.privacy === true
         }))
         .catch(() => unavailable);
 

@@ -33,8 +33,40 @@ describe('iD.operationDelete', function () {
             expect(fakeContext.enter.mock.calls[0][0].selectedIDs()).toEqual(['n2']);
         });
 
-        it('selects previous node after deleting last node of a way', function () {
+        it('moves the selection before performing the delete', function () {
+            // The history `change` event (dispatched by `perform`) rebuilds the
+            // operation list from `selectedIDs`. If the selection still pointed at
+            // the deleted entity there, an operation could throw and abort the
+            // dispatch, leaving stale geometry on screen.
             graph = new iD.coreGraph([
+                new iD.osmNode({ id: 'n1', type: 'node', loc: [0, 0] }),
+                new iD.osmNode({ id: 'n2', type: 'node', loc: [0, 1] }),
+                new iD.osmNode({ id: 'n3', type: 'node', loc: [0, 2] }),
+                new iD.osmWay({ id: 'w', nodes: ['n1', 'n2', 'n3'] }),
+            ]);
+
+            let enteredMode;
+            const seen = [];
+            const context = {
+                ...fakeContext,
+                enter: mode => { enteredMode = mode; },
+                perform: action => {
+                    seen.push({
+                        selected: enteredMode && enteredMode.selectedIDs(),
+                        deletedStillPresent: Boolean(graph.hasEntity('n2'))
+                    });
+                    graph = action(graph);
+                }
+            };
+
+            iD.operationDelete(context, ['n2'])();
+
+            expect(seen).toEqual([{ selected: ['n3'], deletedStillPresent: true }]);
+            expect(graph.hasEntity('n2')).toBeFalsy();
+            expect(graph.entity('w').nodes).toEqual(['n1', 'n3']);
+        });
+
+        it('selects previous node after deleting last node of a way', function () {            graph = new iD.coreGraph([
                 new iD.osmNode({ id: 'n1', type: 'node' }),
                 new iD.osmNode({ id: 'n2', type: 'node' }),
                 new iD.osmNode({ id: 'n3', type: 'node' }),

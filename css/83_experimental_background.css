@@ -88,6 +88,14 @@
   pointer-events: none;
 }
 
+/* While the photo is being positioned it must sit above the OSM data layer
+   (z-index 3), otherwise the map surface swallows the pointer and the image
+   can neither be dragged nor wheel-zoomed. Only the image itself is
+   interactive, so the rest of the map keeps working. */
+.layer-local-photo.adjusting {
+  z-index: 4;
+}
+
 .layer-secondary-background {
   z-index: 1;
 }

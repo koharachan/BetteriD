@@ -98,9 +98,47 @@ fixed upstream IP. The URL hostname and TLS SNI are preserved.
 | `POST /api/osm-ai/photo-upload` | Validate, moderate, and persist a photo |
 | `POST /api/osm-ai/photo-analyze` | Analyze a previously approved photo |
 | `GET /api/osm-ai/photos/{id}.jpg` | Serve an approved immutable JPEG |
+| `POST /api/osm-ai/privacy/upload` | Upload an osmChange as the server-side privacy account |
 
 The legacy aliases `/api/osm-ai/photos/upload` and
 `/api/osm-ai/photos/analyze` are also accepted.
+
+## Privacy (anonymous) upload
+
+The editor's save panel offers a **Privacy edit** button that uploads the pending
+changeset through this service as a dedicated OpenStreetMap account, so a mapper
+can contribute without revealing their own OSM identity. The credential stays on
+the server: the browser only sends the `osmChange` document and receives the
+changeset id back.
+
+Configure it with `OSM_PRIVACY_ACCESS_TOKEN` (or `OSM_PRIVACY_REFRESH_TOKEN`,
+which the proxy refreshes automatically on expiry and on a `401`) plus
+`OSM_PRIVACY_CLIENT_ID`. When neither token is set, `/api/osm-ai/status` reports
+`"privacy": false` and the button stays disabled. Obtain a token with:
+
+```bash
+node scripts/osm_privacy_token.js --client-id <id> --redirect-uri <uri>
+```
+
+Request and response:
+
+```jsonc
+// POST /api/osm-ai/privacy/upload
+{
+  "comment": "Add missing building outlines",
+  "tags": { "comment": "...", "source": "survey" },
+  "osmChange": "<?xml version=\"1.0\"?><osmChange version=\"0.6\">…</osmChange>"
+}
+// 200
+{ "changeset": 123456789, "url": "https://www.openstreetmap.org/changeset/123456789",
+  "created": 4, "modified": 1, "deleted": 0 }
+```
+
+The proxy creates the changeset, uploads the diff, then closes the changeset.
+`created_by` is always set by the service and cannot be overridden by the client.
+The endpoint is same-origin only, rate limited like the other AI routes, and
+returns `503` when no privacy credential is configured. Never commit the token,
+and keep the env file at mode `600` on the server.
 
 ## Photo safety model
 

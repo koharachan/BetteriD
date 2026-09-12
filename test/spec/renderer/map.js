@@ -400,6 +400,28 @@ describe('rendererMap BetteriD interactions', function() {
         expect(context.map().center()).not.toEqual(before);
     });
 
+    it('shows and hides the indoor-focus status line', function() {
+        const status = () => container.select('.betterid-map-status');
+
+        // indoor focus off: hidden
+        context.map().redrawEnable(true);
+        context.map().pan([0, 0]);
+        expect(status().attr('hidden')).not.toBeNull();
+
+        // indoor focus on with an indoor feature selected: shows its levels
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.indoor_focus', 'true');
+        const node = new iD.osmNode({ id: 'n-focus', loc: [0, 0], tags: { indoor: 'room', level: '1;2;3' } });
+        context.perform(iD.actionAddEntity(node));
+        context.enter(iD.modeSelect(context, [node.id]));
+        context.map().pan([0, 0]);
+
+        expect(status().attr('hidden')).toBeNull();
+        // the spec harness has no general locale strings, so only assert that the
+        // status line got content; the localized text is checked in the browser
+        expect(status().text().length).toBeGreaterThan(0);
+    });
+
     it('moves linearly at 1.6x speed with SD and stops on key release', function() {
         iD.prefs('betterid.experimental.enabled', 'true');
         iD.prefs('betterid.experimental.wasd_navigation', 'true');
@@ -422,6 +444,25 @@ describe('rendererMap BetteriD interactions', function() {
         window.dispatchEvent(new KeyboardEvent('keyup', { key: 'd' }));
         expect(cancelFrame).toHaveBeenCalled();
         expect(context.map().isTransformed()).toBe(false);
+    });
+
+    it('keeps the W and A tap shortcuts when navigation is disabled', function() {
+        iD.prefs('betterid.experimental.enabled', 'true');
+        iD.prefs('betterid.experimental.wasd_navigation', 'false');
+
+        const shortcut = vi.fn();
+        context.keybinding().on('A', shortcut);
+
+        // A still reaches the mode keybinding (Continue)
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+        expect(shortcut).toHaveBeenCalledOnce();
+
+        // W still toggles the area fill instead of being swallowed
+        context.map().activeAreaFill('partial');
+        const wEvent = new KeyboardEvent('keydown', { key: 'w', bubbles: true, cancelable: true });
+        document.dispatchEvent(wEvent);
+        expect(context.map().activeAreaFill()).toBe('wireframe');
+        expect(wEvent.defaultPrevented).toBe(true);
     });
 
     it('uses a short A release for shortcuts and a held A for movement', function() {

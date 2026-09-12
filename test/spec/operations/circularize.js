@@ -49,6 +49,18 @@ describe('iD.operationCircularize', function () {
             expect(operation.disabled()).toEqual('not_closed');
         });
 
+        it('is not available and does not throw when the selected way was deleted', function () {
+            // Delete performs the action before it moves the selection, so
+            // `available()` can briefly be asked about an id that is gone. It used
+            // to throw there, which aborted the history `change` dispatch (and the
+            // map redraw) leaving stale geometry until the next pan.
+            const operation = iD.operationCircularize(fakeContext, ['n1']);
+            graph = graph.remove(graph.entity('n1'));   // the selected id is gone
+
+            expect(() => operation.available()).not.toThrow();
+            expect(operation.available()).toBeFalsy();
+        });
+
         it('is available for a closed way', function () {
             const operation = iD.operationCircularize(fakeContext, ['w2']);
             expect(operation.available()).toBeTruthy();

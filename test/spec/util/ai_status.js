@@ -16,16 +16,19 @@ describe('utilAIStatus', function() {
     it('normalizes and caches the server status', async function() {
         fetchMock.mock('/api/osm-ai/status', {
             ai: true,
-            translate: false
+            translate: false,
+            privacy: true
         });
 
         expect(await utilAIStatus()).toEqual({
             ai: true,
-            translate: false
+            translate: false,
+            privacy: true
         });
         expect(await utilAIStatus()).toEqual({
             ai: true,
-            translate: false
+            translate: false,
+            privacy: true
         });
         expect(fetchMock.calls('/api/osm-ai/status')).toHaveLength(1);
     });
@@ -35,16 +38,18 @@ describe('utilAIStatus', function() {
 
         expect(await utilAIStatus()).toEqual({
             ai: false,
-            translate: false
+            translate: false,
+            privacy: false
         });
     });
 
     it('treats non-boolean response values as disabled', async function() {
-        fetchMock.mock('/api/osm-ai/status', { ai: 1, translate: 'yes' });
+        fetchMock.mock('/api/osm-ai/status', { ai: 1, translate: 'yes', privacy: 'yes' });
 
         expect(await utilAIStatus()).toEqual({
             ai: false,
-            translate: false
+            translate: false,
+            privacy: false
         });
     });
 });

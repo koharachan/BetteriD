@@ -636,6 +636,16 @@ en:
     ai_summary_unavailable: DeepSeek AI is not configured
     ai_summary_error: DeepSeek AI generation failed. Try again later.
     download_changes: Download osmChange file
+    import_changes: Import edits (.osc / .osm)
+    import_success: "Imported {imported} features, deleted {deleted}, skipped {skipped}."
+    import_failed: "Import failed: {message}"
+    privacy_save: Privacy edit
+    privacy_checking: Checking privacy editing availability…
+    privacy_unavailable: Privacy editing is not configured on this server.
+    privacy_no_changes: There are no changes to upload.
+    privacy_uploading: Uploading with the privacy account…
+    privacy_success: "Privacy changeset #{changeset} uploaded."
+    privacy_failed: "Privacy upload failed: {message}"
     errors: Errors
     warnings: Warnings
     suggestions: Suggestions
@@ -1307,6 +1317,10 @@ en:
       preview: "{count} unambiguous tag fixes are ready."
       action: Fix all
       annotation: "Applied {count} safe validation fixes."
+    map_status:
+      indoor_focus_idle: "Indoor focus is on — select an indoor feature to pin its floor."
+      indoor_focus_levels: "Focus level: {levels}"
+      indoor_focus_layers: "layer {layers}"
   streetside:
     tooltip: "Streetside photos from Microsoft"
     title: "Bing Streetside"

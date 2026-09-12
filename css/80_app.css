@@ -4691,6 +4691,28 @@ img.tile-debug {
     touch-action: none;
 }
 
+/* Read-only map status line (top-left), explains render state such as the
+   active indoor-focus levels. */
+.betterid-map-status {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 5;
+    max-width: min(60%, 480px);
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--transparent-bg-color);
+    color: var(--text-color);
+    font-size: 12px;
+    line-height: 1.4;
+    pointer-events: none;
+    box-shadow: 0 1px 2px var(--shadow-color);
+}
+
+.betterid-map-status[hidden] {
+    display: none;
+}
+
 .supersurface {
     transform-origin: 0 0;
 }
@@ -5743,6 +5765,43 @@ a.user-info {
 }
 .changeset-list .alert {
     opacity: 0.5;
+}
+
+
+/* Import / export changes
+------------------------------------------------------- */
+.download-changes,
+.import-changes {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 14px 0 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--link-color);
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.download-changes:hover,
+.download-changes:focus,
+.import-changes:hover,
+.import-changes:focus {
+    color: var(--link-focus-color);
+    text-decoration: underline;
+}
+
+.download-changes .icon,
+.import-changes .icon {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+.privacy-button.busy {
+    opacity: 0.6;
 }
 
 

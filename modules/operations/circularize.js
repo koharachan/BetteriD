@@ -50,8 +50,13 @@ export function operationCircularize(context, selectedIDs) {
     }();
 
     function checkActionAllowed(entityID, graph) {
-        const entity = graph.entity(entityID);
-        if (entity.type !== 'way' || new Set(entity.nodes).size <= 1) return false;
+        // `selectedIDs` can briefly reference an entity that was just deleted
+        // (delete performs the action before it moves the selection), and this
+        // runs from `mode.operations()` while the history `change` event is being
+        // dispatched. Throwing here aborted the rest of that dispatch, including
+        // the map redraw, leaving deleted geometry on screen until the next pan.
+        const entity = graph.hasEntity(entityID);
+        if (!entity || entity.type !== 'way' || new Set(entity.nodes).size <= 1) return false;
         return true;
     }
 
