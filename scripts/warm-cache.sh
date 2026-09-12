@@ -72,8 +72,9 @@ trap 'rm -f "$PRIORITY" $ALL' EXIT
   echo "$BASE/id/land.html"
   [ -n "${VERSION:-}" ] && echo "$BASE/id/dist/iD.min.js?v=$VERSION"
   [ -n "${VERSION:-}" ] && echo "$BASE/id/dist/iD.css?v=$VERSION"
-  [ -n "${VERSION:-}" ] && echo "$BASE/id/dist/locales/en.min.json?v=$VERSION"
-  [ -n "${VERSION:-}" ] && echo "$BASE/id/dist/locales/zh.min.json?v=$VERSION"
+  for lang in en zh zh-CN zh-TW zh-HK ja ko; do
+    [ -n "${VERSION:-}" ] && echo "$BASE/id/dist/locales/$lang.min.json?v=$VERSION"
+  done
   for f in data/phone_formats.min.json data/shortcuts.min.json \
            nsi/dist/json/nsi.min.json nsi/dist/wikidata/wikidata.min.json \
            nsi/dist/json/replacements.min.json \
@@ -88,6 +89,39 @@ trap 'rm -f "$PRIORITY" $ALL' EXIT
     esac
   done
 } > "$PRIORITY"
+
+# --- SET=deploy: everything a page load touches, for a post-deploy warm -------
+# A deploy changes `?v=`, so every edge has to re-pull those URLs at once.  On a
+# node with a cold cache the parallel misses queue up and the last ones pass the
+# node's fetch deadline (observed: a storm of 504s right after a deploy while a
+# single cold object takes ~2s), so warm the whole boot set across every known
+# edge right after switching the build.
+if [ "${SET:-priority}" = deploy ] && [ "$HAVE_DIST" = 1 ]; then
+  BOOT=$(mktemp)
+  {
+    while IFS= read -r file; do
+      rel="${file#"$DIST"/}"
+      case "$rel" in
+        *.map) continue ;;
+        locales/*) continue ;;                       # handled by the priority list
+        # preset translations: iD only asks for the languages it is running in
+        tagging-schema/dist/translations/*)
+          case "$rel" in
+            */en.json|*/zh.json|*/zh-TW.json|*/zh-HK.json|*/ja.json|*/ko.json)
+              echo "$BASE/id/dist/$rel" ;;
+          esac
+          continue ;;
+        data/*.min.json) echo "$BASE/id/dist/$rel?v=$VERSION" ;;
+        img/*.svg) echo "$BASE/id/dist/$rel?v=$VERSION"; echo "$BASE/id/dist/$rel" ;;
+        img/*.png) echo "$BASE/id/dist/$rel" ;;
+        nsi/*|tagging-schema/*) echo "$BASE/id/dist/$rel" ;;
+        *.js|*.css) echo "$BASE/id/dist/$rel?v=$VERSION" ;;
+      esac
+    done < <(find "$DIST" -type f | sort)
+  } | sort -u > "$BOOT"
+  cat "$PRIORITY" >> "$BOOT"
+  PRIORITY="$BOOT"
+fi
 
 # --- optionally warm every shipped file (large: ~50MB per edge) --------------
 if [ "${FULL:-0}" = 1 ]; then
@@ -129,8 +163,10 @@ echo "$(date '+%F %T') warming $HOST (v=${VERSION:-unknown}, priority=$TOTAL, ed
 # A cold edge that our resolver happens to pick can be an order of magnitude
 # slower than the edge our users get (measured 193s vs 2s for the same 14 URLs),
 # so probe `/id/` on every candidate and only warm the responsive ones.
-WARMN="${WARMN:-3}"
-MAXRTT="${MAXRTT:-5}"
+# `ALL_EDGES=1` (used by SET=deploy) warms every candidate instead, because a
+# page load can land on any of them.
+WARMN="${WARMN:-6}"
+MAXRTT="${MAXRTT:-15}"
 PROBED=""
 for ip in $EDGE_IPS; do
   T=$(curl -s -o /dev/null --max-time 20 -A "$UA" --resolve "$HOST:443:$ip" \
@@ -144,29 +180,36 @@ SEL=$(echo "$SORTED" | awk -v max="$MAXRTT" '$1 <= max {print $2}' \
         | head -n "$WARMN" | tr '\n' ' ')
 # every edge is far away (or unreachable): still warm the least-bad one
 [ -n "${SEL// /}" ] || SEL=$(echo "$SORTED" | head -1 | awk '{print $2}')
+if [ "${ALL_EDGES:-0}" = 1 ]; then
+  SEL=$(echo "$SORTED" | awk '$1 < 999 {print $2}' | tr '\n' ' ')
+  [ -n "${SEL// /}" ] || SEL="$EDGE_IPS"
+fi
 echo "$(date '+%F %T') probes: $(echo "$SORTED" | tr '\n' ' ')| warming ${SEL:-none}" >> "$LOG"
 
 # The probe only tells us whether the edge is reachable and how fast it answers a
 # cached page - a distant edge can still take minutes to pull the rest, so every
 # edge also gets a hard wall-clock budget.
-EDGE_TIMEOUT="${EDGE_TIMEOUT:-90}"
-for ip in $SEL; do
-  START=$(date +%s)
-  CODES=$(timeout -k 5 "$EDGE_TIMEOUT" \
-            xargs -a "$PRIORITY" -P "$PARA" -n 1 \
-              curl -s -o /dev/null --max-time 180 -A "$UA" -H 'Accept-Encoding: br, gzip' \
+EDGE_TIMEOUT="${EDGE_TIMEOUT:-120}"
+CURL_MAX="${CURL_MAX:-60}"
+warm_edge() {   # urls-file ip label
+  local urls="$1" ip="$2" label="$3" codes
+  codes=$(timeout -k 5 "$EDGE_TIMEOUT" \
+            xargs -a "$urls" -P "$PARA" -n 1 \
+              curl -s -o /dev/null --max-time "$CURL_MAX" -A "$UA" \
+                   -H 'Accept-Encoding: br, gzip' \
                    --resolve "$HOST:443:$ip" -w '%{http_code}\n' \
           || echo TIMEOUT)
-  CODES=$(printf '%s\n' "$CODES" | sort | uniq -c | tr '\n' ' ')
-  MSG="priority $ip -> $CODES"
+  # `timeout` kills xargs, but its running curls keep the pipe open, so a broken
+  # edge could stall the whole run: stop the leftovers for this edge explicitly.
+  pkill -f "[r]esolve $HOST:443:$ip" 2>/dev/null
+  printf '%s' "$label -> $(printf '%s\n' "$codes" | sort | uniq -c | tr '\n' ' ')"
+}
+
+for ip in $SEL; do
+  START=$(date +%s)
+  MSG="priority $(warm_edge "$PRIORITY" "$ip" "$ip")"
   if [ -n "$ALL" ]; then
-    CODES=$(timeout -k 5 "$EDGE_TIMEOUT" \
-              xargs -a "$ALL" -P "$PARA" -n 1 \
-                curl -s -o /dev/null --max-time 180 -A "$UA" -H 'Accept-Encoding: br, gzip' \
-                     --resolve "$HOST:443:$ip" -w '%{http_code}\n' \
-            || echo TIMEOUT)
-    CODES=$(printf '%s\n' "$CODES" | sort | uniq -c | tr '\n' ' ')
-    MSG="$MSG | full $CODES"
+    MSG="$MSG | full $(warm_edge "$ALL" "$ip" "$ip")"
   fi
   echo "$(date '+%F %T') $MSG ($(( $(date +%s) - START ))s)" >> "$LOG"
 done

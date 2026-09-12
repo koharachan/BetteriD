@@ -66,10 +66,37 @@ systemctl list-timers betterid-warm.timer
 
 关键点：**预热必须打对边缘节点**。同一个域名在不同解析器下会拿到不同边缘，脚本因此先
 用 AliDNS / DNSPod / Google / Cloudflare 解析出候选边缘，逐个探测 `/id/` 的 TTFB，
-只预热响应快的那些（`MAXRTT=5` 秒，默认最多 3 个），再按候选 IP 用 `--resolve` 直接打过去。
+默认只预热响应快的那些（`MAXRTT=15` 秒、最多 6 个），再按候选 IP 用 `--resolve` 直接打过去。
 实测过：源站自己的解析器把请求指到一个很远的边缘，同样 14 个 URL 要 193 秒且丢两个连接，
 而中国方向边缘（AliDNS 解析到的 IP）2 秒跑完 —— 从这个对比也能看出「慢」的来源是选路，
 不是源站或缓存配置。
+
+### 部署后必须跑一次“全量预热”
+
+新构建会把所有静态资源的 `?v=` 换掉，也就是**每一条边缘上的这些 URL 同时全部变冷**。
+边缘节点收到几十个并发 MISS 时会排队回源，排在后面的请求会撞上节点的回源超时（实测
+24–45 秒后返回 504），表现就是：部署完第一次打开编辑器时 `iD.js`、`presets`、`nsi`、
+`sprite`、`pattern` 一片 504、然后 `iD.min.js` 里抛异常（例如
+`TypeError: can't access property "classList", e is null`）。这不是源站慢，也不是缓存配置错：
+
+- 源站直连实测毫秒级（`presets.min.json` 0.015s、`imagery.min.json` 12 并发 0.2–0.4s）；
+- 源站上行实测 91 Mbps（Cloudflare `__up` 30MB ×2 → 11.3/11.7 MB/s）；
+- 单条边缘冷拉一个小文件正常只要 1–2 秒。
+
+所以流程改成：**切完新容器立刻跑一次全量预热**（覆盖所有已知边缘，而不是只挑快的）：
+
+```bash
+SET=deploy ALL_EDGES=1 EDGE_TIMEOUT=420 PARA=8 \
+  EDGES="203.160.55.7 24.233.15.183 178.236.38.1 186.244.250.187 186.244.250.42 186.244.250.43" \
+  /opt/betterid/warm-cache.sh
+tail -8 /var/log/betterid-warm.log     # 每行：priority <edge> -> 88 200 (11s)
+```
+
+`SET=deploy` 会把编辑器启动真正会拉的那一套都算进去（`iD.min.js`/`iD.css`、`dist/data/*.json`、
+`img/*.svg`、pattern/cursor、预设与 NSI，以及 en/zh/zh-CN/zh-TW/zh-HK/ja/ko 的
+locale 与预设翻译），约 90 个 URL；`ALL_EDGES=1` 跳过“只挑快边缘”的过滤。
+定时器仍然负责每 25 分钟的轻量保活。
+
 
 ```bash
 # 手动跑一次并看每条边缘的结果
@@ -80,8 +107,10 @@ tail -5 /var/log/betterid-warm.log
 ```
 
 环境变量：`EDGES`（跳过解析、直接指定 IP）、`SEED_EDGES`（默认始终把中国方向边缘列为候选）、
-`MAXRTT` / `WARMN`（探测阈值与上限）、`EDGE_TIMEOUT`（单条边缘的墙钟预算，默认 90 秒，
-超过就记 `TIMEOUT` 换下一条）、`FULL=1`（把 `dist/` 全部文件也预热，约 50MB/边缘）、
+`SET=deploy`（全量启动集）、`ALL_EDGES=1`（不筛掉慢边缘）、
+`MAXRTT` / `WARMN`（探测阈值与上限，默认 15 秒 / 6 条）、
+`EDGE_TIMEOUT`（单条边缘的墙钟预算，默认 120 秒，超过就记 `TIMEOUT` 换下一条）、
+`FULL=1`（把 `dist/` 全部文件也预热，约 50MB/边缘）、
 `PARA`（并发数，默认 6）。`000` 表示连接失败/超时，先看是不是被 `MAXRTT` 误杀，
 再考虑把 `PARA` 调小。脚本用 `flock` 防重入，定时器与手动执行可以并存。
 
