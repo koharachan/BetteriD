@@ -1,6 +1,6 @@
 {
   "name": "BetteriD",
-  "version": "0.1.5",
+  "version": "0.9.9-rc-1",
   "description": "A friendly editor for OpenStreetMap",
   "main": "dist/iD.min.js",
   "repository": {

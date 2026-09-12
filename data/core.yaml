@@ -641,6 +641,8 @@ en:
     import_failed: "Import failed: {message}"
     privacy_save: Privacy edit
     privacy_checking: Checking privacy editing availability…
+    upload_needs_login: "Log in to upload with your own account."
+    upload_needs_login_with_privacy: "Log in to upload with your own account, or use Privacy edit to upload anonymously."
     privacy_unavailable: Privacy editing is not configured on this server.
     privacy_no_changes: There are no changes to upload.
     privacy_uploading: Uploading with the privacy account…
@@ -1317,6 +1319,9 @@ en:
       preview: "{count} unambiguous tag fixes are ready."
       action: Fix all
       annotation: "Applied {count} safe validation fixes."
+    import_edits:
+      help: "Import pending edits from an .osc or .osm file. You can also drop the file onto the map."
+      read_error: "The file could not be read."
     map_status:
       indoor_focus_idle: "Indoor focus is on — select an indoor feature to pin its floor."
       indoor_focus_levels: "Focus level: {levels}"

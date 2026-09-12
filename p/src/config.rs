@@ -37,6 +37,9 @@ pub struct ProxyConfig {
     pub deepseek_api_key: Option<String>,
     pub deepseek_base_url: String,
     pub deepseek_model: String,
+    /// Skip the provider's reasoning phase for short generations (see
+    /// `CompatibleClient::disable_thinking`). `DEEPSEEK_THINKING=enabled` opts out.
+    pub deepseek_disable_thinking: bool,
     pub openai_api_key: Option<String>,
     pub openai_base_url: String,
     pub openai_resolve_ip: Option<String>,
@@ -85,6 +88,7 @@ impl Default for ProxyConfig {
             deepseek_api_key: None,
             deepseek_base_url: "https://api.deepseek.com/v1".to_string(),
             deepseek_model: "deepseek-v4-flash".to_string(),
+            deepseek_disable_thinking: true,
             openai_api_key: None,
             openai_base_url: "https://api.openai.com/v1".to_string(),
             openai_resolve_ip: None,
@@ -168,6 +172,9 @@ impl ProxyConfig {
         }
         if let Some(v) = value("DEEPSEEK_MODEL") {
             config.deepseek_model = v;
+        }
+        if let Some(v) = value("DEEPSEEK_THINKING") {
+            config.deepseek_disable_thinking = !v.eq_ignore_ascii_case("enabled");
         }
         if let Some(v) = value("OPENAI_API_KEY") {
             config.openai_api_key = Some(v);

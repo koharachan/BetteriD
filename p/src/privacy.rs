@@ -17,7 +17,7 @@ use crate::config::ProxyConfig;
 
 const API_TIMEOUT: Duration = Duration::from_secs(120);
 const USER_AGENT: &str =
-    "BetteriD/0.1.6 (+https://map.osm.asia; contact=https://github.com/koharachan/BetteriD/issues)";
+    "BetteriD/0.9.9-rc-1 (+https://map.osm.asia; contact=https://github.com/koharachan/BetteriD/issues)";
 const CHANGESET_CREATED_BY: &str = "BetteriD privacy upload";
 
 #[derive(Debug)]

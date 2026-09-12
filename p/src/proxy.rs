@@ -41,7 +41,7 @@ const TILE_FALLBACK_CACHE_CONTROL: &str = "public, max-age=604800";
 const TILE_FALLBACK_CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const TILE_FALLBACK_REFERER: &str = "https://map.osm.asia/";
 const TILE_USER_AGENT: &str =
-    "BetteriD/0.1.5 (+https://map.osm.asia; contact=https://github.com/koharachan/BetteriD/issues)";
+    "BetteriD/0.9.9-rc-1 (+https://map.osm.asia; contact=https://github.com/koharachan/BetteriD/issues)";
 const LOGIN_MODAL_CSS: &str = include_str!("../web/login-modal.css");
 const LOGIN_MODAL_JS: &str = include_str!("../web/login-modal.js");
 const LOGIN_MODAL_TEMPLATE: &str = include_str!("../web/login-modal.html");

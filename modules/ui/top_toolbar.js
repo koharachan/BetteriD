@@ -3,7 +3,7 @@ import {
 } from 'd3-selection';
 
 import { debounce } from 'es-toolkit';
-import { uiToolDrawModes, uiToolNotes, uiToolSave, uiToolSidebarToggle, uiToolSplit, uiToolUndoRedo } from './tools';
+import { uiToolDrawModes, uiToolImport, uiToolNotes, uiToolSave, uiToolSidebarToggle, uiToolSplit, uiToolUndoRedo } from './tools';
 
 
 export function uiTopToolbar(context) {
@@ -13,6 +13,7 @@ export function uiTopToolbar(context) {
         split = uiToolSplit(context),
         notes = uiToolNotes(context),
         undoRedo = uiToolUndoRedo(context),
+        importTool = uiToolImport(context),
         save = uiToolSave(context);
 
     function notesEnabled() {
@@ -50,7 +51,7 @@ export function uiTopToolbar(context) {
                 tools = tools.concat([notes, 'spacer']);
             }
 
-            tools = tools.concat([undoRedo, save]);
+            tools = tools.concat([undoRedo, importTool, save]);
 
             var toolbarItems = bar.selectAll('.toolbar-item')
                 .data(tools, function(d) {

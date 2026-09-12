@@ -42,6 +42,11 @@ struct CompatibleClient {
     text_model: String,
     vision_model: String,
     uses_completion_tokens: bool,
+    /// Ask the provider to skip its reasoning phase. Reasoning models such as
+    /// `deepseek-flash` otherwise spend the whole token budget on
+    /// `reasoning_content`, return an empty `content`, and every short task
+    /// (changeset summary, translation) looks like a failure.
+    disable_thinking: bool,
 }
 
 #[derive(Clone)]
@@ -118,6 +123,7 @@ impl AiRouter {
                 &config.deepseek_model,
                 None,
                 false,
+                config.deepseek_disable_thinking,
             )
             .ok()
         });
@@ -130,6 +136,7 @@ impl AiRouter {
                 &config.openai_vision_model,
                 config.openai_resolve_ip.as_deref(),
                 true,
+                false,
             )
             .ok()
             .map(|compatible| OpenAiClient {
@@ -149,6 +156,7 @@ impl AiRouter {
                     &config.mimo_text_model,
                     &config.mimo_vision_model,
                     None,
+                    false,
                     false,
                 )
                 .ok()
@@ -537,6 +545,7 @@ impl CompatibleClient {
         vision_model: &str,
         resolve_ip: Option<&str>,
         uses_completion_tokens: bool,
+        disable_thinking: bool,
     ) -> Result<Self, ProviderError> {
         if api_key.trim().is_empty() {
             return Err(ProviderError("missing API key".to_string()));
@@ -569,6 +578,7 @@ impl CompatibleClient {
             text_model: text_model.to_string(),
             vision_model: vision_model.to_string(),
             uses_completion_tokens,
+            disable_thinking,
         })
     }
 
@@ -612,6 +622,9 @@ impl CompatibleClient {
         } else {
             "max_tokens"
         }] = json!(max_tokens);
+        if self.disable_thinking {
+            payload["thinking"] = json!({ "type": "disabled" });
+        }
         let response = self
             .http
             .post(format!("{}/chat/completions", self.base_url))
@@ -1238,6 +1251,7 @@ mod tests {
             "vision-test",
             None,
             true,
+            false,
         )
         .expect("compatible client");
         let client = OpenAiClient {
@@ -1465,6 +1479,7 @@ mod tests {
             "vision-test",
             None,
             true,
+            false,
         )
         .expect("compatible client");
         let client = OpenAiClient {

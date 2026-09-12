@@ -7,6 +7,7 @@ import { uiConflicts } from '../ui/conflicts';
 import { uiConfirm } from '../ui/confirm';
 import { uiCommit } from '../ui/commit';
 import { uiSuccess } from '../ui/success';
+import { utilPrivacyUploadAvailable } from '../ui/privacy_upload';
 import { utilKeybinding } from '../util';
 
 
@@ -228,7 +229,17 @@ export function modeSave(context) {
 
         if (osm.authenticated()) {
             done();
-        } else {
+            return;
+        }
+
+        // The server can upload anonymously ("privacy edit"), so don't push the
+        // user into OAuth before they can even see the commit panel.
+        utilPrivacyUploadAvailable().then(function(available) {
+            if (context.mode() !== mode) return;   // left save mode meanwhile
+            if (available) {
+                done();
+                return;
+            }
             osm.authenticate(function(err) {
                 if (err) {
                     cancel();
@@ -236,7 +247,7 @@ export function modeSave(context) {
                     done();
                 }
             });
-        }
+        });
     };
 
 

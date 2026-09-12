@@ -32,18 +32,34 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [@xxxx]: https://github.com/xxxx
 -->
 
-# Unreleased
+# BetteriD 0.9.9-rc-1
+##### 2026-Sep-12
+
+#### :mega: Release Highlights
+* Import an `osmChange` (`.osc`) or OSM XML (`.osm`) file as pending edits, from
+  a toolbar button or by dropping the file onto the map.
+* Privacy (anonymous) editing: upload the pending changeset through the server's
+  dedicated OpenStreetMap account without logging in, and reach the commit panel
+  even when you are not authenticated.
+* A map status line explains state that used to be invisible, such as the pinned
+  indoor-focus floors.
+* Fixes for a stale map after deleting a node, swallowed vertices while drawing,
+  an uploaded background that could not be moved or zoomed, `W`/`A` shortcuts
+  when WASD navigation is off, and empty DeepSeek replies.
 
 #### :tada: New Features
-* Import pending edits from an `osmChange` (`.osc`) or OSM XML (`.osm`) file.
-  Imported features appear as unsaved changes in the commit panel, the import is
-  a single undoable step, and ways/relations whose children are missing from both
-  the file and the current graph are skipped and reported in the flash message.
+* Import pending edits from an `osmChange` (`.osc`) or OSM XML (`.osm`) file, from
+  the top toolbar or by dropping the file onto the map. Imported features appear
+  as unsaved changes, each file is one undoable step, and ways/relations whose
+  children are missing from both the file and the current graph are skipped and
+  reported in the flash message.
 * Privacy (anonymous) editing: the commit panel can upload the pending changeset
   through the server, which holds a dedicated OpenStreetMap account credential
   (`OSM_PRIVACY_ACCESS_TOKEN` / `OSM_PRIVACY_REFRESH_TOKEN`). The browser only
   sends the `osmChange` document and never sees the token; the button stays
-  disabled unless `/api/osm-ai/status` reports `"privacy": true`.
+  disabled unless `/api/osm-ai/status` reports `"privacy": true`. Opening the
+  commit panel no longer forces a login first when privacy upload is available,
+  and the upload button explains the anonymous alternative.
 * Add `scripts/osm_privacy_token.js` to obtain that token with a PKCE OAuth 2
   flow, and document the new `POST /api/osm-ai/privacy/upload` endpoint.
 * Add a read-only status line in the top-left corner of the map. With indoor
@@ -56,6 +72,11 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   surface swallowed the pointer and the map panned/zoomed instead. While
   adjusting, the photo layer is raised above the data layer and only the image
   itself stays interactive.
+* Fix DeepSeek "generation failed, try again later" on short tasks: reasoning
+  models such as `deepseek-flash` spent the whole token budget on
+  `reasoning_content` and returned an empty answer, so changeset summaries and
+  translations failed. The DeepSeek request now disables the reasoning phase
+  (`DEEPSEEK_THINKING=enabled` opts back in).
 * Fix the `W` / `A` tap shortcuts when WASD movement is disabled. They used to be
   dropped because the delayed-navigation handler returned early: `W` now still
   toggles the area fill and `A` still reaches the mode keybinding (Continue).

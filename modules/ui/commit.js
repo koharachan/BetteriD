@@ -80,6 +80,15 @@ export function uiCommit(context) {
     }
 
 
+    function authHintMessage() {
+        const osm = context.connection();
+        if (!osm || typeof osm.authenticated !== 'function' || osm.authenticated()) return null;
+        return _privacyAvailable
+            ? t('commit.upload_needs_login_with_privacy')
+            : t('commit.upload_needs_login');
+    }
+
+
     function privacyUpload() {
         if (_privacyBusy || privacyBlockerMessage() !== null) return;
 
@@ -583,6 +592,7 @@ export function uiCommit(context) {
             .call(t.append('commit.privacy_save'));
 
         var uploadBlockerTooltipText = getUploadBlockerMessage();
+        var authHintText = authHintMessage();
 
         // update
         buttonSection = buttonSection
@@ -615,6 +625,11 @@ export function uiCommit(context) {
             buttonSection.selectAll('.save-button')
                 .call(uiTooltip()
                     .title(() => uploadBlockerTooltipText)
+                    .placement('top'));
+        } else if (authHintText) {
+            buttonSection.selectAll('.save-button')
+                .call(uiTooltip()
+                    .title(() => authHintText)
                     .placement('top'));
         }
 
