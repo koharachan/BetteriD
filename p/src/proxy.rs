@@ -2079,6 +2079,7 @@ mod tests {
             std::env::temp_dir().join("betterid-proxy-tests"),
             trusted_proxy_ips,
             false,
+            PrivacyUploader::from_config(&config),
         )
     }
 

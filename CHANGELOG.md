@@ -90,6 +90,12 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   `当前聚焦楼层：1;2;3;4;5;6`, instead of dimming other floors without explanation.
 
 #### :bug: Bugfixes
+* Fix privacy upload failing with `OSM returned 400: Changeset id is missing for
+  Node -1`. The editor exports a standalone osmChange document (no `changeset`
+  attribute), but `/changeset/{id}/upload` requires one on every element, and the
+  changeset only exists after the proxy creates it. The proxy now stamps the
+  changeset id into the diff before uploading, still closes the changeset when an
+  upload fails, and reports created/modified/deleted counts from the diff it sent.
 * Fix the uploaded (local photo) background being impossible to drag or
   wheel-zoom: it sat below the OSM data layer (`z-index: 2` vs `3`), so the map
   surface swallowed the pointer and the map panned/zoomed instead. While

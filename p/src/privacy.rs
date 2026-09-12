@@ -119,15 +119,31 @@ impl PrivacyUploader {
             ))
         })?;
 
+        // The client sends a standalone osmChange document (as produced by the
+        // "download osmChange" link), which has no changeset attribute. The
+        // upload endpoint requires one on every created/modified element
+        // ("Changeset id is missing for Node -1"), and the changeset only exists
+        // now, so stamp it in here.
+        let stamped = inject_changeset(diff, changeset_id);
+
         let upload_path = format!("/api/0.6/changeset/{changeset_id}/upload");
         let diff_result = match self
-            .api_request(reqwest::Method::POST, &upload_path, Some(diff.to_string()))
+            .api_request(reqwest::Method::POST, &upload_path, Some(stamped))
             .await
         {
             Ok(body) => body,
             Err(err) => {
-                // Leave an explicable trace: the changeset stays open and the
-                // caller sees the upstream message.
+                // Never leave an empty changeset behind when the upload fails.
+                let close_path = format!("/api/0.6/changeset/{changeset_id}/close");
+                if let Err(close_err) = self
+                    .api_request(reqwest::Method::PUT, &close_path, None)
+                    .await
+                {
+                    warn!(
+                        "Privacy upload: could not close changeset {changeset_id} after a failed upload: {}",
+                        close_err.message()
+                    );
+                }
                 return Err(err);
             }
         };
@@ -144,7 +160,7 @@ impl PrivacyUploader {
             );
         }
 
-        let (created, modified, deleted) = count_diff_result(&diff_result);
+        let (created, modified, deleted) = count_diff_elements(diff);
 
         Ok(PrivacyUploadResult {
             changeset: changeset_id,
@@ -279,6 +295,68 @@ impl PrivacyUploader {
     }
 }
 
+/// Element name of an opening/closing tag, e.g. `node` for `<node id="-1" />`.
+fn tag_name(tag: &str) -> &str {
+    let trimmed = tag
+        .trim_start_matches('<')
+        .trim_start_matches('/')
+        .trim_start();
+    let end = trimmed
+        .find(|c: char| c.is_whitespace() || c == '>' || c == '/')
+        .unwrap_or(trimmed.len());
+    &trimmed[..end]
+}
+
+
+/// Add `changeset="<id>"` to every element inside `<create>` / `<modify>` /
+/// `<delete>` that does not have one yet.
+///
+/// The document comes from the editor's own exporter, so it is well formed and
+/// attribute values are already escaped; this is a targeted text transform, not
+/// a general XML parser.
+fn inject_changeset(xml: &str, changeset_id: u64) -> String {
+    let mut out = String::with_capacity(xml.len() + 64);
+    let mut rest = xml;
+
+    while let Some(offset) = rest.find('<') {
+        out.push_str(&rest[..offset]);
+        rest = &rest[offset..];
+
+        let Some(end) = rest.find('>') else {
+            out.push_str(rest);
+            return out;
+        };
+        let tag = &rest[..=end];
+
+        if tag.starts_with("</") {
+            out.push_str(tag);
+        } else if tag.starts_with("<?") || tag.starts_with("<!") {
+            out.push_str(tag);
+        } else {
+            let name = tag_name(tag);
+            let is_element = matches!(name, "node" | "way" | "relation");
+            let has_changeset = tag
+                .split_whitespace()
+                .any(|part| part.starts_with("changeset="));
+
+            if is_element && !has_changeset {
+                let insert_at = 1 + name.len();
+                out.push_str(&tag[..insert_at]);
+                out.push_str(&format!(" changeset=\"{changeset_id}\""));
+                out.push_str(&tag[insert_at..]);
+            } else {
+                out.push_str(tag);
+            }
+        }
+
+        rest = &rest[end + 1..];
+    }
+
+    out.push_str(rest);
+    out
+}
+
+
 fn build_changeset_xml(comment: &str, extra_tags: &[(String, String)]) -> String {
     let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<osm>\n  <changeset>\n");
     let mut tags: Vec<(String, String)> = Vec::new();
@@ -320,13 +398,43 @@ fn xml_escape(value: &str) -> String {
     escaped
 }
 
-fn count_diff_result(xml: &str) -> (usize, usize, usize) {
-    let count = |tag: &str| {
-        xml.match_indices(&format!("<{tag}"))
-            .filter(|(_, matched)| !matched.starts_with(&format!("<{tag}old")))
-            .count()
-    };
-    (count("create"), count("modify"), count("delete"))
+/// Count the elements the diff actually adds, changes and removes.
+///
+/// `diffResult` only reports the id mapping, so the counts come from the
+/// document we uploaded.
+fn count_diff_elements(diff: &str) -> (usize, usize, usize) {
+    let mut section = "";
+    let mut counts = (0usize, 0usize, 0usize);
+    let mut rest = diff;
+
+    while let Some(offset) = rest.find('<') {
+        rest = &rest[offset..];
+        let Some(end) = rest.find('>') else { break };
+        let tag = &rest[..=end];
+
+        if tag.starts_with("</") {
+            let name = tag_name(tag);
+            if matches!(name, "create" | "modify" | "delete") {
+                section = "";
+            }
+        } else if !tag.starts_with("<?") && !tag.starts_with("<!") {
+            let name = tag_name(tag);
+            if matches!(name, "create" | "modify" | "delete") {
+                section = name;
+            } else if matches!(name, "node" | "way" | "relation") {
+                match section {
+                    "create" => counts.0 += 1,
+                    "modify" => counts.1 += 1,
+                    "delete" => counts.2 += 1,
+                    _ => {}
+                }
+            }
+        }
+
+        rest = &rest[end + 1..];
+    }
+
+    counts
 }
 
 fn truncate(value: &str, max: usize) -> String {
@@ -368,8 +476,31 @@ mod tests {
     }
 
     #[test]
-    fn counts_diff_result_elements() {
-        let xml = "<diffResult><create><node old_id=\"-1\" new_id=\"1\"/></create><modify><way old_id=\"2\" new_id=\"2\"/></modify><delete><node old_id=\"3\"/></delete></diffResult>";
-        assert_eq!(count_diff_result(xml), (1, 1, 1));
+    fn stamps_the_changeset_id_into_the_diff() {
+        let diff = "<osmChange version=\"0.6\"><create><node id=\"-1\" lat=\"1\" lon=\"2\" /><node id=\"-2\" lat=\"3\" lon=\"4\"><tag k=\"a\" v=\"b\" /></node></create><modify><way id=\"5\"><nd ref=\"6\" /></way></modify><delete><node id=\"7\" version=\"3\" /></delete></osmChange>";
+        let stamped = inject_changeset(diff, 123456);
+
+        assert_eq!(stamped.matches("changeset=\"123456\"").count(), 4);
+        assert!(stamped.contains("<node changeset=\"123456\" id=\"-1\" lat=\"1\" lon=\"2\" />"));
+        assert!(stamped.contains("<way changeset=\"123456\" id=\"5\">"));
+        assert!(stamped.contains("<node changeset=\"123456\" id=\"7\" version=\"3\" />"));
+        // untouched corners
+        assert!(stamped.contains("<tag k=\"a\" v=\"b\" />"));
+        assert!(stamped.contains("<nd ref=\"6\" />"));
+    }
+
+    #[test]
+    fn keeps_an_existing_changeset_attribute() {
+        let diff = "<osmChange><create><node id=\"-1\" changeset=\"9\" lat=\"1\" lon=\"2\" /></create></osmChange>";
+        let stamped = inject_changeset(diff, 123456);
+        assert_eq!(stamped.matches("changeset=").count(), 1);
+        assert!(stamped.contains("changeset=\"9\""));
+    }
+
+    #[test]
+    fn counts_diff_elements_by_section() {
+        let xml = "<osmChange version=\"0.6\"><create><node id=\"-1\"/><way id=\"-2\"><nd ref=\"-1\"/></way></create><modify><node id=\"3\"/></modify><delete><node id=\"4\"/></delete></osmChange>";
+        assert_eq!(count_diff_elements(xml), (2, 1, 1));
+        assert_eq!(count_diff_elements("<osmChange></osmChange>"), (0, 0, 0));
     }
 }
