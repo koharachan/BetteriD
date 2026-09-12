@@ -2,15 +2,13 @@ import { select as d3_select } from 'd3-selection';
 
 import {
     BETTERID_TOOLS,
-    adobeShortcutsEnabled, setAdobeShortcuts,
     betteridTool, setBetteridTool,
     marqueeShape, cycleMarqueeShape,
     brushSize, setBrushSize,
     wandTolerance, setWandTolerance,
     wandContiguous, setWandContiguous,
     BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF,
-    BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF,
-    BETTERID_ADOBE_SHORTCUTS_PREF
+    BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF
 } from '../core/betterid_tools';
 import { prefs } from '../core/preferences';
 import { t } from '../core/localizer';
@@ -134,31 +132,10 @@ export function uiBetteridToolPalette(context) {
             contiguousLabel
                 .append('span')
                 .call(t.append('betterid.tools.contiguous'));
-
-        } else if (tool === 'pen') {
-            options
-                .append('p')
-                .attr('class', 'betterid-tool-hint')
-                .call(t.append('betterid.tools.pen_hint'));
         }
 
-        var footer = palette.append('div').attr('class', 'betterid-tool-footer');
-        var adobeLabel = footer.append('label').attr('class', 'betterid-tool-check');
-        adobeLabel
-            .append('input')
-            .attr('type', 'checkbox')
-            .property('checked', adobeShortcutsEnabled())
-            .on('change', function() {
-                setAdobeShortcuts(this.checked);
-            });
-        adobeLabel
-            .append('span')
-            .call(t.append('betterid.tools.adobe_shortcuts'));
-
-        adobeLabel.call(uiTooltip()
-            .placement('right')
-            .title(() => t.append('betterid.tools.adobe_shortcuts_hint'))
-            .scrollContainer(context.container().select('.over-map')));
+        // tools without options keep the palette a compact icon strip
+        if (!options.node().childNodes.length) options.remove();
     }
 
 
@@ -169,7 +146,7 @@ export function uiBetteridToolPalette(context) {
         // re-render whenever a tool preference changes
         [
             BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF,
-            BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF, BETTERID_ADOBE_SHORTCUTS_PREF
+            BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF
         ].forEach(function(key) {
             prefs.onChange(key, function() {
                 if (!_container.empty()) render(_container);

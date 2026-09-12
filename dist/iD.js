@@ -76021,16 +76021,8 @@ ${tag}` : tag;
           setWandContiguous(this.checked);
         });
         contiguousLabel.append("span").call(_t.append("betterid.tools.contiguous"));
-      } else if (tool === "pen") {
-        options.append("p").attr("class", "betterid-tool-hint").call(_t.append("betterid.tools.pen_hint"));
       }
-      var footer = palette2.append("div").attr("class", "betterid-tool-footer");
-      var adobeLabel = footer.append("label").attr("class", "betterid-tool-check");
-      adobeLabel.append("input").attr("type", "checkbox").property("checked", adobeShortcutsEnabled()).on("change", function() {
-        setAdobeShortcuts(this.checked);
-      });
-      adobeLabel.append("span").call(_t.append("betterid.tools.adobe_shortcuts"));
-      adobeLabel.call(uiTooltip().placement("right").title(() => _t.append("betterid.tools.adobe_shortcuts_hint")).scrollContainer(context.container().select(".over-map")));
+      if (!options.node().childNodes.length) options.remove();
     }
     function palette(selection2) {
       _container = selection2;
@@ -76040,8 +76032,7 @@ ${tag}` : tag;
         BETTERID_MARQUEE_SHAPE_PREF,
         BETTERID_BRUSH_SIZE_PREF,
         BETTERID_WAND_TOLERANCE_PREF,
-        BETTERID_WAND_CONTIGUOUS_PREF,
-        BETTERID_ADOBE_SHORTCUTS_PREF
+        BETTERID_WAND_CONTIGUOUS_PREF
       ].forEach(function(key) {
         corePreferences.onChange(key, function() {
           if (!_container.empty()) render(_container);
@@ -78927,6 +78918,7 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
       init_src6();
       init_betterid_preferences();
       init_localizer();
+      init_betterid_tools();
       init_preferences();
       init_icon();
       init_section();
@@ -78973,6 +78965,14 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
             defaultValue: true,
             label: "preferences.editing.josm_shortcuts",
             description: "preferences.editing.josm_shortcuts_description",
+            onChange: section.reRender
+          });
+          renderCheckbox(selection2, {
+            className: "preference-adobe-shortcuts",
+            pref: BETTERID_ADOBE_SHORTCUTS_PREF,
+            defaultValue: true,
+            label: "preferences.editing.adobe_shortcuts",
+            description: "preferences.editing.adobe_shortcuts_description",
             onChange: section.reRender
           });
           let snap = selection2.selectAll(".preference-snap-tolerance").data([getSnapTolerance()]);

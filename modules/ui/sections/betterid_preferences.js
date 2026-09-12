@@ -11,6 +11,7 @@ import {
   setTranslationLanguages
 } from '../../core/betterid_preferences';
 import { localizer, t } from '../../core/localizer';
+import { BETTERID_ADOBE_SHORTCUTS_PREF } from '../../core/betterid_tools';
 import { prefs } from '../../core/preferences';
 import { svgIcon } from '../../svg/icon';
 import { uiSection } from '../section';
@@ -104,6 +105,14 @@ export const uiSectionBetteridEditing = makeSimpleSection(
       defaultValue: true,
       label: 'preferences.editing.josm_shortcuts',
       description: 'preferences.editing.josm_shortcuts_description',
+      onChange: section.reRender
+    });
+    renderCheckbox(selection, {
+      className: 'preference-adobe-shortcuts',
+      pref: BETTERID_ADOBE_SHORTCUTS_PREF,
+      defaultValue: true,
+      label: 'preferences.editing.adobe_shortcuts',
+      description: 'preferences.editing.adobe_shortcuts_description',
       onChange: section.reRender
     });
 

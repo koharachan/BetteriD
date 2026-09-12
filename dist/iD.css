@@ -10974,7 +10974,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 190px;
+  max-width: 150px;
   padding: 6px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -11019,8 +11019,7 @@
   color: var(--link-focus-color);
 }
 
-.ideditor .betterid-tool-options,
-.ideditor .betterid-tool-footer {
+.ideditor .betterid-tool-options {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -11040,7 +11039,7 @@
 
 .ideditor .betterid-tool-option input[type='range'] {
   flex: 1 1 auto;
-  min-width: 60px;
+  min-width: 48px;
 }
 
 .ideditor .betterid-tool-option output {
@@ -11066,13 +11065,6 @@
   width: 14px;
   height: 14px;
   fill: currentColor;
-}
-
-.ideditor .betterid-tool-hint {
-  margin: 0;
-  color: var(--muted-text-color);
-  line-height: 1.4;
-  white-space: normal;
 }
 
 /* map cursors */

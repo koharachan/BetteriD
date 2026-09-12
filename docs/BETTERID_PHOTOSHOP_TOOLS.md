@@ -106,7 +106,8 @@
 
 ### 2.5 Adobe 风格快捷键层（可开关）
 
-新增偏好 `betterid.editing.adobe_shortcuts`（默认关，避免破坏现有 iD 手感）：
+新增偏好 `betterid.editing.adobe_shortcuts`，和 `betterid.editing.josm_shortcuts` 并排放在
+**偏好设置 → 编辑**里（默认开，和 JOSM 兼容快捷键一样随时可关）：
 
 | 快捷键 | 在 BetteriD 的行为 |
 | --- | --- |
@@ -129,16 +130,17 @@
 
 ```
 modules/core/betterid_tools.js        工具与选项状态（prefs 读写、默认值、事件分发）
-modules/ui/betterid_toolbar.js        左侧竖排工具栏（4 个工具 + 选框形状 + 选项行）
-modules/behavior/marquee_select.js    框选（矩形/椭圆 + 修饰键）
-modules/behavior/quick_select.js      快速选择（笔刷 + 标签/连通扩展）
-modules/behavior/magic_wand.js        魔棒（由 quick_select 复用其扩展函数）
-modules/behavior/pen.js               钢笔（贝塞尔 + 采样成 OSM 节点链）
-modules/core/betterid_clipboard.js    复制/原位粘贴/重复变换的状态与 action 组合
-modules/behavior/adobe_shortcuts.js   Adobe 快捷键层（滚轮/空格/Alt 单击/变换与剪贴板快捷键）
-modules/svg/betterid_tools.js         工具预览层（选框形状、笔刷圆、钢笔曲线与手柄）
+modules/util/betterid_selection.js    选区几何（矩形/椭圆命中、标签相似、连通扩展）
+modules/ui/betterid_toolbar.js        左侧竖排工具栏（5 个按钮 + 选框形状 + 选项行，无说明文字）
+modules/behavior/betterid_select_tools.js  框选 / 快速选择 / 魔棒（含选框与笔刷预览层）
+modules/behavior/betterid_pen.js      钢笔（贝塞尔 + 采样成 OSM 节点链，含曲线与手柄预览）
+modules/behavior/betterid_adobe.js    Adobe 快捷键层（滚轮/空格/Alt 单击/变换与剪贴板快捷键）
 css/85_betterid_tools.css             左侧工具栏与预览层样式
 ```
+
+- 工具通过 `context.install(behavior)` 安装，只在 OSM 数据层可编辑时生效；工具栏按钮切换 `betterid.tools.active`。
+- 工具栏只保留图标按钮与当前工具的选项行（框选形状、笔刷大小、容差、连续）；没有工具时不留空白的选项区，
+  宽度上限 150px。说明文字不进工具栏，快捷键说明写在偏好设置的对应条目里。
 
 - 工具通过 `context.install(behavior)` 安装，只在 OSM 数据层可编辑时生效；工具栏按钮切换 `betterid.tools.active`。
 - 选择结果统一走 `context.enter(modeSelect(context, ids))`，与 iD 的侧栏/校验/上传流程天然一致。

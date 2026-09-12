@@ -44,6 +44,9 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   Alt+wheel zooms at the pointer, hold Space to pan, Alt+click copies the hex
   colour under the pointer, Ctrl+T transforms, Ctrl+J duplicates,
   Ctrl+Shift+V pastes in place and Ctrl+Alt+Shift+T repeats the transform.
+  It is toggled in **Preferences → Editing**, next to the JOSM-compatible
+  shortcut switch, and the palette itself stays a compact icon strip
+  (tool options appear only for the active tool).
 * Merge upstream iD 2.42.0 (the upstream `release` branch) while keeping the
   BetteriD features: the fork's military-area edit policy, BetteriD locale
   overrides, AI tag assistant, image/lanes fields, address extraction and the

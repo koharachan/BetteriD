@@ -8,11 +8,17 @@ import {
     setTranslationLanguages
 } from '../../../modules/core/betterid_preferences';
 import { prefs } from '../../../modules/core/preferences';
+import {
+    BETTERID_ADOBE_SHORTCUTS_PREF,
+    adobeShortcutsEnabled,
+    setAdobeShortcuts
+} from '../../../modules/core/betterid_tools';
 
 
 describe('BetteriD preferences', function() {
     afterEach(function() {
         Object.values(BETTERID_PREFS).forEach(key => prefs(key, null));
+        prefs(BETTERID_ADOBE_SHORTCUTS_PREF, null);
     });
 
     it('keeps experimental features off until both switches are enabled', function() {
@@ -57,5 +63,17 @@ describe('BetteriD preferences', function() {
         expect(getProviderOrder('search')).toEqual(['kimi', 'openai']);
         expect(getProviderOrder('text')).toEqual(['mimo', 'openai', 'deepseek']);
         expect(getProviderOrder('vision')).toEqual(['mimo', 'openai']);
+    });
+
+    it('keeps the Adobe shortcut layer on by default and remembers the toggle', function() {
+        expect(adobeShortcutsEnabled()).toBe(true);
+
+        setAdobeShortcuts(false);
+        expect(adobeShortcutsEnabled()).toBe(false);
+        expect(prefs(BETTERID_ADOBE_SHORTCUTS_PREF)).toEqual('false');
+
+        setAdobeShortcuts(true);
+        expect(adobeShortcutsEnabled()).toBe(true);
+        expect(prefs(BETTERID_ADOBE_SHORTCUTS_PREF)).toEqual('true');
     });
 });
