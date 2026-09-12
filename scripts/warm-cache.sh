@@ -36,8 +36,6 @@ if ! flock -n 9; then
   exit 0
 fi
 
-[ -d "$DIST" ] || { echo "dist dir $DIST not found" >&2; exit 1; }
-
 # The build stamps every asset URL with `?v=<build>`, which is also part of the
 # cache key, so warming the wrong value would warm nothing useful: read it from
 # the live editor, and fall back to the deployed index.html if that fetch fails.
@@ -51,6 +49,16 @@ done
 if [ -z "$VERSION" ]; then
   IDX="${INDEX_HTML:-$(dirname "$DIST")/index.html}"
   [ -f "$IDX" ] && VERSION=$(grep -oE 'iD\.min\.js\?v=[0-9]+' "$IDX" | head -1 | sed 's/.*v=//')
+fi
+[ -n "${VERSION:-}" ] || echo "$(date '+%F %T') warning: could not read the build version from $HOST" >> "$LOG"
+
+# A checkout of dist/ lets the script warm only the files that actually shipped;
+# on a machine without it (a spare edge box) the built-in list is used as-is.
+HAVE_DIST=0
+[ -d "$DIST" ] && HAVE_DIST=1
+if [ "$HAVE_DIST" = 0 ] && [ "${FULL:-0}" = 1 ]; then
+  echo "FULL=1 needs $DIST" >&2
+  exit 1
 fi
 
 BASE="https://$HOST"
@@ -70,8 +78,10 @@ trap 'rm -f "$PRIORITY" $ALL' EXIT
            nsi/dist/json/nsi.min.json nsi/dist/wikidata/wikidata.min.json \
            nsi/dist/json/replacements.min.json \
            tagging-schema/dist/presets.min.json tagging-schema/dist/fields.min.json \
-           tagging-schema/dist/defaults.min.json tagging-schema/dist/deprecated.min.json; do
-    [ -f "$DIST/$f" ] || continue
+           tagging-schema/dist/deprecated.min.json; do
+    if [ "$HAVE_DIST" = 1 ]; then
+      [ -f "$DIST/$f" ] || continue
+    fi
     case "$f" in
       nsi/*|tagging-schema/*) echo "$BASE/id/dist/$f" ;;
       *) [ -n "${VERSION:-}" ] && echo "$BASE/id/dist/$f?v=$VERSION" ;;
@@ -136,18 +146,26 @@ SEL=$(echo "$SORTED" | awk -v max="$MAXRTT" '$1 <= max {print $2}' \
 [ -n "${SEL// /}" ] || SEL=$(echo "$SORTED" | head -1 | awk '{print $2}')
 echo "$(date '+%F %T') probes: $(echo "$SORTED" | tr '\n' ' ')| warming ${SEL:-none}" >> "$LOG"
 
+# The probe only tells us whether the edge is reachable and how fast it answers a
+# cached page - a distant edge can still take minutes to pull the rest, so every
+# edge also gets a hard wall-clock budget.
+EDGE_TIMEOUT="${EDGE_TIMEOUT:-90}"
 for ip in $SEL; do
   START=$(date +%s)
-  CODES=$(xargs -a "$PRIORITY" -P "$PARA" -n 1 \
-            curl -s -o /dev/null --max-time 180 -A "$UA" -H 'Accept-Encoding: br, gzip' \
-                 --resolve "$HOST:443:$ip" -w '%{http_code}\n' \
-          | sort | uniq -c | tr '\n' ' ')
-  MSG="priority $ip -> $CODES"
-  if [ -n "$ALL" ]; then
-    CODES=$(xargs -a "$ALL" -P "$PARA" -n 1 \
+  CODES=$(timeout -k 5 "$EDGE_TIMEOUT" \
+            xargs -a "$PRIORITY" -P "$PARA" -n 1 \
               curl -s -o /dev/null --max-time 180 -A "$UA" -H 'Accept-Encoding: br, gzip' \
                    --resolve "$HOST:443:$ip" -w '%{http_code}\n' \
-            | sort | uniq -c | tr '\n' ' ')
+          || echo TIMEOUT)
+  CODES=$(printf '%s\n' "$CODES" | sort | uniq -c | tr '\n' ' ')
+  MSG="priority $ip -> $CODES"
+  if [ -n "$ALL" ]; then
+    CODES=$(timeout -k 5 "$EDGE_TIMEOUT" \
+              xargs -a "$ALL" -P "$PARA" -n 1 \
+                curl -s -o /dev/null --max-time 180 -A "$UA" -H 'Accept-Encoding: br, gzip' \
+                     --resolve "$HOST:443:$ip" -w '%{http_code}\n' \
+            || echo TIMEOUT)
+    CODES=$(printf '%s\n' "$CODES" | sort | uniq -c | tr '\n' ' ')
     MSG="$MSG | full $CODES"
   fi
   echo "$(date '+%F %T') $MSG ($(( $(date +%s) - START ))s)" >> "$LOG"

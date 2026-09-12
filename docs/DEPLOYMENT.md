@@ -80,7 +80,8 @@ tail -5 /var/log/betterid-warm.log
 ```
 
 环境变量：`EDGES`（跳过解析、直接指定 IP）、`SEED_EDGES`（默认始终把中国方向边缘列为候选）、
-`MAXRTT` / `WARMN`（探测阈值与上限）、`FULL=1`（把 `dist/` 全部文件也预热，约 50MB/边缘）、
+`MAXRTT` / `WARMN`（探测阈值与上限）、`EDGE_TIMEOUT`（单条边缘的墙钟预算，默认 90 秒，
+超过就记 `TIMEOUT` 换下一条）、`FULL=1`（把 `dist/` 全部文件也预热，约 50MB/边缘）、
 `PARA`（并发数，默认 6）。`000` 表示连接失败/超时，先看是不是被 `MAXRTT` 误杀，
 再考虑把 `PARA` 调小。脚本用 `flock` 防重入，定时器与手动执行可以并存。
 
