@@ -98,6 +98,12 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   removing ~23MB of cross-border third-party requests.
 * Cache versioned build outputs for a week (`max-age=604800, immutable`) and
   raise the CDN's `json|xml` rule from 1 hour to 7 days.
+* Give the vendored preset / name-suggestion-index files an explicit one-day
+  origin lifetime (`max-age=86400`); they are fetched without a `?v=` cache
+  buster, so they previously fell back to the one-hour default.
+* Add a cache warmer (`/opt/betterid/warm-cache.sh` plus a systemd timer on the
+  origin) that re-pulls the editor, preset and NSI URLs every 25 minutes, so the
+  first visitor after a CDN eviction no longer pays for the cold pull.
 
 #### :bug: Bugfixes
 * Fix the privacy upload never showing the "upload complete" screen and leaving

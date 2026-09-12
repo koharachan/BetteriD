@@ -1200,11 +1200,20 @@ impl OsmProxy {
         // iD requests its build outputs with a `?v=<build>` cache buster, so a
         // versioned asset can be cached for a long time (the CDN keeps js/css
         // even longer); everything else stays on the short default.
+        // Cache lifetime by asset kind:
+        //   - `?v=<build>` assets are content-addressed by the cache buster, so
+        //     they can be cached for a week and marked immutable
+        //   - the vendored preset / name-suggestion-index data is fetched without
+        //     a version, so it gets a day (the CDN's own json rule is longer, but
+        //     it honours this header)
+        //   - everything else keeps the short default
         let versioned = query
             .map(|value| value.split('&').any(|pair| pair.starts_with("v=")))
             .unwrap_or(false);
         let cache_control = if versioned {
             "public, max-age=604800, immutable"
+        } else if relative.starts_with("nsi/") || relative.starts_with("tagging-schema/") {
+            "public, max-age=86400"
         } else {
             "public, max-age=3600"
         };

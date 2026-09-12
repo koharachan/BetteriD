@@ -49,6 +49,24 @@ pnpm run all
   `iD.min.js` 2.16MB → 600KB、`nsi.min.json` 12.2MB → 1.5MB。
 - 边缘（CDN）侧确认：静态资源命中缓存、压缩已开启、动态接口（`/api/*`）因上游
   `no-store` 不被缓存；`json|xml` 规则缓存 7 天可减少大文件回源。
+- 未带 `?v=` 的预置数据（`/id/dist/nsi/`、`/id/dist/tagging-schema/`）由源站显式返回
+  `max-age=86400`，CDN 侧 `json|xml` 规则给 7 天；其余静态资源默认一小时。
+
+### 缓存预热
+
+CDN 淘汰或首次回源时，第一个访客要等一次跨境冷拉（大文件尤其明显）。源站上装了
+预热脚本与 systemd 定时器，每 25 分钟把编辑器、预置与 NSI 的 URL 过一遍：
+
+```bash
+install -m 755 warm-cache.sh /opt/betterid/warm-cache.sh
+install -m 644 betterid-warm.service betterid-warm.timer /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now betterid-warm.timer
+systemctl list-timers betterid-warm.timer
+curl -s -o /dev/null -w '%{http_code}\n' https://<domain>/id/dist/nsi/nsi.min.json  # 200
+```
+
+日志在 `/var/log/betterid-warm.log`，每行记录 URL 总数与 HTTP 状态码分布
+（`codes: N 200` 即全部成功；出现 `000` 说明并发连接被拒，把 `-P 8` 调小）。
 
 ## 构建与发布
 
@@ -139,6 +157,27 @@ docker run -d --name betterid --restart=always \
 
 无论哪种形态，回源都走明文 HTTP，因此不要把 `OSM_LISTEN_ADDR` 暴露成需要
 额外 TLS 的形态。
+
+### 可选的第二层边缘缓存（Nginx）
+
+当某个区域到 CDN 边缘的选路不理想时，可以在就近机房再加一台 Nginx 做二级缓存，
+让域名或该地区的 CNAME 指向它，它再回源到主源站。要点：
+
+```nginx
+proxy_cache_path /var/cache/nginx/betterid levels=1:2 keys_zone=betterid:64m
+                 max_size=8g inactive=7d use_temp_path=off;
+proxy_cache_key "$scheme$host$request_uri";
+proxy_set_header Accept-Encoding "";   # 由这台机器统一压缩，避免双重压缩
+gzip on; gzip_types text/css application/javascript application/json application/xml image/svg+xml;
+add_header X-Edge-Cache $upstream_cache_status;
+```
+
+- 只缓存 `GET/HEAD`，`/api/*` 与 `/callback` 一律 `proxy_no_cache`，保持直通。
+- `proxy_cache_valid` 按资源类型给：版本化静态资源 7 天、`nsi/`+`tagging-schema/` 1 天、
+  其余 1 小时，与源站的 `Cache-Control` 保持一致。
+- 该机器到源站应选同区域的小延迟链路：实测同区域约 4–5 ms，跨区域边缘回源会明显变慢。
+- 域名不在手上时无法在该机器上签公共证书；等 DNS 指向它之后再用 ACME 签发，
+  并确认 `X-Edge-Cache` 从 `MISS` 变成 `HIT`。
 
 ## 上线检查清单
 
