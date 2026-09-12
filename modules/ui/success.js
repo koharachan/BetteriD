@@ -227,8 +227,8 @@ export function uiSuccess(context) {
           if (!area) return;
 
           // Resolve strings
-          const localizer = (stringID) => t.html(`community.${stringID}`);
-          resource.resolved = resolveStrings(resource, oci.defaults, localizer);
+          const _localizer = (stringID) => localizer.t_html(`community.${stringID}`);
+          resource.resolved = resolveStrings(resource, oci.defaults, _localizer);
 
           communities.push({
             area: area,

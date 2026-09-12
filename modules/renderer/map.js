@@ -364,6 +364,7 @@ export function rendererMap(context) {
 
         map.dimensions(utilGetDimensions(selection));
     }
+    map.surface = undefined; // defined later
 
 
     function startRightDrag(d3_event) {
@@ -1593,6 +1594,7 @@ export function rendererMap(context) {
     };
 
 
+    /** @type {GetSet<typeof map, geoExtent>} */
     map.extent = function(val) {
         if (!arguments.length) {
             return new geoExtent(

@@ -27,6 +27,11 @@ declare global {
     (): T;
   }
 
+  declare type Callback<T> = {
+    (error: Error, data?: undefined): void;
+    (error: null, data: T): void;
+  };
+
   declare namespace iD {
     export type Context = ReturnType<typeof iD.coreContext>;
 
@@ -42,19 +47,26 @@ declare global {
   }
 
   declare namespace d3 {
-    export type Selection<T = any> = import('d3-selection').Selection<
+    export type Selection<T = HTMLElement> = import('d3-selection').Selection<
       T,
       any,
       any,
       unknown
     >;
 
-    export type Selector = (selection: Selection) => void;
+    export type Selector = <T extends HTMLElement>(selection: Selection<T>) => void;
   }
 
     interface ObjectConstructor {
         // custom overload so that `Object.keys(Record<T, …>)` returns `T[]`
         keys<T>(o: T extends Record<infer K, unknown> ? [K] extends [string] ? T : never : never): (keyof T)[];
+    }
+
+    // override to make Array#filter(Boolean) work,
+    // from https://github.com/mattpocock/ts-reset
+    type NonFalsy<T> = T extends false | 0 | 0n | '' | null | undefined ? never : T;
+    interface Array<T> {
+        filter<S extends T>(predicate: BooleanConstructor, thisArg?: any): NonFalsy<S>[];
     }
 
     interface ParentNode extends Node {

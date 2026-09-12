@@ -15,8 +15,9 @@ import {
 import { osmIdManager } from '../osm';
 
 /**
- * @import { WayId, OsmEntity } from '../osm';
+ * @import { WayId, OsmEntity, EntityId } from '../osm';
  * @import { coreGraph } from './graph';
+ * @import { LocalizedTextRenderer } from './localizer';
  * @import { Vec2 } from '../geo/vector';
  * @template [T = never]
  * @typedef {{
@@ -31,6 +32,34 @@ import { osmIdManager } from '../osm';
     getReflectAxis?(graph: coreGraph): Vec2[];
  }} Action */
 
+/** @typedef {{
+    (event?: KeyboardEvent): void;
+    available(situation: string): boolean | string | undefined;
+    disabled(): false | string;
+    tooltip(): LocalizedTextRenderer;
+    annotation(): string;
+    availableForKeypress?(): boolean;
+    icon?(): string;
+    id: string;
+    keys: string[];
+    title: LocalizedTextRenderer;
+    behavior?: unknown;
+    mouseOnly?: boolean;
+    relatedEntityIds?(): EntityId[];
+    point?(point: Vec2): unknown;
+    getAuxiliaryGeometry?(): {
+        id: string;
+        path: string;
+        klass: string;
+    }[];
+    interrupts?: {
+        [interruptId: string]: () => Promise<void>;
+    };
+}} Operation */
+
+/** @typedef {(context: iD.Context, selectedIDs: EntityId[]) => Operation} CreateOperation */
+
+/** @typedef {ReturnType<typeof coreHistory>} coreHistory */
 
 export function coreHistory(context) {
     var dispatch = d3_dispatch('reset', 'change', 'merge', 'restore', 'undone', 'redone', 'storage_error');

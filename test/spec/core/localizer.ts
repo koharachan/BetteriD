@@ -1,0 +1,148 @@
+import { select as d3_select } from 'd3-selection';
+import { vi } from 'vitest';
+
+describe('iD.coreLocalizer', function() {
+    describe('#localized-text', function() {
+        it('appends localized text to the DOM', function() {
+            var selection = d3_select(document.createElement('div'));
+            selection.call(iD.localizer.t_append('icons.download' /* <- just any random string */));
+            expect(selection.selectChild().classed('localized-text')).toBe(true);
+        });
+    });
+    describe('#floatFormatter', function () {
+        it('uses the specified number of fraction digits', function () {
+            var localizer = new iD.coreLocalizer();
+            var formatFloat = localizer.floatFormatter('en');
+            expect(formatFloat(-0.1)).toEqual('-0.1');
+            expect(formatFloat(-0.1, 0)).toEqual('-0');
+            expect(formatFloat(-0.1, 2)).toEqual('-0.10');
+            expect(formatFloat(0.0, 1)).toEqual('0.0');
+        });
+        it('roundtrips English numbers', function () {
+            var localizer = new iD.coreLocalizer();
+            var parseFloat = localizer.floatParser('en');
+            var formatFloat = localizer.floatFormatter('en');
+            expect(formatFloat(parseFloat('0.1'))).toEqual('0.1');
+            expect(formatFloat(parseFloat('.1'))).toEqual('0.1');
+            expect(formatFloat(parseFloat('-0.1'))).toEqual('-0.1');
+            expect(formatFloat(parseFloat('1.234'))).toEqual('1.234');
+            expect(formatFloat(parseFloat('1234'))).toEqual('1,234');
+            expect(formatFloat(parseFloat('1234.56'))).toEqual('1,234.56');
+            expect(formatFloat(parseFloat('3.14159'))).toEqual('3.14159');
+        });
+    });
+    describe('#floatParser', function () {
+        it('roundtrips English numbers', function () {
+            var localizer = new iD.coreLocalizer();
+            var formatFloat = localizer.floatFormatter('en');
+            var parseFloat = localizer.floatParser('en');
+            expect(parseFloat(formatFloat(-0.1))).toEqual(-0.1);
+            expect(parseFloat(formatFloat(1.234))).toEqual(1.234);
+            expect(parseFloat(formatFloat(1234))).toEqual(1234);
+            expect(parseFloat(formatFloat(1234.56))).toEqual(1234.56);
+            expect(parseFloat(formatFloat(3.14159))).toEqual(3.14159);
+        });
+        it('roundtrips Spanish numbers', function () {
+            var localizer = new iD.coreLocalizer();
+            var formatFloat = localizer.floatFormatter('es');
+            var parseFloat = localizer.floatParser('es');
+            expect(parseFloat(formatFloat(-0.1))).toEqual(-0.1);
+            expect(parseFloat(formatFloat(1.234))).toEqual(1.234);
+            expect(parseFloat(formatFloat(1234))).toEqual(1234);
+            expect(parseFloat(formatFloat(1234.56))).toEqual(1234.56);
+            expect(parseFloat(formatFloat(3.14159))).toEqual(3.14159);
+        });
+        it('roundtrips Hebrew numbers', function () {
+            var localizer = new iD.coreLocalizer();
+            var formatFloat = localizer.floatFormatter('he');
+            var parseFloat = localizer.floatParser('he');
+            expect(parseFloat(formatFloat(-0.1))).toEqual(-0.1);
+            expect(parseFloat(formatFloat(1.234))).toEqual(1.234);
+            expect(parseFloat(formatFloat(1234))).toEqual(1234);
+            expect(parseFloat(formatFloat(1234.56))).toEqual(1234.56);
+            expect(parseFloat(formatFloat(3.14159))).toEqual(3.14159);
+        });
+        it('roundtrips Arabic numbers', function () {
+            var localizer = new iD.coreLocalizer();
+            var formatFloat = localizer.floatFormatter('ar-EG');
+            var parseFloat = localizer.floatParser('ar-EG');
+            expect(parseFloat(formatFloat(-0.1))).toEqual(-0.1);
+            expect(parseFloat(formatFloat(1.234))).toEqual(1.234);
+            expect(parseFloat(formatFloat(1234))).toEqual(1234);
+            expect(parseFloat(formatFloat(1234.56))).toEqual(1234.56);
+            expect(parseFloat(formatFloat(3.14159))).toEqual(3.14159);
+        });
+        it('roundtrips Bengali numbers', function () {
+            var localizer = new iD.coreLocalizer();
+            var formatFloat = localizer.floatFormatter('bn');
+            var parseFloat = localizer.floatParser('bn');
+            expect(parseFloat(formatFloat(-0.1))).toEqual(-0.1);
+            expect(parseFloat(formatFloat(1.234))).toEqual(1.234);
+            expect(parseFloat(formatFloat(1234))).toEqual(1234);
+            expect(parseFloat(formatFloat(1234.56))).toEqual(1234.56);
+            expect(parseFloat(formatFloat(3.14159))).toEqual(3.14159);
+        });
+    });
+    describe('#decimalPlaceCounter', function () {
+        it('counts decimal places in English numbers', function () {
+            var localizer = new iD.coreLocalizer();
+            var countDecimalPlaces = localizer.decimalPlaceCounter('en');
+            expect(countDecimalPlaces('-0')).toEqual(0);
+            expect(countDecimalPlaces('-0.1')).toEqual(1);
+            expect(countDecimalPlaces('1.234')).toEqual(3);
+            expect(countDecimalPlaces('10')).toEqual(0);
+        });
+    });
+
+    describe('#ensureLoaded', function() {
+        it('loads general translations when a supplemental translation index fails', async function() {
+            const originalGet = iD.fileFetcher.get.bind(iD.fileFetcher);
+            const getSpy = vi.spyOn(iD.fileFetcher, 'get').mockImplementation(which =>
+                which === 'locales_index_tagging'
+                    ? Promise.reject(new Error('supplemental translations unavailable'))
+                    : originalGet(which)
+            );
+            const warnSpy = vi.spyOn(globalThis.console, 'warn').mockImplementation(() => {});
+
+            try {
+                const localizer = iD.coreLocalizer();
+                localizer.preferredLocaleCodes('en');
+                await localizer.ensureLoaded();
+                expect(localizer.t('icons.download')).toEqual('download');
+            } finally {
+                getSpy.mockRestore();
+                warnSpy.mockRestore();
+            }
+        });
+    });
+
+    describe('localesToUseFrom', () => {
+        const SUPPORTED_LANGS = {
+            en: true,
+            'en-AU': true,
+            fr: true,
+            zh: true,
+            'zh-CN': true,
+        };
+
+        it.each([
+            /* [requested, matching] */
+            [[], ['en']],
+            [['en'], ['en']],
+            [['en-AU'], ['en-AU', 'en']],
+            [['zh'], ['zh', 'en']],
+            [['zh-CN'], ['zh-CN', 'zh', 'en']],
+            [['zh-Hans-CN'], ['zh-CN', 'zh', 'en']],
+            [['zh-Hans'], ['zh', 'en']],
+            [['fr-Latn'], ['fr', 'en']],
+        ])('resolves %s to %s', (requested, matching) => {
+            const localizer = new iD.coreLocalizer();
+            localizer.preferredLocaleCodes(requested);
+            expect(localizer.localesToUseFrom(SUPPORTED_LANGS)).toStrictEqual(matching);
+        });
+
+        afterEach(() => {
+            new iD.coreLocalizer().preferredLocaleCodes([]);
+        });
+    });
+});

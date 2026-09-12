@@ -19,7 +19,7 @@ import type {
 } from 'name-suggestion-index';
 import type { ShortcutsJSON } from '../ui/shortcuts.js';
 import type { QAData } from '../services/osmose.js';
-import type { LanguagesJSON, LocalesJSON, Translations } from './localizer.js';
+import type { LanguagesJSON, LocaleDataKey, LocaleIndexKey, LocalesJSON, Translations } from './localizer.js';
 import type { AddressFormatsJSON } from '../ui/fields/address.js';
 import type { WmfSite } from '../ui/fields/wikipedia.js';
 import type { EntityId } from '../osm/id_manager.js';
@@ -61,7 +61,8 @@ interface Definitions {
   nsi_trees: NsiTreesJSON;
   nsi_wikidata: NsiWikidataJSON;
 
-  'locales_index_*': { [locale: string]: Translations };
+  [scope: LocaleIndexKey]: LocalesJSON;
+  [lng: LocaleDataKey]: { [locale: string]: Translations };
 };
 
 export type FileId = keyof Definitions;
@@ -137,7 +138,7 @@ export function coreFileFetcher() {
     }
 
     if (!url) {
-      return Promise.reject(`Unknown data file for "${which}"`);
+      return Promise.reject(new Error(`Unknown data file for "${which}"`));
     }
 
     if (url.includes('{presets_version}')) {
