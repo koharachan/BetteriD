@@ -137,12 +137,16 @@ cargo run
 打开 <http://127.0.0.1:9178/id/>。OAuth 回调、AI 提供商、照片存储和反向代理配置见
 [p/README.md](p/README.md)。Windows + Visual Studio 用户也可以在 `p` 目录运行 `run-vs.cmd`。
 
+线上实例的容器化部署（镜像构建、回源切换、上线检查、密钥与主机信息管理）见
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+
 所有提供商密钥只应配置在代理进程或 `.env` 中，不得写入前端源码、提交到 Git，或返回给浏览器。
 
 ## 文档
 
 - [BetteriD Web Editor MCP](mcp/README.md)
 - [代理部署与 API](p/README.md)
+- [生产部署](docs/DEPLOYMENT.md)
 - [0.0.2 功能设计与实现说明](docs/superpowers/specs/2026-07-14-id-cn-ai-features-design.md)
 - [贡献指南](CONTRIBUTING.md)
 - [版本记录](CHANGELOG.md)

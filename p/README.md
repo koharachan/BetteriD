@@ -130,6 +130,18 @@ Keep TLS termination, upload body limits, and request timeouts aligned with the
 application limits. Do not cache authenticated OSM API responses or AI POST
 responses at the reverse proxy.
 
+## Production deployment
+
+The production instance runs the compiled `osm` binary as a single container
+(`dist/` plus the same-origin proxy on `0.0.0.0:9178`), with TLS terminated by an
+edge/CDN in front. Configuration lives in a `chmod 600` env file on the host, and
+`cache/` / `photo-uploads/` are bind-mounted so container rebuilds keep data.
+
+Run it with host networking on hosts whose FORWARD chain is set to `DROP`:
+published ports (`-p 9178:9178`) are unreachable from outside while
+`curl 127.0.0.1:9178` still works. Full build recipe, switchover checklist and
+secret-handling rules: [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md).
+
 ## Verification
 
 ```bash
