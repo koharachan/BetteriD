@@ -73935,11 +73935,12 @@ ${tag}` : tag;
       context.ui().flash.duration(2e3).iconName("#iD-icon-save").iconClass("operation").label(_t("commit.privacy_uploading"))();
       utilPrivacyUpload(context, tags).then(function(result2) {
         _privacyBusy = false;
-        context.history().clearSaved();
-        context.ui().flash.duration(6e3).iconName("#iD-icon-save").iconClass("operation").label(_t("commit.privacy_success", { changeset: result2.changeset }) + " " + result2.url)();
-        window.setTimeout(function() {
-          context.flush();
-        }, 2500);
+        context.ui().flash.duration(2500).iconName("#iD-icon-save").iconClass("operation").label(_t("commit.privacy_success", { changeset: result2.changeset }))();
+        context.uploader().privatelyUploaded({
+          id: result2.changeset,
+          url: result2.url,
+          tags
+        });
       }).catch(function(err) {
         _privacyBusy = false;
         updatePrivacyButton();
@@ -79538,7 +79539,7 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
       _saveLoading = uiLoading(context).message(_t.addOrUpdate("save.uploading")).blocking(true);
       context.container().call(_saveLoading);
     }).on("saveEnded.ui", function() {
-      _saveLoading.close();
+      if (!_saveLoading.empty()) _saveLoading.close();
       _saveLoading = select_default2(null);
     });
     g.use({
@@ -82063,6 +82064,19 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
       _isSaving = false;
       dispatch12.call("saveEnded", this);
     }
+    uploader.privatelyUploaded = function(changeset) {
+      dispatch12.call("willAttemptUpload", this, changeset);
+      context.history().clearSaved();
+      _uploadedChangesets = [changeset];
+      dispatch12.call("resultSuccess", this, changeset, _uploadedChangesets.slice());
+      window.setTimeout(function() {
+        try {
+          endSave();
+        } finally {
+          context.flush();
+        }
+      }, 2500);
+    };
     uploader.cancelConflictResolution = function() {
       context.history().pop();
     };

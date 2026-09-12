@@ -110,15 +110,19 @@ export function uiCommit(context) {
         utilPrivacyUpload(context, tags)
             .then(function(result) {
                 _privacyBusy = false;
-                context.history().clearSaved();
                 context.ui().flash
-                    .duration(6000)
+                    .duration(2500)
                     .iconName('#iD-icon-save')
                     .iconClass('operation')
-                    .label(t('commit.privacy_success', { changeset: result.changeset }) + ' ' + result.url)();
-                window.setTimeout(function() {
-                    context.flush();   // reset iD
-                }, 2500);
+                    .label(t('commit.privacy_success', { changeset: result.changeset }))();
+
+                // hand the changeset to the uploader so the normal success
+                // screen shows and the editor resets (changes cleared)
+                context.uploader().privatelyUploaded({
+                    id: result.changeset,
+                    url: result.url,
+                    tags: tags
+                });
             })
             .catch(function(err) {
                 _privacyBusy = false;

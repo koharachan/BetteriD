@@ -90,6 +90,12 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   `当前聚焦楼层：1;2;3;4;5;6`, instead of dimming other floors without explanation.
 
 #### :bug: Bugfixes
+* Fix the privacy upload never showing the "upload complete" screen and leaving
+  the changes in place: the result was finished through the uploader
+  (`privatelyUploaded`), but `saveEnded` fired without a matching `saveStarted`,
+  so the UI's loading-modal handler threw `_saveLoading.close is not a function`
+  and the `context.flush()` that clears the edits never ran. The handler now
+  tolerates the empty modal and the reset always runs, even if a listener throws.
 * Fix privacy upload failing with `OSM returned 400: Changeset id is missing for
   Node -1`. The editor exports a standalone osmChange document (no `changeset`
   attribute), but `/changeset/{id}/upload` requires one on every element, and the

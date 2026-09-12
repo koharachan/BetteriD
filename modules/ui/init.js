@@ -734,7 +734,9 @@ export function uiInit(context) {
             context.container().call(_saveLoading);  // block input during upload
         })
         .on('saveEnded.ui', function() {
-            _saveLoading.close();
+            // a privacy upload reports its result without a matching
+            // `saveStarted`, so the loading modal may not have been created
+            if (!_saveLoading.empty()) _saveLoading.close();
             _saveLoading = d3_select(null);
         });
 

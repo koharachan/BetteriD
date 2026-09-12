@@ -475,6 +475,30 @@ export function coreUploader(context) {
     }
 
 
+    /**
+     * Finish a changeset that was uploaded outside this pipeline (the
+     * server-side "privacy" upload): run the same success flow the uploader
+     * would have run, so the success screen shows and the editor resets.
+     *
+     * @param {{ id: string|number }} changeset
+     */
+    uploader.privatelyUploaded = function(changeset) {
+        dispatch.call('willAttemptUpload', this, changeset);
+        context.history().clearSaved();
+        _uploadedChangesets = [changeset];
+        dispatch.call('resultSuccess', this, changeset, _uploadedChangesets.slice());
+
+        // Add delay to allow for postgres replication #1646 #2678
+        window.setTimeout(function() {
+            try {
+                endSave();
+            } finally {
+                context.flush();   // reset iD (always, even if a listener threw)
+            }
+        }, 2500);
+    };
+
+
     uploader.cancelConflictResolution = function() {
         context.history().pop();
     };
