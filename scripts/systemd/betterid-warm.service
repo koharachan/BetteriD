@@ -1,0 +1,7 @@
+[Unit]
+Description=Warm the BetteriD CDN cache with the deployed assets
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/betterid/warm-cache.sh

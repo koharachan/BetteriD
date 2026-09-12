@@ -1246,8 +1246,10 @@ name = "osm"
 version = "0.9.9-rc-1"
 dependencies = [
  "base64",
+ "brotli",
  "bytes",
  "env_logger",
+ "flate2",
  "futures-util",
  "http 0.2.12",
  "hyper 0.14.32",

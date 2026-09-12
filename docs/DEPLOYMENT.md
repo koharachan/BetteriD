@@ -55,18 +55,34 @@ pnpm run all
 ### 缓存预热
 
 CDN 淘汰或首次回源时，第一个访客要等一次跨境冷拉（大文件尤其明显）。源站上装了
-预热脚本与 systemd 定时器，每 25 分钟把编辑器、预置与 NSI 的 URL 过一遍：
+预热脚本与 systemd 定时器，每 25 分钟把编辑器启动所需的资源过一遍：
 
 ```bash
-install -m 755 warm-cache.sh /opt/betterid/warm-cache.sh
-install -m 644 betterid-warm.service betterid-warm.timer /etc/systemd/system/
+install -m 755 scripts/warm-cache.sh /opt/betterid/warm-cache.sh
+install -m 644 scripts/systemd/betterid-warm.{service,timer} /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now betterid-warm.timer
 systemctl list-timers betterid-warm.timer
-curl -s -o /dev/null -w '%{http_code}\n' https://<domain>/id/dist/nsi/nsi.min.json  # 200
 ```
 
-日志在 `/var/log/betterid-warm.log`，每行记录 URL 总数与 HTTP 状态码分布
-（`codes: N 200` 即全部成功；出现 `000` 说明并发连接被拒，把 `-P 8` 调小）。
+关键点：**预热必须打对边缘节点**。同一个域名在不同解析器下会拿到不同边缘，脚本因此先
+用 AliDNS / DNSPod / Google / Cloudflare 解析出候选边缘，逐个探测 `/id/` 的 TTFB，
+只预热响应快的那些（`MAXRTT=5` 秒，默认最多 3 个），再按候选 IP 用 `--resolve` 直接打过去。
+实测过：源站自己的解析器把请求指到一个很远的边缘，同样 14 个 URL 要 193 秒且丢两个连接，
+而中国方向边缘（AliDNS 解析到的 IP）2 秒跑完 —— 从这个对比也能看出「慢」的来源是选路，
+不是源站或缓存配置。
+
+```bash
+# 手动跑一次并看每条边缘的结果
+/opt/betterid/warm-cache.sh
+tail -5 /var/log/betterid-warm.log
+# probes: 0.79 <edge-a> 0.82 <edge-b> 13.2 <edge-c> | warming <edge-a> <edge-b>
+# priority <edge-a> ->      14 200  (3s)
+```
+
+环境变量：`EDGES`（跳过解析、直接指定 IP）、`SEED_EDGES`（默认始终把中国方向边缘列为候选）、
+`MAXRTT` / `WARMN`（探测阈值与上限）、`FULL=1`（把 `dist/` 全部文件也预热，约 50MB/边缘）、
+`PARA`（并发数，默认 6）。`000` 表示连接失败/超时，先看是不是被 `MAXRTT` 误杀，
+再考虑把 `PARA` 调小。脚本用 `flock` 防重入，定时器与手动执行可以并存。
 
 ## 构建与发布
 

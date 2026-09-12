@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically warm the BetteriD CDN cache
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=25min
+AccuracySec=1min
+Unit=betterid-warm.service
+
+[Install]
+WantedBy=timers.target
