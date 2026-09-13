@@ -165,6 +165,12 @@ service worker 注册会带上这个 base，`p/web/tile-sw.js` 把外部图片�
 降级顺序是：CORS fetch → `no-cors` 不透明响应 → 同源 `/tile/proxy`，所以 **DNS 还没生效、
 边缘挂了、回源 5xx 都不会让地图白屏**。
 
+瓦片机对上行带宽敏感：CDN 的每个边缘都要从这里拉瓦片，实测这台 CN2 机只有
+**~5 Mbps 上行 / ~10 Mbps 下行**（约 25–60 张瓦片/秒），源站则是 ~100 Mbps 上行 /
+~190 Mbps 下行。瓦片站点的 `backend` 是带权重的 JSON 数组，需要更多容量时可以在源站
+（`<origin host>:8964`，该端口空闲）再跑一份 `betterid-tile.service`，把两个地址都写进
+`backend` 让 CDN 轮询 + 互备。
+
 验证（从外部网络）：
 
 ```bash
