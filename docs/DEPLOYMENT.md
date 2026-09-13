@@ -165,11 +165,28 @@ service worker 注册会带上这个 base，`p/web/tile-sw.js` 把外部图片�
 降级顺序是：CORS fetch → `no-cors` 不透明响应 → 同源 `/tile/proxy`，所以 **DNS 还没生效、
 边缘挂了、回源 5xx 都不会让地图白屏**。
 
-瓦片机对上行带宽敏感：CDN 的每个边缘都要从这里拉瓦片，实测这台 CN2 机只有
-**~5 Mbps 上行 / ~10 Mbps 下行**（约 25–60 张瓦片/秒），源站则是 ~100 Mbps 上行 /
-~190 Mbps 下行。瓦片站点的 `backend` 是带权重的 JSON 数组，需要更多容量时可以在源站
-（`<origin host>:8964`，该端口空闲）再跑一份 `betterid-tile.service`，把两个地址都写进
-`backend` 让 CDN 轮询 + 互备。
+瓦片机对上行带宽敏感：CDN 的每个边缘都要从这里拉瓦片，实测 CN2 机只有
+**~5 Mbps 上行 / ~10 Mbps 下行**（约 25–60 张瓦片/秒），而源站是 ~100 Mbps 上行 /
+~190 Mbps 下行。所以两台都跑瓦片服务，CDN 按权重轮询 + 互备：
+
+```bash
+# 源站：同样的二进制（从镜像里 podman cp 出来）、同样的 nginx 配置，独立缓存目录
+#   betterid-tile.service 监听 127.0.0.1:9180，nginx 监听 0.0.0.0:8964
+# 瓦片站点（wap）的 backend 用 PUT 更新；注意 backend 必须是 JSON **数组**，
+# 传字符串会返回 `backend格式不正确`(site-54)，整包 PUT 会返回 `需要管理员权限`(site-451)
+curl -X PUT https://user.cdn1.vip/v1/sites/<site id> \
+  -H "api-key: <key>" -H "api-secret: <secret>" -H "content-type: application/json" \
+  -d '{"backend":[{"addr":"<tile host>","state":"up","weight":1},
+                  {"addr":"<origin host>","state":"up","weight":1}]}'
+```
+
+验证轮询：清点两台机器的 `betterid-tile.access.log` 行数，然后打同样数量的冷瓦片请求，
+两边增量应当接近（权重 1:1）：
+
+```bash
+for i in $(seq 1 12); do curl -s -o /dev/null "https://wap.map.osm.asia/short/16/33186/$((22800+i*7)).png"; done
+# 实测 12 次 → CN2 6 次、源站 6 次
+```
 
 验证（从外部网络）：
 
