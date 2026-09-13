@@ -127,9 +127,9 @@ CDN 面板按目录给缓存（回源超时之外还有"分片回源"）：
 
 | 目录 | 有效期 | 用途 |
 | --- | --- | --- |
-| `/long/` | 30 天 | 固定 z/x/y 的栅格瓦片（OSM 标准图等） |
-| `/mid/` | 7 天 | 会重新发布的影像（ArcGIS 等），走 `/mid/proxy?url=` |
-| `/short/` | 8 小时 | 可能变化的内容 |
+| `/short/` | 8 小时 | **OSM 标准图**——数据一变就重渲染，所以要短 |
+| `/mid/` | 7 天 | 航拍/卫星影像（ArcGIS 等），供应商很少重发，走 `/mid/proxy?url=` |
+| `/long/` | 30 天 | 静态图（logo、sprite、pattern 之类几乎不变的东西） |
 
 瓦片机（`<tile host>`）上：
 
@@ -160,7 +160,8 @@ OSM_TILE_UPSTREAM_URL=https://tile.openstreetmap.org
 
 编辑器侧用 `OSM_TILE_PROXY_BASE=https://wap.map.osm.asia` 打开：index.html 注入的
 service worker 注册会带上这个 base，`p/web/tile-sw.js` 把外部图片请求改写成
-`<base>/long/<z>/<x>/<y>.png`（固定瓦片）或 `<base>/mid/proxy?url=…`（其它影像）。
+`<base>/short/<z>/<x>/<y>.png`（OSM 标准图，会更新）或 `<base>/mid/proxy?url=…`
+（航拍/卫星等很少更新的影像；logo、sprite 这类静态资源归 `/long/`）。
 降级顺序是：CORS fetch → `no-cors` 不透明响应 → 同源 `/tile/proxy`，所以 **DNS 还没生效、
 边缘挂了、回源 5xx 都不会让地图白屏**。
 

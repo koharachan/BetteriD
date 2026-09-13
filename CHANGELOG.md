@@ -114,8 +114,10 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 #### :bug: Bugfixes
 * Split the tile proxy onto its own hostname (`wap.map.osm.asia`) and its own
   machine: the editor keeps `map.osm.asia`, tiles are served from a dedicated
-  endpoint whose CDN caches by directory (`/long/` 30 days for immutable raster
-  tiles, `/mid/` 7 days for re-published imagery, `/short/` 8 hours). The tile
+  endpoint whose CDN caches by directory (`/short/` 8 hours for the OpenStreetMap
+  raster tiles, which are re-rendered when the data changes; `/mid/` 7 days for
+  aerial and satellite imagery, which providers re-publish rarely; `/long/`
+  30 days for logos, sprites and other static art). The tile
   service worker rewrites imagery requests to that host and falls back to this
   origin (CORS, then an opaque `no-cors` response, then the same-origin proxy)
   so a missing DNS record or a cold edge can no longer blank the map. Tile

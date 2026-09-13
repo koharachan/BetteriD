@@ -6,9 +6,10 @@
 // The proxy can live on a dedicated host (for example `wap.map.osm.asia`, set
 // with `OSM_TILE_PROXY_BASE`) whose CDN caches by directory:
 //
-//   /long/   immutable tiles (OpenStreetMap raster, fixed z/x/y)   -> 30 days
-//   /mid/    re-fetched imagery (aerial/satellite providers)       -> 7 days
-//   /short/  anything that may change                              -> 8 hours
+//   /short/  the OpenStreetMap raster tiles: they are re-rendered when the
+//            data changes, so they expire after 8 hours
+//   /mid/    aerial / satellite imagery: providers re-publish it rarely -> 7 days
+//   /long/   logos, sprites and other static art -> 30 days
 //
 // The worker is registered as `/betterid/tile-sw.js?base=https%3A%2F%2Fwap.map.osm.asia`.
 // Whenever that host cannot be reached (DNS not set up yet, edge down, gateway
@@ -19,26 +20,28 @@ const PROXY_PATH = '/tile/proxy?url=';
 const PARAMS = new URL(self.location.href).searchParams;
 const BASE = (PARAMS.get('base') || '').replace(/\/+$/, '');
 
-/** Immutable map tiles belong in /long/, everything else in /mid/. */
-function isImmutableTile(target) {
+/**
+ * OpenStreetMap's own raster tiles change with the data, so they get the short
+ * bucket; everything else (aerial, satellite, historic imagery) is re-published
+ * rarely and gets the week-long one.
+ */
+function isOsmRaster(target) {
   try {
     const url = new URL(target);
     const host = url.hostname.toLowerCase();
     return host === 'tile.openstreetmap.org' ||
       host.endsWith('.tile.openstreetmap.org') ||
-      url.pathname.includes('/osm-intl/') ||
-      /\/\d+\/\d+\/\d+\.(png|jpe?g|webp)$/i.test(url.pathname);
+      host.endsWith('.openstreetmap.org');
   } catch {
     return false;
   }
 }
 
 function dedicatedUrl(target) {
-  const immutable = isImmutableTile(target);
-  if (immutable) {
+  if (isOsmRaster(target)) {
     try {
       const url = new URL(target);
-      return BASE + '/long' + url.pathname + url.search;
+      return BASE + '/short' + url.pathname + url.search;
     } catch {
       /* fall through to the generic proxy path */
     }
