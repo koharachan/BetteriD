@@ -283,6 +283,27 @@ export function behaviorBetteridPen(context) {
         var point = mouseLoc(d3_event);
         var direct = d3_event.altKey || d3_event.ctrlKey || d3_event.metaKey;
 
+        // Long-pressing a direction handle drags it (Photoshop's direct
+        // selection), which used to place a new anchor instead.
+        if (!direct) {
+            var grabbed = findHandleNear(point);
+            if (grabbed) {
+                _direct = {
+                    anchor: grabbed.anchor,
+                    which: grabbed.which,
+                    moved: false,
+                    start: point
+                };
+                context.container().classed('betterid-pen-direct', true);
+                d3_select(window)
+                    .on(prefix + 'move.betteridPen', pointermove)
+                    .on(prefix + 'up.betteridPen', pointerup);
+                d3_event.preventDefault();
+                d3_event.stopPropagation();
+                return;
+            }
+        }
+
         // Alt / Ctrl turn the pen into the direct selection tool for this gesture:
         // grab a direction handle to reshape one side only, or grab an anchor to
         // move it. (Ctrl is Photoshop's "temporarily use the direct selection
@@ -313,12 +334,24 @@ export function behaviorBetteridPen(context) {
             return;
         }
 
-        // click on the first anchor closes the path
+        // Clicking the first anchor closes the path. Holding and dragging it
+        // reshapes the join (both handles of the first anchor) and closes on
+        // release, the way Photoshop's closing drag behaves.
         if (_anchors.length > 1) {
             var first = anchorScreen(_anchors[0]);
             if (Math.hypot(first[0] - point[0], first[1] - point[1]) <= CLOSE_RADIUS_PX) {
-                _closed = true;
-                finishPath();
+                _direct = {
+                    anchor: _anchors[0],
+                    which: 'handleIn',
+                    mirrorOut: true,
+                    moved: false,
+                    start: point,
+                    closeOnRelease: true
+                };
+                context.container().classed('betterid-pen-direct', true);
+                d3_select(window)
+                    .on(prefix + 'move.betteridPen', pointermove)
+                    .on(prefix + 'up.betteridPen', pointerup);
                 d3_event.preventDefault();
                 d3_event.stopPropagation();
                 return;
@@ -395,8 +428,13 @@ export function behaviorBetteridPen(context) {
             }
 
             if (_direct.which) {
-                // one side only: no mirrored handle while dragging a handle
-                _direct.anchor[_direct.which] = screenToGeoOffset(_direct.anchor.loc, point);
+                // one side only, unless the closing drag keeps the join smooth
+                var handle = screenToGeoOffset(_direct.anchor.loc, point);
+                _direct.anchor[_direct.which] = handle;
+                if (_direct.mirrorOut) {
+                    var opposite = _direct.which === 'handleIn' ? 'handleOut' : 'handleIn';
+                    _direct.anchor[opposite] = [-handle[0], -handle[1]];
+                }
             } else if (_direct.moved) {
                 // handles are stored relative to the anchor, so moving the anchor
                 // carries its curve along
@@ -431,13 +469,21 @@ export function behaviorBetteridPen(context) {
             .on(prefix + 'up.betteridPen', null);
 
         if (_direct) {
+            var wasClosing = _direct.closeOnRelease;
             // an Alt *click* (no drag) trims the anchor's forward handle
             if (_direct.trimOnClick && !_direct.moved && _direct.index !== undefined) {
                 trimAnchor(_direct.index);
             }
             _direct = null;
             context.container().classed('betterid-pen-direct', false);
-            draw(context.map().mouse());
+
+            if (wasClosing) {
+                _closed = true;
+                finishPath();
+            } else {
+                draw(context.map().mouse());
+            }
+
             d3_event.preventDefault();
             d3_event.stopPropagation();
             return;

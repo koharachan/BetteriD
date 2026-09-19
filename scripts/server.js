@@ -1,5 +1,6 @@
 /* eslint-disable no-process-env */
 
+import { createReadStream, existsSync } from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
 import { glob } from 'node:fs/promises';
@@ -12,7 +13,8 @@ import { buildCSS } from './build_css.js';
 dotenv.config({ quiet: true });
 
 const MAX_BODY_BYTES = 64 * 1024;
-const port = 8080;
+const port = Number(process.env.PORT) || 8080;
+const LOCAL_BUNDLE = 'dist-dev/iD.min.js';
 const targetLanguageMap = new Map([
   ['en', 'en'],
   ['zh', 'zh-Hans'],
@@ -179,6 +181,18 @@ const server = http.createServer((request, response) => {
 
   if (request.url === '/api/osm-ai/summarize' && request.method === 'POST') {
     handleSummarize(request, response);
+    return;
+  }
+
+  // A local build (`dist-dev/`, made with relative data URLs) lets the editor run
+  // without the production CDN; serve it instead of the shipped bundle when it
+  // exists. `pnpm run dev:bundle` writes it.
+  if (existsSync(LOCAL_BUNDLE) && request.url.split('?')[0] === '/dist/iD.min.js') {
+    response.writeHead(200, {
+      'Content-Type': 'application/javascript; charset=utf-8',
+      'Cache-Control': 'no-cache'
+    });
+    createReadStream(LOCAL_BUNDLE).pipe(response);
     return;
   }
 

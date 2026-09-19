@@ -38814,7 +38814,9 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
           "test:once": "vitest run --no-isolate",
           "test:coverage": "vitest run --no-isolate --coverage.enabled",
           translations: "node scripts/inherit_release_locales.js",
-          "translations:dev": "node scripts/update_locales.js"
+          "translations:dev": "node scripts/update_locales.js",
+          "dev:bundle": "ID_PRESETS_CDN_URL=tagging-schema/ ID_NSI_CDN_URL=nsi/ node config/esbuild.config.min.js",
+          "dev:bundle:prod": "ID_PRESETS_CDN_URL=https://map.osm.asia/id/dist/tagging-schema/ ID_NSI_CDN_URL=https://map.osm.asia/id/dist/nsi/ node config/esbuild.config.min.js"
         },
         dependencies: {
           "@mapbox/geojson-area": "^0.2.2",
@@ -44648,8 +44650,11 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
         _pixels.originGeo[1] + _pixels.perPixel[1]
       ];
       var p1 = context.projection(step);
-      var k2 = Math.hypot(p1[0] - p02[0], p1[1] - p02[1]) || 1;
-      return { p0: p02, k: k2 };
+      return {
+        p0: p02,
+        kx: p1[0] - p02[0] || 1,
+        ky: p1[1] - p02[1] || 1
+      };
     }
     function pixelOutlinePath() {
       if (!_pixels) return null;
@@ -44658,14 +44663,15 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       var runs = maskOutline(_pixels.mask, _pixels.width, _pixels.height);
       if (!runs.length) return null;
       var p02 = frame2.p0;
-      var k2 = frame2.k;
+      var kx = frame2.kx;
+      var ky = frame2.ky;
       var parts = [];
       for (var i3 = 0; i3 < runs.length; i3++) {
         var r2 = runs[i3];
-        var x12 = p02[0] + r2[0] * k2;
-        var y12 = p02[1] + r2[1] * k2;
-        var x22 = p02[0] + r2[2] * k2;
-        var y22 = p02[1] + r2[3] * k2;
+        var x12 = p02[0] + r2[0] * kx;
+        var y12 = p02[1] + r2[1] * ky;
+        var x22 = p02[0] + r2[2] * kx;
+        var y22 = p02[1] + r2[3] * ky;
         parts.push("M" + x12.toFixed(1) + "," + y12.toFixed(1) + "L" + x22.toFixed(1) + "," + y22.toFixed(1));
       }
       return parts.join("");
@@ -45309,6 +45315,22 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (d3_event.shiftKey) return;
       var point3 = mouseLoc(d3_event);
       var direct = d3_event.altKey || d3_event.ctrlKey || d3_event.metaKey;
+      if (!direct) {
+        var grabbed = findHandleNear(point3);
+        if (grabbed) {
+          _direct = {
+            anchor: grabbed.anchor,
+            which: grabbed.which,
+            moved: false,
+            start: point3
+          };
+          context.container().classed("betterid-pen-direct", true);
+          select_default2(window).on(prefix + "move.betteridPen", pointermove).on(prefix + "up.betteridPen", pointerup);
+          d3_event.preventDefault();
+          d3_event.stopPropagation();
+          return;
+        }
+      }
       if (direct) {
         var handle = findHandleNear(point3);
         if (handle) {
@@ -45333,8 +45355,16 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (_anchors.length > 1) {
         var first = anchorScreen(_anchors[0]);
         if (Math.hypot(first[0] - point3[0], first[1] - point3[1]) <= CLOSE_RADIUS_PX) {
-          _closed = true;
-          finishPath();
+          _direct = {
+            anchor: _anchors[0],
+            which: "handleIn",
+            mirrorOut: true,
+            moved: false,
+            start: point3,
+            closeOnRelease: true
+          };
+          context.container().classed("betterid-pen-direct", true);
+          select_default2(window).on(prefix + "move.betteridPen", pointermove).on(prefix + "up.betteridPen", pointerup);
           d3_event.preventDefault();
           d3_event.stopPropagation();
           return;
@@ -45390,7 +45420,12 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
           _direct.moved = true;
         }
         if (_direct.which) {
-          _direct.anchor[_direct.which] = screenToGeoOffset(_direct.anchor.loc, point3);
+          var handle = screenToGeoOffset(_direct.anchor.loc, point3);
+          _direct.anchor[_direct.which] = handle;
+          if (_direct.mirrorOut) {
+            var opposite = _direct.which === "handleIn" ? "handleOut" : "handleIn";
+            _direct.anchor[opposite] = [-handle[0], -handle[1]];
+          }
         } else if (_direct.moved) {
           _direct.anchor.loc = context.projection.invert(point3);
         }
@@ -45414,12 +45449,18 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (!_draft && !_direct) return;
       select_default2(window).on(prefix + "move.betteridPen", null).on(prefix + "up.betteridPen", null);
       if (_direct) {
+        var wasClosing = _direct.closeOnRelease;
         if (_direct.trimOnClick && !_direct.moved && _direct.index !== void 0) {
           trimAnchor(_direct.index);
         }
         _direct = null;
         context.container().classed("betterid-pen-direct", false);
-        draw(context.map().mouse());
+        if (wasClosing) {
+          _closed = true;
+          finishPath();
+        } else {
+          draw(context.map().mouse());
+        }
         d3_event.preventDefault();
         d3_event.stopPropagation();
         return;

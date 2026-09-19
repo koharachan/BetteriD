@@ -53,7 +53,9 @@
     "test:once": "vitest run --no-isolate",
     "test:coverage": "vitest run --no-isolate --coverage.enabled",
     "translations": "node scripts/inherit_release_locales.js",
-    "translations:dev": "node scripts/update_locales.js"
+    "translations:dev": "node scripts/update_locales.js",
+    "dev:bundle": "ID_PRESETS_CDN_URL=tagging-schema/ ID_NSI_CDN_URL=nsi/ node config/esbuild.config.min.js",
+    "dev:bundle:prod": "ID_PRESETS_CDN_URL=https://map.osm.asia/id/dist/tagging-schema/ ID_NSI_CDN_URL=https://map.osm.asia/id/dist/nsi/ node config/esbuild.config.min.js"
   },
   "dependencies": {
     "@mapbox/geojson-area": "^0.2.2",

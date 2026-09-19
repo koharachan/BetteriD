@@ -171,13 +171,20 @@ export function behaviorBetteridSelectTools(context) {
     function maskFrame() {
         if (!_pixels) return null;
         var p0 = context.projection(_pixels.originGeo);
+        // `perPixel` is the geo delta of a one-pixel step, so projecting it back
+        // gives the per-axis screen size of a mask pixel. (Using the length of
+        // that vector scaled the outline by sqrt(2), which is why the ants used
+        // to sit away from the clicked region.)
         var step = [
             _pixels.originGeo[0] + _pixels.perPixel[0],
             _pixels.originGeo[1] + _pixels.perPixel[1]
         ];
         var p1 = context.projection(step);
-        var k = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
-        return { p0: p0, k: k };
+        return {
+            p0: p0,
+            kx: (p1[0] - p0[0]) || 1,
+            ky: (p1[1] - p0[1]) || 1
+        };
     }
 
 
@@ -190,14 +197,15 @@ export function behaviorBetteridSelectTools(context) {
         if (!runs.length) return null;
 
         var p0 = frame.p0;
-        var k = frame.k;
+        var kx = frame.kx;
+        var ky = frame.ky;
         var parts = [];
         for (var i = 0; i < runs.length; i++) {
             var r = runs[i];
-            var x1 = p0[0] + r[0] * k;
-            var y1 = p0[1] + r[1] * k;
-            var x2 = p0[0] + r[2] * k;
-            var y2 = p0[1] + r[3] * k;
+            var x1 = p0[0] + r[0] * kx;
+            var y1 = p0[1] + r[1] * ky;
+            var x2 = p0[0] + r[2] * kx;
+            var y2 = p0[1] + r[3] * ky;
             // a run is horizontal or vertical: two points are enough
             parts.push('M' + x1.toFixed(1) + ',' + y1.toFixed(1) + 'L' + x2.toFixed(1) + ',' + y2.toFixed(1));
         }

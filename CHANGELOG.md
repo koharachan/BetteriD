@@ -127,6 +127,14 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   handles so the curve no longer jumps on release, the pending segment is shown
   as a rubber band, `Enter`/double-click commits an anchor that is still being
   dragged, and `Ctrl+Z` removes the last anchor while a path is in progress.
+* Fix the magic wand and quick selection outline being drawn away from the
+  clicked region: the mask-to-screen scale used the length of the projected
+  one-pixel vector (√2) instead of its per-axis components, so the marching ants
+  were both enlarged and offset.
+* Fix pen handles not being draggable once the path is closed: long-pressing a
+  direction handle now grabs it instead of placing a new anchor, and pressing
+  the first anchor starts a closing drag that reshapes the join and closes the
+  path on release, like Photoshop.
 * The marquee selects nodes only; ways and areas are left to the quick
   selection and magic wand tools, which is what a box drawn around points means.
 * The quick selection and magic wand tools now work on the base imagery, the way
