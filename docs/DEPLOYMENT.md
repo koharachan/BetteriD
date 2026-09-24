@@ -321,6 +321,32 @@ add_header X-Edge-Cache $upstream_cache_status;
 - 域名不在手上时无法在该机器上签公共证书；等 DNS 指向它之后再用 ACME 签发，
   并确认 `X-Edge-Cache` 从 `MISS` 变成 `HIT`。
 
+## 源站故障转移（备用机器）
+
+主源站不可达时（丢包、面板也连不上），可以临时把编辑器整体搬到备用机器，再切换回源：
+
+```bash
+# 1) 在备用机上放一份生产构建 + 环境变量（端口 9178、独立缓存、DeepSeek / OAuth / 隐私 token）
+tar xzf editor-failover.tgz -C /opt/betterid-editor      # index.html land.html dist
+cat > /opt/betterid-editor/editor.env <<'ENV'
+OSM_LISTEN_ADDR=0.0.0.0:9178
+OSM_CACHE_DIR=/opt/betterid-editor/cache
+OSM_ID_DIST_DIR=/opt/betterid-editor/dist
+ENV
+systemctl enable --now betterid-editor.service           # 复用瓦片代理那个静态二进制
+
+# 2) 切换 CDN 回源（backend 必须是 JSON 数组；字符串会返回 site-54，整包 PUT 会返回 site-451）
+curl -X PUT https://user.cdn1.vip/v1/sites/<site id> \
+  -H "api-key: <key>" -H "api-secret: <secret>" -H "content-type: application/json" \
+  -d '{"backend":[{"addr":"<backup host>","state":"up","weight":1}]}'
+
+# 3) 预热新源站（DIST_DIR 指向新的 dist）
+DIST_DIR=/opt/betterid-editor/dist SET=deploy ALL_EDGES=1 /opt/betterid/warm-cache.sh
+```
+
+同目录的 `betterid-tile.service` 可以继续服务瓦片（不同端口），互不影响。
+主源站恢复后，把 `backend` 改回主源站地址即可，无需重新发版。
+
 ## 上线检查清单
 
 切流前在**外部网络**逐项验证（源机 curl 目标机，避免只测本机回环）：
