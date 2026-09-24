@@ -2,7 +2,7 @@ import { select as d3_select } from 'd3-selection';
 
 import {
     BETTERID_TOOL_GROUPS, BETTERID_MARQUEE_SHAPES,
-    betteridTool, setBetteridTool, groupTool, setSelectionTool,
+    betteridTool, setBetteridTool, groupTool, setSelectionTool, shortcutPreset,
     marqueeShape, setMarqueeShape, cycleMarqueeShape,
     brushSize, setBrushSize,
     wandTolerance, setWandTolerance,
@@ -17,6 +17,8 @@ import { t } from '../core/localizer';
 import { svgIcon } from '../svg';
 import { uiTooltip } from './tooltip';
 
+
+var SPACE_KEYS = ['Space', ' '];
 
 var TOOL_ICONS = {
     select: '#iD-icon-betterid-select',
@@ -78,6 +80,7 @@ function groupEntries(group) {
 /** Left hand tool palette (Photoshop style). */
 export function uiBetteridToolPalette(context) {
     var _container = d3_select(null);
+    var _spaceDown = false;
 
 
     function chooseTool(tool) {
@@ -267,7 +270,22 @@ export function uiBetteridToolPalette(context) {
             });
         });
 
-        d3_select(window).on('keydown.betteridToolKeys', keydown, true);
+        d3_select(window)
+            .on('keydown.betteridToolKeys', keydown, true)
+            .on('keyup.betteridToolKeys', keyup);
+        d3_select(window).on('blur.betteridToolKeys', releaseSpace);
+    }
+
+
+    function keyup(d3_event) {
+        if (SPACE_KEYS.indexOf(d3_event.key) === -1) return;
+        releaseSpace();
+    }
+
+
+    function releaseSpace() {
+        _spaceDown = false;
+        context.container().classed('betterid-hand-tool', false);
     }
 
 
@@ -281,7 +299,31 @@ export function uiBetteridToolPalette(context) {
         var target = d3_event.target;
         if (target && target.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
 
+        // Hold Space for the hand tool whenever one of our tools is active: the
+        // pen and the selection tools swallow the drag otherwise, so panning
+        // would be impossible. With the plain select tool, stock iD keeps Space.
+        if (SPACE_KEYS.indexOf(d3_event.key) !== -1) {
+            if (betteridTool() === 'select') return;
+            if (_spaceDown) return;
+            _spaceDown = true;
+            context.container().classed('betterid-hand-tool', true);
+            d3_event.preventDefault();
+            d3_event.stopPropagation();
+            return;
+        }
+
         var key = (d3_event.key || '').toLowerCase();
+
+        // Illustrator gives the marquee shapes their own keys (M rectangle,
+        // L ellipse); Photoshop keeps the single cycling key.
+        if (shortcutPreset() === 'illustrator' && !d3_event.shiftKey && (key === 'm' || key === 'l')) {
+            d3_event.preventDefault();
+            d3_event.stopPropagation();
+            setMarqueeShape(key === 'm' ? 'rect' : 'ellipse');
+            setBetteridTool('marquee');
+            return;
+        }
+
         var tool;
         if (key === 'v') tool = 'select';
         else if (key === 'm') tool = 'marquee';

@@ -136,6 +136,11 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 * Add a `water_standing` texture (a copy of `waves`) for `water=reservoir` and
   `amenity=fountain`: upstream iD references that name but ships no image, so
   those areas stayed flat.
+* Holding `Space` pans the map while any of the tool palette's tools is active,
+  independent of the Adobe shortcut preset: the pen and the selection tools
+  swallow the drag, so without this the hand tool was unreachable when the
+  preset was off. The Illustrator flavour also maps its marquee keys (`M`
+  rectangle, `L` ellipse).
 * Restore the land cover textures (water, wetland, forest, cemetery, farmland,
   …), the map cursors and the loader graphics under `dist/img/`: they were never
   carried over from upstream, so every area fill requested a 404 and water and

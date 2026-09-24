@@ -76895,6 +76895,7 @@ ${tag}` : tag;
   }
   function uiBetteridToolPalette(context) {
     var _container = select_default2(null);
+    var _spaceDown = false;
     function chooseTool(tool) {
       setBetteridTool(betteridTool() === tool && tool !== "select" ? "select" : tool);
       context.ui().flash.duration(1500).iconName(toolIcon(betteridTool())).iconClass("operation").label(_t("betterid.tools.active", { tool: _t("betterid.tools." + betteridTool()) }))();
@@ -77006,13 +77007,38 @@ ${tag}` : tag;
           if (!_container.empty()) render(_container);
         });
       });
-      select_default2(window).on("keydown.betteridToolKeys", keydown, true);
+      select_default2(window).on("keydown.betteridToolKeys", keydown, true).on("keyup.betteridToolKeys", keyup);
+      select_default2(window).on("blur.betteridToolKeys", releaseSpace);
+    }
+    function keyup(d3_event) {
+      if (SPACE_KEYS2.indexOf(d3_event.key) === -1) return;
+      releaseSpace();
+    }
+    function releaseSpace() {
+      _spaceDown = false;
+      context.container().classed("betterid-hand-tool", false);
     }
     function keydown(d3_event) {
       if (d3_event.ctrlKey || d3_event.metaKey || d3_event.altKey) return;
       var target = d3_event.target;
       if (target && target.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (SPACE_KEYS2.indexOf(d3_event.key) !== -1) {
+        if (betteridTool() === "select") return;
+        if (_spaceDown) return;
+        _spaceDown = true;
+        context.container().classed("betterid-hand-tool", true);
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        return;
+      }
       var key = (d3_event.key || "").toLowerCase();
+      if (shortcutPreset() === "illustrator" && !d3_event.shiftKey && (key === "m" || key === "l")) {
+        d3_event.preventDefault();
+        d3_event.stopPropagation();
+        setMarqueeShape(key === "m" ? "rect" : "ellipse");
+        setBetteridTool("marquee");
+        return;
+      }
       var tool;
       if (key === "v") tool = "select";
       else if (key === "m") tool = "marquee";
@@ -77042,7 +77068,7 @@ ${tag}` : tag;
     }
     return palette;
   }
-  var TOOL_ICONS, MARQUEE_ICONS;
+  var SPACE_KEYS2, TOOL_ICONS, MARQUEE_ICONS;
   var init_betterid_toolbar = __esm({
     "modules/ui/betterid_toolbar.js"() {
       "use strict";
@@ -77053,6 +77079,7 @@ ${tag}` : tag;
       init_localizer();
       init_svg();
       init_tooltip();
+      SPACE_KEYS2 = ["Space", " "];
       TOOL_ICONS = {
         select: "#iD-icon-betterid-select",
         marquee: "#iD-icon-betterid-marquee-rect",

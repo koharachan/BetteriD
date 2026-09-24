@@ -131,9 +131,13 @@
 | --- | --- |
 | 关闭（默认） | 完全退回 iD 原有快捷键 |
 | Photoshop | `Ctrl+T` 自由变换、`Ctrl+J` 复制、`Ctrl+D` 取消选区、`Ctrl+Shift+V` 原位粘贴、`Ctrl+Shift+T`/`Ctrl+Alt+Shift+T` 重复变换 |
-| Illustrator | `E` 自由变换、`Ctrl+D` 再次变换、`Ctrl+F` 原位粘贴、`Ctrl+Shift+A` 取消选区 |
+| Illustrator | `E` 自由变换、`Ctrl+D` 再次变换、`Ctrl+F` 原位粘贴、`Ctrl+Shift+A` 取消选区；`M` 矩形选框、`L` 椭圆选框（AI 里这两个形状各占一个键） |
 
-两档共有的部分（也是 Adobe 系通用手感）：
+两档共有的部分（也是 Adobe 系通用手感；**与预设开关无关**，只要工具面板里有工具被选中就生效）：
+
+- 按住 `Space`：临时手型工具（钢笔/框选/快速选择/魔棒都会拦截拖动，所以这个必须在工具层自己处理，
+  不能只挂在 Adobe 层；选中"选择工具"时 `Space` 仍然交回 iD）
+
 
 
 | 快捷键 | 在 BetteriD 的行为 |
