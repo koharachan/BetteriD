@@ -11,7 +11,10 @@ import {
   setTranslationLanguages
 } from '../../core/betterid_preferences';
 import { localizer, t } from '../../core/localizer';
-import { BETTERID_ADOBE_SHORTCUTS_PREF } from '../../core/betterid_tools';
+import {
+  BETTERID_SHORTCUT_PRESET_PREF,
+  BETTERID_SHORTCUT_PRESETS
+} from '../../core/betterid_tools';
 import { prefs } from '../../core/preferences';
 import { svgIcon } from '../../svg/icon';
 import { uiSection } from '../section';
@@ -47,6 +50,44 @@ function renderCheckbox(selection, options) {
   row.select('input')
     .property('checked', checked)
     .property('disabled', !!options.disabled);
+}
+
+
+function renderSelect(selection, options) {
+  const current = prefs(options.pref) || options.defaultValue;
+  let row = selection.selectAll(`.${options.className}`)
+    .data([current]);
+
+  const rowEnter = row.enter()
+    .append('label')
+    .attr('class', `betterid-preference-row ${options.className}`);
+
+  rowEnter.append('span')
+    .attr('class', 'betterid-preference-label')
+    .call(t.append(options.label));
+
+  const select = rowEnter.append('select')
+    .on('change', function() {
+      prefs(options.pref, this.value);
+      if (options.onChange) options.onChange(this.value);
+    });
+
+  select.selectAll('option')
+    .data(options.options)
+    .enter()
+    .append('option')
+    .attr('value', d => d.value)
+    .each(function(d) {
+      d3_select(this).call(t.append(d.label));
+    });
+
+  if (options.description) {
+    rowEnter.append('small')
+      .call(t.append(options.description));
+  }
+
+  row = rowEnter.merge(row);
+  row.select('select').property('value', current);
 }
 
 
@@ -107,12 +148,16 @@ export const uiSectionBetteridEditing = makeSimpleSection(
       description: 'preferences.editing.josm_shortcuts_description',
       onChange: section.reRender
     });
-    renderCheckbox(selection, {
-      className: 'preference-adobe-shortcuts',
-      pref: BETTERID_ADOBE_SHORTCUTS_PREF,
-      defaultValue: true,
-      label: 'preferences.editing.adobe_shortcuts',
-      description: 'preferences.editing.adobe_shortcuts_description',
+    renderSelect(selection, {
+      className: 'preference-shortcut-preset',
+      pref: BETTERID_SHORTCUT_PRESET_PREF,
+      defaultValue: 'off',
+      label: 'preferences.editing.shortcut_preset',
+      description: 'preferences.editing.shortcut_preset_description',
+      options: BETTERID_SHORTCUT_PRESETS.map(value => ({
+        value: value,
+        label: 'preferences.editing.shortcut_preset_' + value
+      })),
       onChange: section.reRender
     });
 

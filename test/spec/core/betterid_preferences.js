@@ -10,8 +10,12 @@ import {
 import { prefs } from '../../../modules/core/preferences';
 import {
     BETTERID_ADOBE_SHORTCUTS_PREF,
+    BETTERID_SHORTCUT_PRESET_PREF,
     adobeShortcutsEnabled,
-    setAdobeShortcuts
+    adobeShortcutsIllustrator,
+    setAdobeShortcuts,
+    setShortcutPreset,
+    shortcutPreset
 } from '../../../modules/core/betterid_tools';
 
 
@@ -19,6 +23,7 @@ describe('BetteriD preferences', function() {
     afterEach(function() {
         Object.values(BETTERID_PREFS).forEach(key => prefs(key, null));
         prefs(BETTERID_ADOBE_SHORTCUTS_PREF, null);
+        prefs(BETTERID_SHORTCUT_PRESET_PREF, null);
     });
 
     it('keeps experimental features off until both switches are enabled', function() {
@@ -65,15 +70,31 @@ describe('BetteriD preferences', function() {
         expect(getProviderOrder('vision')).toEqual(['mimo', 'openai']);
     });
 
-    it('keeps the Adobe shortcut layer on by default and remembers the toggle', function() {
-        expect(adobeShortcutsEnabled()).toBe(true);
-
-        setAdobeShortcuts(false);
+    it('keeps the Adobe shortcut layer off by default', function() {
+        expect(shortcutPreset()).toEqual('off');
         expect(adobeShortcutsEnabled()).toBe(false);
-        expect(prefs(BETTERID_ADOBE_SHORTCUTS_PREF)).toEqual('false');
+        expect(adobeShortcutsIllustrator()).toBe(false);
+    });
 
-        setAdobeShortcuts(true);
+    it('remembers the Photoshop / Illustrator choice', function() {
+        setShortcutPreset('photoshop');
+        expect(shortcutPreset()).toEqual('photoshop');
         expect(adobeShortcutsEnabled()).toBe(true);
-        expect(prefs(BETTERID_ADOBE_SHORTCUTS_PREF)).toEqual('true');
+        expect(adobeShortcutsIllustrator()).toBe(false);
+
+        setShortcutPreset('illustrator');
+        expect(adobeShortcutsIllustrator()).toBe(true);
+
+        setShortcutPreset('nonsense');
+        expect(shortcutPreset()).toEqual('off');
+    });
+
+    it('migrates the old boolean Adobe preference', function() {
+        prefs(BETTERID_ADOBE_SHORTCUTS_PREF, 'true');
+        expect(shortcutPreset()).toEqual('photoshop');
+        expect(adobeShortcutsEnabled()).toBe(true);
+
+        prefs(BETTERID_ADOBE_SHORTCUTS_PREF, 'false');
+        expect(shortcutPreset()).toEqual('off');
     });
 });

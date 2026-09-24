@@ -15,6 +15,8 @@ export const BETTERID_WAND_TOLERANCE_PREF = 'betterid.tools.wand_tolerance';
 export const BETTERID_WAND_CONTIGUOUS_PREF = 'betterid.tools.wand_contiguous';
 export const BETTERID_SELECTION_LAST_PREF = 'betterid.tools.selection_last';
 export const BETTERID_ADOBE_SHORTCUTS_PREF = 'betterid.editing.adobe_shortcuts';
+export const BETTERID_SHORTCUT_PRESET_PREF = 'betterid.editing.shortcut_preset';
+export const BETTERID_SHORTCUT_PRESETS = Object.freeze(['off', 'photoshop', 'illustrator']);
 
 export const BETTERID_TOOLS = ['select', 'marquee', 'quickselect', 'magicwand', 'pen'];
 export const BETTERID_MARQUEE_SHAPES = ['rect', 'ellipse'];
@@ -25,7 +27,7 @@ const TOOL_DEFAULTS = {
     brushSize: 40,
     wandTolerance: 1,
     wandContiguous: true,
-    adobeShortcuts: true
+    shortcutPreset: 'off'
 };
 
 
@@ -138,15 +140,45 @@ export function setWandContiguous(value) {
 }
 
 
+/**
+ * The navigation / transform shortcut layer is opt-in and can follow either
+ * Adobe application: `off` (default, stock iD), `photoshop` or `illustrator`.
+ * The two differ where the apps do - Illustrator uses `Ctrl+D` for "transform
+ * again" and `Ctrl+Shift+A` to deselect, and `E` for free transform.
+ *
+ * The old boolean preference (`betterid.editing.adobe_shortcuts`) is still
+ * honoured, so an existing `photoshop` choice is not lost.
+ */
+export function shortcutPreset() {
+    const value = prefs(BETTERID_SHORTCUT_PRESET_PREF);
+    if (BETTERID_SHORTCUT_PRESETS.indexOf(value) !== -1) return value;
+
+    const legacy = prefs(BETTERID_ADOBE_SHORTCUTS_PREF);
+    if (legacy !== null && legacy !== undefined) return legacy === 'true' ? 'photoshop' : 'off';
+
+    return TOOL_DEFAULTS.shortcutPreset;
+}
+
+
+export function setShortcutPreset(value) {
+    const resolved = BETTERID_SHORTCUT_PRESETS.indexOf(value) === -1 ? 'off' : value;
+    prefs(BETTERID_SHORTCUT_PRESET_PREF, resolved);
+}
+
+
+/** True when any Adobe-style layer is on (used for the wheel / Space / Alt+click). */
 export function adobeShortcutsEnabled() {
-    const value = prefs(BETTERID_ADOBE_SHORTCUTS_PREF);
-    if (value === null || value === undefined) return TOOL_DEFAULTS.adobeShortcuts;
-    return value === 'true';
+    return shortcutPreset() !== 'off';
+}
+
+
+export function adobeShortcutsIllustrator() {
+    return shortcutPreset() === 'illustrator';
 }
 
 
 export function setAdobeShortcuts(value) {
-    prefs(BETTERID_ADOBE_SHORTCUTS_PREF, value ? 'true' : 'false');
+    setShortcutPreset(value ? 'photoshop' : 'off');
 }
 
 

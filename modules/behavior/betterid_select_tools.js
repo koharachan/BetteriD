@@ -2,7 +2,8 @@ import { select as d3_select } from 'd3-selection';
 
 import {
     betteridTool, marqueeShape, brushSize, wandTolerance, wandContiguous,
-    selectionMode, combineSelection, adobeShortcutsEnabled, BETTERID_TOOL_PREF
+    selectionMode, combineSelection, adobeShortcutsEnabled, adobeShortcutsIllustrator,
+    BETTERID_TOOL_PREF
 } from '../core/betterid_tools';
 import { actionAddEntity } from '../actions/add_entity';
 import { osmNode, osmWay } from '../osm';
@@ -450,6 +451,10 @@ export function behaviorBetteridSelectTools(context) {
 
         var key = (d3_event.key || '').toLowerCase();
         var command = (d3_event.ctrlKey || d3_event.metaKey) && !d3_event.altKey;
+
+        // Illustrator keeps Ctrl+D for "transform again" and deselects with
+        // Ctrl+Shift+A, so leave the key alone in that preset.
+        if (command && key === 'd' && adobeShortcutsIllustrator()) return;
 
         if (command && key === 'd') {
             d3_event.preventDefault();

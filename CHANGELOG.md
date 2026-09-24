@@ -43,6 +43,12 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   a pen tool that flattens bezier curves into OSM way nodes. Like Photoshop, a
   group shows the tool (or marquee shape) used last and its other members are one
   right-click away, with `V`/`M`/`W`/`Shift+W`/`P` as the tool keys.
+* The Adobe shortcut layer is now **off by default** and comes in two flavours,
+  chosen in Preferences → Editing: **Photoshop** (`Ctrl+T` transform, `Ctrl+J`
+  duplicate, `Ctrl+D` deselect) and **Illustrator** (`E` transform, `Ctrl+D`
+  transform again, `Ctrl+F` paste in place, `Ctrl+Shift+A` deselect). Both add
+  Space to pan, wheel to scroll, Ctrl+wheel to scroll sideways, Alt+wheel to
+  zoom and Alt+click to pick a colour; the old boolean preference is migrated.
 * Optional Adobe shortcut layer: wheel scrolls, Ctrl+wheel scrolls sideways,
   Alt+wheel zooms at the pointer, hold Space to pan, Alt+click copies the hex
   colour under the pointer, Ctrl+T transforms, Ctrl+J duplicates,

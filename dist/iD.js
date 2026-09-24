@@ -43948,12 +43948,15 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     BETTERID_MARQUEE_SHAPE_PREF: () => BETTERID_MARQUEE_SHAPE_PREF,
     BETTERID_SELECTION_LAST_PREF: () => BETTERID_SELECTION_LAST_PREF,
     BETTERID_SELECTION_TOOLS: () => BETTERID_SELECTION_TOOLS,
+    BETTERID_SHORTCUT_PRESETS: () => BETTERID_SHORTCUT_PRESETS,
+    BETTERID_SHORTCUT_PRESET_PREF: () => BETTERID_SHORTCUT_PRESET_PREF,
     BETTERID_TOOLS: () => BETTERID_TOOLS,
     BETTERID_TOOL_GROUPS: () => BETTERID_TOOL_GROUPS,
     BETTERID_TOOL_PREF: () => BETTERID_TOOL_PREF,
     BETTERID_WAND_CONTIGUOUS_PREF: () => BETTERID_WAND_CONTIGUOUS_PREF,
     BETTERID_WAND_TOLERANCE_PREF: () => BETTERID_WAND_TOLERANCE_PREF,
     adobeShortcutsEnabled: () => adobeShortcutsEnabled,
+    adobeShortcutsIllustrator: () => adobeShortcutsIllustrator,
     betteridTool: () => betteridTool,
     brushSize: () => brushSize,
     combineSelection: () => combineSelection,
@@ -43967,8 +43970,10 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     setBrushSize: () => setBrushSize,
     setMarqueeShape: () => setMarqueeShape,
     setSelectionTool: () => setSelectionTool,
+    setShortcutPreset: () => setShortcutPreset,
     setWandContiguous: () => setWandContiguous,
     setWandTolerance: () => setWandTolerance,
+    shortcutPreset: () => shortcutPreset,
     wandContiguous: () => wandContiguous,
     wandTolerance: () => wandTolerance
   });
@@ -44035,13 +44040,25 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
   function setWandContiguous(value) {
     corePreferences(BETTERID_WAND_CONTIGUOUS_PREF, value ? "true" : "false");
   }
+  function shortcutPreset() {
+    const value = corePreferences(BETTERID_SHORTCUT_PRESET_PREF);
+    if (BETTERID_SHORTCUT_PRESETS.indexOf(value) !== -1) return value;
+    const legacy = corePreferences(BETTERID_ADOBE_SHORTCUTS_PREF);
+    if (legacy !== null && legacy !== void 0) return legacy === "true" ? "photoshop" : "off";
+    return TOOL_DEFAULTS.shortcutPreset;
+  }
+  function setShortcutPreset(value) {
+    const resolved = BETTERID_SHORTCUT_PRESETS.indexOf(value) === -1 ? "off" : value;
+    corePreferences(BETTERID_SHORTCUT_PRESET_PREF, resolved);
+  }
   function adobeShortcutsEnabled() {
-    const value = corePreferences(BETTERID_ADOBE_SHORTCUTS_PREF);
-    if (value === null || value === void 0) return TOOL_DEFAULTS.adobeShortcuts;
-    return value === "true";
+    return shortcutPreset() !== "off";
+  }
+  function adobeShortcutsIllustrator() {
+    return shortcutPreset() === "illustrator";
   }
   function setAdobeShortcuts(value) {
-    corePreferences(BETTERID_ADOBE_SHORTCUTS_PREF, value ? "true" : "false");
+    setShortcutPreset(value ? "photoshop" : "off");
   }
   function selectionMode(d3_event) {
     const shift = Boolean(d3_event.shiftKey);
@@ -44068,7 +44085,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     }
     return Array.from(incoming);
   }
-  var BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF, BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF, BETTERID_SELECTION_LAST_PREF, BETTERID_ADOBE_SHORTCUTS_PREF, BETTERID_TOOLS, BETTERID_MARQUEE_SHAPES, TOOL_DEFAULTS, BETTERID_TOOL_GROUPS, BETTERID_SELECTION_TOOLS;
+  var BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF, BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF, BETTERID_SELECTION_LAST_PREF, BETTERID_ADOBE_SHORTCUTS_PREF, BETTERID_SHORTCUT_PRESET_PREF, BETTERID_SHORTCUT_PRESETS, BETTERID_TOOLS, BETTERID_MARQUEE_SHAPES, TOOL_DEFAULTS, BETTERID_TOOL_GROUPS, BETTERID_SELECTION_TOOLS;
   var init_betterid_tools = __esm({
     "modules/core/betterid_tools.js"() {
       "use strict";
@@ -44080,6 +44097,8 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       BETTERID_WAND_CONTIGUOUS_PREF = "betterid.tools.wand_contiguous";
       BETTERID_SELECTION_LAST_PREF = "betterid.tools.selection_last";
       BETTERID_ADOBE_SHORTCUTS_PREF = "betterid.editing.adobe_shortcuts";
+      BETTERID_SHORTCUT_PRESET_PREF = "betterid.editing.shortcut_preset";
+      BETTERID_SHORTCUT_PRESETS = Object.freeze(["off", "photoshop", "illustrator"]);
       BETTERID_TOOLS = ["select", "marquee", "quickselect", "magicwand", "pen"];
       BETTERID_MARQUEE_SHAPES = ["rect", "ellipse"];
       TOOL_DEFAULTS = {
@@ -44088,7 +44107,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
         brushSize: 40,
         wandTolerance: 1,
         wandContiguous: true,
-        adobeShortcuts: true
+        shortcutPreset: "off"
       };
       BETTERID_TOOL_GROUPS = Object.freeze([
         { id: "select", tools: ["select"] },
@@ -44841,6 +44860,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (target && target.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
       var key = (d3_event.key || "").toLowerCase();
       var command = (d3_event.ctrlKey || d3_event.metaKey) && !d3_event.altKey;
+      if (command && key === "d" && adobeShortcutsIllustrator()) return;
       if (command && key === "d") {
         d3_event.preventDefault();
         d3_event.stopPropagation();
@@ -46398,6 +46418,28 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
         return;
       }
       var key = (d3_event.key || "").toLowerCase();
+      var command = d3_event.ctrlKey || d3_event.metaKey;
+      var illustrator = adobeShortcutsIllustrator();
+      if (illustrator) {
+        if (command && !d3_event.shiftKey && key === "d") {
+          repeatTransform(d3_event, false);
+          return;
+        }
+        if (command && d3_event.shiftKey && key === "a") {
+          d3_event.preventDefault();
+          d3_event.stopPropagation();
+          context.enter(modeSelect(context, []));
+          return;
+        }
+        if (command && !d3_event.shiftKey && key === "f") {
+          pasteInPlace(d3_event);
+          return;
+        }
+        if (!command && !d3_event.altKey && key === "e") {
+          freeTransform(d3_event);
+          return;
+        }
+      }
       if ((d3_event.ctrlKey || d3_event.metaKey) && !d3_event.shiftKey && key === "t") {
         freeTransform(d3_event);
       } else if ((d3_event.ctrlKey || d3_event.metaKey) && key === "j") {
@@ -79869,6 +79911,24 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
     row.classed("disabled", !!options.disabled);
     row.select("input").property("checked", checked).property("disabled", !!options.disabled);
   }
+  function renderSelect(selection2, options) {
+    const current = corePreferences(options.pref) || options.defaultValue;
+    let row = selection2.selectAll(`.${options.className}`).data([current]);
+    const rowEnter = row.enter().append("label").attr("class", `betterid-preference-row ${options.className}`);
+    rowEnter.append("span").attr("class", "betterid-preference-label").call(_t.append(options.label));
+    const select = rowEnter.append("select").on("change", function() {
+      corePreferences(options.pref, this.value);
+      if (options.onChange) options.onChange(this.value);
+    });
+    select.selectAll("option").data(options.options).enter().append("option").attr("value", (d3) => d3.value).each(function(d3) {
+      select_default2(this).call(_t.append(d3.label));
+    });
+    if (options.description) {
+      rowEnter.append("small").call(_t.append(options.description));
+    }
+    row = rowEnter.merge(row);
+    row.select("select").property("value", current);
+  }
   function makeSimpleSection(id2, label, render) {
     return function(context) {
       const section = uiSection(id2, context).label(() => _t.append(label)).disclosureContent((selection2) => render(selection2, section, context));
@@ -79931,12 +79991,16 @@ ${_mainLocalizer.t_html("settings.custom_background.instructions.license_disclai
             description: "preferences.editing.josm_shortcuts_description",
             onChange: section.reRender
           });
-          renderCheckbox(selection2, {
-            className: "preference-adobe-shortcuts",
-            pref: BETTERID_ADOBE_SHORTCUTS_PREF,
-            defaultValue: true,
-            label: "preferences.editing.adobe_shortcuts",
-            description: "preferences.editing.adobe_shortcuts_description",
+          renderSelect(selection2, {
+            className: "preference-shortcut-preset",
+            pref: BETTERID_SHORTCUT_PRESET_PREF,
+            defaultValue: "off",
+            label: "preferences.editing.shortcut_preset",
+            description: "preferences.editing.shortcut_preset_description",
+            options: BETTERID_SHORTCUT_PRESETS.map((value) => ({
+              value,
+              label: "preferences.editing.shortcut_preset_" + value
+            })),
             onChange: section.reRender
           });
           let snap = selection2.selectAll(".preference-snap-tolerance").data([getSnapTolerance()]);

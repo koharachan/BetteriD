@@ -121,10 +121,20 @@
 - 结束时像 iD 的绘制模式一样选择预设（线/面）并进入 `modeSelect`，可以立刻在侧栏改标签。
 - 预览用 SVG 覆盖层画曲线（含手柄），不写 graph，避免产生大量临时实体。
 
-### 2.5 Adobe 风格快捷键层（可开关）
+### 2.5 Adobe 风格快捷键层（三档预设）
 
-新增偏好 `betterid.editing.adobe_shortcuts`，和 `betterid.editing.josm_shortcuts` 并排放在
-**偏好设置 → 编辑**里（默认开，和 JOSM 兼容快捷键一样随时可关）：
+偏好 `betterid.editing.shortcut_preset` 放在 **偏好设置 → 编辑**里，和 `betterid.editing.josm_shortcuts`
+并排（**默认「关闭」**，保持 iD 原始手感；旧布尔偏好 `betterid.editing.adobe_shortcuts=true`
+会自动迁移成 Photoshop 档）：
+
+| 预设 | 说明 |
+| --- | --- |
+| 关闭（默认） | 完全退回 iD 原有快捷键 |
+| Photoshop | `Ctrl+T` 自由变换、`Ctrl+J` 复制、`Ctrl+D` 取消选区、`Ctrl+Shift+V` 原位粘贴、`Ctrl+Shift+T`/`Ctrl+Alt+Shift+T` 重复变换 |
+| Illustrator | `E` 自由变换、`Ctrl+D` 再次变换、`Ctrl+F` 原位粘贴、`Ctrl+Shift+A` 取消选区 |
+
+两档共有的部分（也是 Adobe 系通用手感）：
+
 
 | 快捷键 | 在 BetteriD 的行为 |
 | --- | --- |
@@ -141,7 +151,9 @@
 | `Ctrl+Shift+J` | 剪切并复制（删除原要素，副本进入剪贴板） |
 | `Ctrl+Shift+V` | 原位粘贴（粘贴到原坐标而非鼠标处） |
 
-冲突处理：以上都以"偏好开启 + 无文本输入焦点"为前提；开关关闭时完全退回 iD 原有快捷键（`Ctrl+T` 等不与现有绑定冲突，`Space`/滚轮会改变现有手感，因此必须可关）。
+冲突处理：以上都以"预设不为关闭 + 无文本输入焦点"为前提；关闭时完全退回 iD 原有快捷键。
+Illustrator 档下 `Ctrl+D` 归「再次变换」，所以选区工具的取消选区改成 `Ctrl+Shift+A`；
+两档下 `Ctrl+T` 都保留自由变换（Illustrator 里它本来是字符面板，但在 OSM 里没有对应面板）。
 
 ### 2.6 工具组与右键二级菜单（PS 行为）
 

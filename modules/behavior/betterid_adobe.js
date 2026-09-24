@@ -3,7 +3,7 @@ import { select as d3_select } from 'd3-selection';
 import { actionCopyEntities } from '../actions/copy_entities';
 import { actionDeleteMultiple } from '../actions/delete_multiple';
 import { actionMove } from '../actions/move';
-import { adobeShortcutsEnabled } from '../core/betterid_tools';
+import { adobeShortcutsEnabled, adobeShortcutsIllustrator } from '../core/betterid_tools';
 import { t } from '../core/localizer';
 import { modeRotate } from '../modes/rotate';
 import { modeSelect } from '../modes/select';
@@ -17,15 +17,17 @@ var SPACE_KEYS = ['Space', ' '];
 
 
 /**
- * Adobe (Photoshop) style navigation and clipboard shortcuts.
+ * Adobe style navigation, transform and clipboard shortcuts.
  *
- * Everything here is opt-in through `betterid.editing.adobe_shortcuts` so the
- * stock iD feel stays available:
+ * Opt-in through `betterid.editing.shortcut_preset` (`off` by default) with a
+ * Photoshop or Illustrator flavour:
  *   - wheel = vertical pan, Ctrl+wheel = horizontal pan, Alt+wheel = zoom
  *   - hold Space = temporary hand tool
  *   - Alt+click = eyedropper (copies the hex colour under the pointer)
- *   - Ctrl+T free transform, Ctrl+J duplicate, Ctrl+Shift+V paste in place,
- *     Ctrl+Shift+T / Ctrl+Alt+Shift+T repeat the last transform
+ *   - Photoshop: Ctrl+T free transform, Ctrl+J duplicate, Ctrl+Shift+J cut,
+ *     Ctrl+Shift+V paste in place, Ctrl+Shift+T / Ctrl+Alt+Shift+T repeat
+ *   - Illustrator: E free transform, Ctrl+D transform again, Ctrl+F paste in
+ *     place, Ctrl+Shift+A deselect
  */
 export function behaviorBetteridAdobe(context) {
     var prefix = 'PointerEvent' in window ? 'pointer' : 'mouse';
@@ -126,6 +128,30 @@ export function behaviorBetteridAdobe(context) {
         }
 
         var key = (d3_event.key || '').toLowerCase();
+        var command = d3_event.ctrlKey || d3_event.metaKey;
+        var illustrator = adobeShortcutsIllustrator();
+
+        // Illustrator's own keys
+        if (illustrator) {
+            if (command && !d3_event.shiftKey && key === 'd') {
+                repeatTransform(d3_event, false);
+                return;
+            }
+            if (command && d3_event.shiftKey && key === 'a') {
+                d3_event.preventDefault();
+                d3_event.stopPropagation();
+                context.enter(modeSelect(context, []));
+                return;
+            }
+            if (command && !d3_event.shiftKey && key === 'f') {
+                pasteInPlace(d3_event);
+                return;
+            }
+            if (!command && !d3_event.altKey && key === 'e') {
+                freeTransform(d3_event);
+                return;
+            }
+        }
 
         if ((d3_event.ctrlKey || d3_event.metaKey) && !d3_event.shiftKey && key === 't') {
             freeTransform(d3_event);
