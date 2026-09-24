@@ -103,6 +103,11 @@ export async function directAiChat(request) {
   if (ai.disableThinking && !request.image) {
     payload.thinking = { type: 'disabled' };
   }
+  // The tag assistant needs a strict object: without this the model may answer
+  // with its own schema (it happens with web-search flavoured prompts).
+  if (request.json) {
+    payload.response_format = { type: 'json_object' };
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ai.timeout || DEFAULT_TIMEOUT);
@@ -140,7 +145,7 @@ export async function directAiChat(request) {
 
 /** Same call, but returning the first JSON object of the answer. */
 export async function directAiJson(request) {
-  const text = await directAiChat(request);
+  const text = await directAiChat({ ...request, json: true });
   const parsed = extractJsonObject(text);
   if (!parsed) throw new Error('AI endpoint did not return JSON');
   return parsed;

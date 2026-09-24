@@ -22921,11 +22921,11 @@ ${source}
   var init_id = __esm({
     "config/id.js"() {
       "use strict";
-      presetsCdnUrl = "https://cdn.jsdelivr.net/npm/@openstreetmap/id-tagging-schema@{presets_version}/";
+      presetsCdnUrl = "https://map.osm.asia/id/dist/tagging-schema/";
       presetTranslationsUrl = "tagging-schema/dist/translations";
       ociCdnUrl = "https://cdn.jsdelivr.net/npm/osm-community-index@{version}/";
       wmfSitematrixCdnUrl = "https://cdn.jsdelivr.net/npm/wmf-sitematrix@{version}/";
-      nsiCdnUrl = "https://cdn.jsdelivr.net/npm/name-suggestion-index@{version}/";
+      nsiCdnUrl = "https://map.osm.asia/id/dist/nsi/";
       defaultOsmApiConnections = {
         live: {
           url: "https://www.openstreetmap.org",
@@ -59770,6 +59770,9 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     if (ai.disableThinking && !request3.image) {
       payload.thinking = { type: "disabled" };
     }
+    if (request3.json) {
+      payload.response_format = { type: "json_object" };
+    }
     const controller = new AbortController();
     const timer2 = setTimeout(() => controller.abort(), ai.timeout || DEFAULT_TIMEOUT);
     const onAbort = () => controller.abort();
@@ -59800,7 +59803,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     }
   }
   async function directAiJson(request3) {
-    const text = await directAiChat(request3);
+    const text = await directAiChat({ ...request3, json: true });
     const parsed = extractJsonObject(text);
     if (!parsed) throw new Error("AI endpoint did not return JSON");
     return parsed;

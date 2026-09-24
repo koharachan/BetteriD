@@ -1163,7 +1163,7 @@ impl OsmProxy {
         let ai = if self.browser_ai_base_url.is_empty() {
             "null".to_string()
         } else {
-            let base = serde_json::to_string(&self.browser_ai_base_url)
+            let base = serde_json::to_string(self.browser_ai_base_url.trim_end_matches('/'))
                 .unwrap_or_else(|_| "\"\"".to_string());
             let text = serde_json::to_string(&self.browser_ai_text_model)
                 .unwrap_or_else(|_| "\"\"".to_string());
@@ -2314,8 +2314,50 @@ mod tests {
             std::env::temp_dir().join("betterid-proxy-tests"),
             trusted_proxy_ips,
             false,
+            String::new(),   // tile_proxy_base
+            String::new(),   // browser AI base url
+            String::new(),   // browser AI key
+            String::new(),   // browser AI text model
+            String::new(),   // browser AI vision model
             PrivacyUploader::from_config(&config),
         )
+    }
+
+    #[test]
+    fn test_runtime_config_exposes_the_browser_ai_endpoint() {
+        let off = test_proxy().id_runtime_config(7);
+        assert!(off.contains("ai:null"), "{off}");
+
+        let mut config = ProxyConfig::default();
+        config.browser_ai_base_url = "http://ai.example/v1/".to_string();
+        config.browser_ai_api_key = Some("k-1".to_string());
+        config.browser_ai_text_model = "text-1".to_string();
+        let proxy = OsmProxy::new(
+            Arc::new(SmartCache::new(100, Duration::from_secs(60))),
+            None,
+            AiRouter::from_config(&config),
+            "https://www.openstreetmap.org".to_string(),
+            "https://tile.openstreetmap.org".to_string(),
+            PathBuf::from("../dist"),
+            "test-client".to_string(),
+            None,
+            std::env::temp_dir().join("betterid-proxy-tests"),
+            Vec::new(),
+            false,
+            String::new(),                              // tile_proxy_base
+            config.browser_ai_base_url.clone(),         // browser AI base url
+            "k-1".to_string(),                          // browser AI key
+            "text-1".to_string(),                       // browser AI text model
+            String::new(),                              // vision falls back to text
+            PrivacyUploader::from_config(&config),
+        );
+        let on = proxy.id_runtime_config(7);
+        assert!(
+            on.contains(
+                r#"ai:{baseUrl:"http://ai.example/v1",apiKey:"k-1",textModel:"text-1",visionModel:"text-1""#
+            ),
+            "{on}"
+        );
     }
 
     #[test]
