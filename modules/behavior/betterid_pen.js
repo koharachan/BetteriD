@@ -92,6 +92,75 @@ export function behaviorBetteridPen(context) {
     }
 
 
+    function bezierPoint(p0, c1, c2, p3, t) {
+        var mt = 1 - t;
+        return [
+            (mt * mt * mt * p0[0]) + (3 * mt * mt * t * c1[0]) + (3 * mt * t * t * c2[0]) + (t * t * t * p3[0]),
+            (mt * mt * mt * p0[1]) + (3 * mt * mt * t * c1[1]) + (3 * mt * t * t * c2[1]) + (t * t * t * p3[1])
+        ];
+    }
+
+
+    function pushPoint(out, point, minDistance) {
+        var last = out[out.length - 1];
+        if (last && Math.hypot(point[0] - last[0], point[1] - last[1]) < minDistance) return;
+        out.push(point);
+    }
+
+
+    /**
+     * Flatten one bezier segment into points that are evenly spaced *along the
+     * curve* (equal arc length), instead of equal steps in `t`: equal-`t` steps
+     * bunch the nodes where the curve is slow and stretch them where it is fast,
+     * which both looks wrong and makes the resulting way uneven.
+     *
+     * The number of nodes follows the real arc length, and the last point always
+     * lands exactly on the anchor.
+     */
+    function flattenSegment(p0, c1, c2, p3, out, spacing) {
+        var chord = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
+        var hull = Math.hypot(c1[0] - p0[0], c1[1] - p0[1]) +
+            Math.hypot(c2[0] - c1[0], c2[1] - c1[1]) +
+            Math.hypot(p3[0] - c2[0], p3[1] - c2[1]);
+        var rough = Math.max(chord, hull / 1.6);
+        var steps = Math.max(8, Math.min(128, Math.ceil(rough / Math.max(4, spacing / 3))));
+
+        // cumulative arc length table
+        var table = [[0, p0]];
+        var previous = p0;
+        var total = 0;
+        for (var i = 1; i <= steps; i++) {
+            var point = bezierPoint(p0, c1, c2, p3, i / steps);
+            total += Math.hypot(point[0] - previous[0], point[1] - previous[1]);
+            table.push([total, point]);
+            previous = point;
+        }
+
+        if (total < 1e-6) return;
+
+        var count = Math.max(1, Math.round(total / spacing));
+        var minDistance = Math.max(1, spacing * 0.4);
+        var index = 1;
+
+        for (var n = 1; n <= count; n++) {
+            if (n === count) {
+                pushPoint(out, p3, minDistance);
+                break;
+            }
+
+            var target = total * n / count;
+            while (index < table.length - 1 && table[index][0] < target) index++;
+
+            var d0 = table[index - 1][0];
+            var d1 = table[index][0];
+            var f = (d1 - d0) < 1e-9 ? 0 : (target - d0) / (d1 - d0);
+            var a = table[index - 1][1];
+            var b = table[index][1];
+            pushPoint(out, [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], minDistance);
+        }
+    }
+
+
     function curvePoints(anchors, closed, tail) {
         var list = anchors.slice();
         if (!closed && tail) list.push(tail);
@@ -111,16 +180,16 @@ export function behaviorBetteridPen(context) {
             var c1 = handleScreen(a, 'handleOut') || p0;
             var c2 = handleScreen(b, 'handleIn') || p3;
 
-            var chord = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
-            var steps = Math.max(1, Math.round(chord / NODE_SPACING_PX));
-            if (closed && i === segments - 1) steps = Math.max(1, steps - 1);
+            flattenSegment(p0, c1, c2, p3, sampled, NODE_SPACING_PX);
 
-            for (var step = 1; step <= steps; step++) {
-                var t = step / steps;
-                var mt = 1 - t;
-                var x = (mt * mt * mt * p0[0]) + (3 * mt * mt * t * c1[0]) + (3 * mt * t * t * c2[0]) + (t * t * t * p3[0]);
-                var y = (mt * mt * mt * p0[1]) + (3 * mt * mt * t * c1[1]) + (3 * mt * t * t * c2[1]) + (t * t * t * p3[1]);
-                sampled.push([x, y]);
+            // the closing segment's end point is the first anchor, which is
+            // already in the list and gets reused by the way
+            if (closed && i === segments - 1 && sampled.length > 1) {
+                var secondLast = sampled[sampled.length - 2];
+                if (Math.hypot(secondLast[0] - sampled[sampled.length - 1][0],
+                        secondLast[1] - sampled[sampled.length - 1][1]) < Math.max(1, NODE_SPACING_PX * 0.4)) {
+                    sampled.pop();
+                }
             }
         }
 

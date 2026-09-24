@@ -45187,6 +45187,51 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
       if (!offset) return null;
       return context.projection(geoVecAdd(anchor.loc, offset));
     }
+    function bezierPoint(p02, c1, c2, p3, t4) {
+      var mt2 = 1 - t4;
+      return [
+        mt2 * mt2 * mt2 * p02[0] + 3 * mt2 * mt2 * t4 * c1[0] + 3 * mt2 * t4 * t4 * c2[0] + t4 * t4 * t4 * p3[0],
+        mt2 * mt2 * mt2 * p02[1] + 3 * mt2 * mt2 * t4 * c1[1] + 3 * mt2 * t4 * t4 * c2[1] + t4 * t4 * t4 * p3[1]
+      ];
+    }
+    function pushPoint(out, point3, minDistance) {
+      var last3 = out[out.length - 1];
+      if (last3 && Math.hypot(point3[0] - last3[0], point3[1] - last3[1]) < minDistance) return;
+      out.push(point3);
+    }
+    function flattenSegment(p02, c1, c2, p3, out, spacing) {
+      var chord = Math.hypot(p3[0] - p02[0], p3[1] - p02[1]);
+      var hull = Math.hypot(c1[0] - p02[0], c1[1] - p02[1]) + Math.hypot(c2[0] - c1[0], c2[1] - c1[1]) + Math.hypot(p3[0] - c2[0], p3[1] - c2[1]);
+      var rough = Math.max(chord, hull / 1.6);
+      var steps = Math.max(8, Math.min(128, Math.ceil(rough / Math.max(4, spacing / 3))));
+      var table = [[0, p02]];
+      var previous = p02;
+      var total = 0;
+      for (var i3 = 1; i3 <= steps; i3++) {
+        var point3 = bezierPoint(p02, c1, c2, p3, i3 / steps);
+        total += Math.hypot(point3[0] - previous[0], point3[1] - previous[1]);
+        table.push([total, point3]);
+        previous = point3;
+      }
+      if (total < 1e-6) return;
+      var count2 = Math.max(1, Math.round(total / spacing));
+      var minDistance = Math.max(1, spacing * 0.4);
+      var index2 = 1;
+      for (var n3 = 1; n3 <= count2; n3++) {
+        if (n3 === count2) {
+          pushPoint(out, p3, minDistance);
+          break;
+        }
+        var target = total * n3 / count2;
+        while (index2 < table.length - 1 && table[index2][0] < target) index2++;
+        var d0 = table[index2 - 1][0];
+        var d1 = table[index2][0];
+        var f2 = d1 - d0 < 1e-9 ? 0 : (target - d0) / (d1 - d0);
+        var a2 = table[index2 - 1][1];
+        var b11 = table[index2][1];
+        pushPoint(out, [a2[0] + (b11[0] - a2[0]) * f2, a2[1] + (b11[1] - a2[1]) * f2], minDistance);
+      }
+    }
     function curvePoints(anchors, closed, tail3) {
       var list = anchors.slice();
       if (!closed && tail3) list.push(tail3);
@@ -45201,15 +45246,15 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
         var p3 = anchorScreen(b11);
         var c1 = handleScreen(a2, "handleOut") || p02;
         var c2 = handleScreen(b11, "handleIn") || p3;
-        var chord = Math.hypot(p3[0] - p02[0], p3[1] - p02[1]);
-        var steps = Math.max(1, Math.round(chord / NODE_SPACING_PX));
-        if (closed && i3 === segments - 1) steps = Math.max(1, steps - 1);
-        for (var step = 1; step <= steps; step++) {
-          var t4 = step / steps;
-          var mt2 = 1 - t4;
-          var x3 = mt2 * mt2 * mt2 * p02[0] + 3 * mt2 * mt2 * t4 * c1[0] + 3 * mt2 * t4 * t4 * c2[0] + t4 * t4 * t4 * p3[0];
-          var y3 = mt2 * mt2 * mt2 * p02[1] + 3 * mt2 * mt2 * t4 * c1[1] + 3 * mt2 * t4 * t4 * c2[1] + t4 * t4 * t4 * p3[1];
-          sampled.push([x3, y3]);
+        flattenSegment(p02, c1, c2, p3, sampled, NODE_SPACING_PX);
+        if (closed && i3 === segments - 1 && sampled.length > 1) {
+          var secondLast = sampled[sampled.length - 2];
+          if (Math.hypot(
+            secondLast[0] - sampled[sampled.length - 1][0],
+            secondLast[1] - sampled[sampled.length - 1][1]
+          ) < Math.max(1, NODE_SPACING_PX * 0.4)) {
+            sampled.pop();
+          }
         }
       }
       return sampled;

@@ -127,6 +127,15 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   handles so the curve no longer jumps on release, the pending segment is shown
   as a rubber band, `Enter`/double-click commits an anchor that is still being
   dragged, and `Ctrl+Z` removes the last anchor while a path is in progress.
+* Restore the land cover textures (water, wetland, forest, cemetery, farmland,
+  …), the map cursors and the loader graphics under `dist/img/`: they were never
+  carried over from upstream, so every area fill requested a 404 and water and
+  friends rendered without their pattern. 36 patterns/cursors plus the 8 loose
+  images are back (the build no longer has to fetch them).
+* Pen nodes are now spaced evenly *along the curve* (equal arc length) instead of
+  equal steps in the bezier parameter: on the same test curve the node spacing
+  went from 7.2–21.9 px (CV 0.28) to 11.4–12.3 px (CV 0.02) with about the same
+  node count.
 * Fix the magic wand and quick selection outline being drawn away from the
   clicked region: the mask-to-screen scale used the length of the projected
   one-pixel vector (√2) instead of its per-axis components, so the marching ants
