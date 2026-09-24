@@ -42,6 +42,14 @@ pub struct ProxyConfig {
     pub deepseek_disable_thinking: bool,
     pub openai_api_key: Option<String>,
     pub openai_base_url: String,
+    /// Absolute AI endpoint the *browser* should call directly. Our servers may
+    /// not be able to reach the configured provider (the provider whitelists
+    /// ordinary client networks), so the editor can use the visitor's own
+    /// connection; empty keeps everything behind this origin's `/api/osm-ai/*`.
+    pub browser_ai_base_url: String,
+    pub browser_ai_api_key: Option<String>,
+    pub browser_ai_text_model: String,
+    pub browser_ai_vision_model: String,
     pub openai_resolve_ip: Option<String>,
     pub openai_text_model: String,
     pub openai_search_model: String,
@@ -94,6 +102,10 @@ impl Default for ProxyConfig {
             deepseek_disable_thinking: true,
             openai_api_key: None,
             openai_base_url: "https://api.openai.com/v1".to_string(),
+            browser_ai_base_url: String::new(),
+            browser_ai_api_key: None,
+            browser_ai_text_model: String::new(),
+            browser_ai_vision_model: String::new(),
             openai_resolve_ip: None,
             openai_text_model: "gpt-5.4-mini".to_string(),
             openai_search_model: "gpt-5.4-mini".to_string(),
@@ -188,6 +200,18 @@ impl ProxyConfig {
         }
         if let Some(v) = value("OPENAI_BASE_URL") {
             config.openai_base_url = v;
+        }
+        if let Some(v) = value("BROWSER_AI_BASE_URL") {
+            config.browser_ai_base_url = v.trim_end_matches('/').to_string();
+        }
+        if let Some(v) = value("BROWSER_AI_API_KEY") {
+            config.browser_ai_api_key = Some(v);
+        }
+        if let Some(v) = value("BROWSER_AI_TEXT_MODEL") {
+            config.browser_ai_text_model = v;
+        }
+        if let Some(v) = value("BROWSER_AI_VISION_MODEL") {
+            config.browser_ai_vision_model = v;
         }
         if let Some(v) = value("OPENAI_RESOLVE_IP") {
             config.openai_resolve_ip = Some(v);

@@ -66,6 +66,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.trusted_proxy_ips.clone(),
         config.proxy_all_tiles,
         config.tile_proxy_base.clone(),
+        config.browser_ai_base_url.clone(),
+        config
+            .browser_ai_api_key
+            .clone()
+            .or_else(|| config.openai_api_key.clone())
+            .or_else(|| config.deepseek_api_key.clone())
+            .unwrap_or_default(),
+        config.browser_ai_text_model.clone(),
+        config.browser_ai_vision_model.clone(),
         privacy,
     );
 

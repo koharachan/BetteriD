@@ -70,6 +70,11 @@ pub struct OsmProxy {
     visual_request_slots: Arc<Semaphore>,
     proxy_all_tiles: bool,
     tile_proxy_base: String,
+    /// Optional AI endpoint the browser may call directly (see `OSM_AI_BROWSER_BASE_URL`).
+    browser_ai_base_url: String,
+    browser_ai_api_key: String,
+    browser_ai_text_model: String,
+    browser_ai_vision_model: String,
     privacy: PrivacyUploader,
 }
 
@@ -126,6 +131,10 @@ impl OsmProxy {
         trusted_proxy_ips: Vec<IpAddr>,
         proxy_all_tiles: bool,
         tile_proxy_base: String,
+        browser_ai_base_url: String,
+        browser_ai_api_key: String,
+        browser_ai_text_model: String,
+        browser_ai_vision_model: String,
         privacy: PrivacyUploader,
     ) -> Self {
         let client = ReqwestClient::builder()
@@ -155,6 +164,10 @@ impl OsmProxy {
             visual_request_slots: Arc::new(Semaphore::new(AI_MAX_CONCURRENT_VISUAL_REQUESTS)),
             proxy_all_tiles,
             tile_proxy_base,
+            browser_ai_base_url,
+            browser_ai_api_key,
+            browser_ai_text_model,
+            browser_ai_vision_model,
             privacy,
         }
     }
@@ -1144,9 +1157,37 @@ impl OsmProxy {
         let redirect_uri =
             serde_json::to_string(&self.oauth_redirect_uri).unwrap_or_else(|_| "null".to_string());
 
+        // The AI provider often only accepts ordinary client networks, so the
+        // editor can be told to call it straight from the browser. The key is
+        // already public in that case (it ships to the page on purpose).
+        let ai = if self.browser_ai_base_url.is_empty() {
+            "null".to_string()
+        } else {
+            let base = serde_json::to_string(&self.browser_ai_base_url)
+                .unwrap_or_else(|_| "\"\"".to_string());
+            let text = serde_json::to_string(&self.browser_ai_text_model)
+                .unwrap_or_else(|_| "\"\"".to_string());
+            let vision = serde_json::to_string(if self.browser_ai_vision_model.is_empty() {
+                &self.browser_ai_text_model
+            } else {
+                &self.browser_ai_vision_model
+            })
+            .unwrap_or_else(|_| "\"\"".to_string());
+            let key = serde_json::to_string(&self.browser_ai_api_key())
+                .unwrap_or_else(|_| "\"\"".to_string());
+            format!(
+                "{{baseUrl:{base},apiKey:{key},textModel:{text},visionModel:{vision},disableThinking:true,timeout:120000}}"
+            )
+        };
+
         format!(
-            "<script>window.OSM_PROXY_CONFIG={{assetVersion:{asset_version},osmApiConnection:{{url:{oauth_origin},apiUrl:window.location.origin,client_id:{client_id},redirect_uri:{redirect_uri}}}}};</script>"
+            "<script>window.OSM_PROXY_CONFIG={{assetVersion:{asset_version},ai:{ai},osmApiConnection:{{url:{oauth_origin},apiUrl:window.location.origin,client_id:{client_id},redirect_uri:{redirect_uri}}}}};</script>"
         )
+    }
+
+    /// The key handed to the browser is the one the direct endpoint expects.
+    fn browser_ai_api_key(&self) -> String {
+        self.browser_ai_api_key.clone()
     }
 
     async fn serve_id_landing(&self, method: &Method) -> Response<HyperBody> {
