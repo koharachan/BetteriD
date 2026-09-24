@@ -127,6 +127,9 @@ _Breaking developer changes, which may affect downstream projects or sites that 
   handles so the curve no longer jumps on release, the pending segment is shown
   as a rubber band, `Enter`/double-click commits an anchor that is still being
   dragged, and `Ctrl+Z` removes the last anchor while a path is in progress.
+* Add a `water_standing` texture (a copy of `waves`) for `water=reservoir` and
+  `amenity=fountain`: upstream iD references that name but ships no image, so
+  those areas stayed flat.
 * Restore the land cover textures (water, wetland, forest, cemetery, farmland,
   …), the map cursors and the loader graphics under `dist/img/`: they were never
   carried over from upstream, so every area fill requested a 404 and water and
