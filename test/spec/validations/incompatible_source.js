@@ -76,27 +76,63 @@ describe('iD.validations.incompatible_source', function () {
     });
 
     it('flags Tianditu as an incompatible source', function() {
-        createWay({ building: 'yes', source: '\u5929\u5730\u56fe' });
+        createWay({ building: 'yes', source: '天地图' });
         var issues = validate();
         expect(issues).toHaveLength(1);
         expect(issues[0].type).toEqual('incompatible_source');
     });
 
     it('does not flag a geographic name containing Amap Chinese characters', function() {
-        createWay({ building: 'yes', source: '\u9ad8\u5fb7\u7f6e\u5730\u5e7f\u573a survey' });
+        createWay({ building: 'yes', source: '高德置地广场 survey' });
         var issues = validate();
         expect(issues).toHaveLength(0);
     });
 
     it('does not flag a geographic name starting with Tianditu Chinese characters', function() {
-        createWay({ building: 'yes', source: '\u5929\u5730\u56fe\u4e66\u9986 survey' });
+        createWay({ building: 'yes', source: '天地图书馆 survey' });
         var issues = validate();
         expect(issues).toHaveLength(0);
     });
 
     it('still flags an explicit Amap Chinese source', function() {
-        createWay({ building: 'yes', source: '\u9ad8\u5fb7\u5730\u56fe' });
+        createWay({ building: 'yes', source: '高德地图' });
         var issues = validate();
         expect(issues).toHaveLength(1);
+    });
+
+    it('flags way with a goo.gl shortlink as source', function() {
+        createWay({ amenity: 'cafe', building: 'yes', name: 'Key Largo Café', source: 'https://maps.app.goo.gl/UX2Kv2GVQR9bkWwv5'});
+        var issues = validate();
+        expect(issues).toHaveLength(1);
+        var issue = issues[0];
+        expect(issue.type).toEqual('incompatible_source');
+        expect(issue.entityIds).toHaveLength(1);
+        expect(issue.entityIds[0]).toEqual('w-1');
+    });
+
+    it('flags way with a bare goo.gl source', function() {
+        createWay({ amenity: 'cafe', building: 'yes', name: 'Key Largo Café', source: 'goo.gl/abc123'});
+        var issues = validate();
+        expect(issues).toHaveLength(1);
+    });
+
+    it('does not flag a source that merely ends in goo.gl', function() {
+        createWay({ amenity: 'cafe', building: 'yes', name: 'Key Largo Café', source: 'kangoo.gl'});
+        var issues = validate();
+        expect(issues).toHaveLength(0);
+    });
+
+    it('does not flag a .glass domain', function() {
+        createWay({ amenity: 'cafe', building: 'yes', name: 'Key Largo Café', source: 'goo.glass'});
+        var issues = validate();
+        expect(issues).toHaveLength(0);
+    });
+
+    it('does not flag a Google Sites page', function() {
+        // Google Sites pages are user-generated; Google holds no copyright
+        // interest in the content, so they are a legitimate source.
+        createWay({ amenity: 'cafe', building: 'yes', name: 'Key Largo Café', source: 'https://sites.google.com/view/key-largo-cafe'});
+        var issues = validate();
+        expect(issues).toHaveLength(0);
     });
 });

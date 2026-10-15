@@ -1,4 +1,7 @@
 import { select as d3_select, selectAll as d3_selectAll } from 'd3-selection';
+import fetchMock from 'fetch-mock';
+
+import { utilResetAIStatus } from '../../../modules/util/ai_status';
 
 
 describe('iD.uiCommit', function() {
@@ -15,6 +18,10 @@ describe('iD.uiCommit', function() {
     });
 
     beforeEach(function() {
+        // the save panel probes the (optional) AI/privacy status endpoint
+        utilResetAIStatus();
+        fetchMock.mock('/api/osm-ai/status', { ai: false, translate: false, privacy: false });
+
         iD.prefs('disclosure.changeset_tag_editor.expanded', null);
         iD.prefs('disclosure.changes_list.expanded', 'false');
 
@@ -43,6 +50,8 @@ describe('iD.uiCommit', function() {
         d3_selectAll('.ui-wrap').remove();
         iD.prefs('disclosure.changeset_tag_editor.expanded', null);
         iD.prefs('disclosure.changes_list.expanded', null);
+        fetchMock.reset();
+        utilResetAIStatus();
     });
 
 

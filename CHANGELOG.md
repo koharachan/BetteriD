@@ -363,11 +363,79 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 * Inherit stable iD release translations during normal builds while keeping a separate Transifex development command.
 * Expand frontend and Rust tests for mobile drawing, imagery, AI suggestions, photo handling, provider fallback, rate limiting, military policy, validation, and rendering.
 
+# Unreleased (2.43.0-dev)
+
+#### :sparkles: Usability & Accessibility
+* Increase the colour contrast of the blue text used for links and preset fields ([#12724], thanks [@k-yle])
+* Render diameter and radius tags when a node is selected ([#9732], thanks [@k-yle])
+* Dedicated rendering for road sections tagged with `ford=yes` ([#12830], thanks [@Geo-2695])
+* Allow to press `=` key to switch between _key_ and _value_ part of tags in the raw tag editor ([#12828], thanks [@hemaksh2007jain-bit]) and allow to press _Enter_ key to switch between tag parts or next tag in the raw tag editor
+* Prevent the browser tab from accidentally being closed while uploading a changeset ([#12928], thanks [@k-yle])
+* Include all imagery layers from the editor-layer-index, even those older than 20 years ([#12878], thanks [@andrewharvey])
+#### :scissors: Operations
+#### :camera: Street-Level
+#### :white_check_mark: Validation
+* Warn about `goo.gl` shortlinks as sources, alongside full Google URLs ([#12740])
+* Allow (address) points at the same coordinate if they have different `addr:floor` ([#8424])
+* Implement functionality to show tooltips for individual validation fixes.
+* Improve wording for "connect the features (manually)" fix for routing-islands validator, and show tooltip with further instructions ([#8402])
+#### :bug: Bugfixes
+* Fix exceptions when resizing the browser tab when nothing is selected ([#12800], thanks [@k-yle])
+* Allow tags like `not:*:wikidata` to have multiple values ([#12736], thanks [@k-yle])
+* Fix the icon of the GPS Overlay layer not working ([#12760], thanks [@hlfan])
+#### :earth_asia: Localization
+* Support 835 new languages in the dropdown when adding a `name:*` tag ([#12802])
+* Support territory-level address hints ([#12704], thanks [@Vectorial1024])
+* Add Hong Kong and Macao address formats ([#12704], thanks [@Vectorial1024])
+#### :hourglass: Performance
+#### :mortar_board: Walkthrough / Help
+#### :rocket: Presets
+#### :hammer: Development
+* Ongoing work to migrate the codebase from JavaScript to TypeScript ([view progress](https://github.com/openstreetmap/iD/milestone/47?closed=1))
+* Drop code previously responsible for _maprules_ integration (which has been defunct for a while now) ([#12679])
+
+[#8402]: https://github.com/openstreetmap/iD/issues/8402
+[#8424]: https://github.com/openstreetmap/iD/issues/8424
+[#9732]: https://github.com/openstreetmap/iD/pull/9732
+[#12679]: https://github.com/openstreetmap/iD/pull/12679
+[#12704]: https://github.com/openstreetmap/iD/pull/12704
+[#12724]: https://github.com/openstreetmap/iD/pull/12724
+[#12736]: https://github.com/openstreetmap/iD/pull/12736
+[#12740]: https://github.com/openstreetmap/iD/issues/12740
+[#12760]: https://github.com/openstreetmap/iD/pull/12760
+[#12800]: https://github.com/openstreetmap/iD/pull/12800
+[#12802]: https://github.com/openstreetmap/iD/pull/12802
+[#12828]: https://github.com/openstreetmap/iD/pull/12828
+[#12830]: https://github.com/openstreetmap/iD/pull/12830
+[#12878]: https://github.com/openstreetmap/iD/pull/12878
+[#12910]: https://github.com/openstreetmap/iD/pull/12910
+[#12928]: https://github.com/openstreetmap/iD/pull/12928
+[@Geo-2695]: https://github.com/Geo-2695
+[@hemaksh2007jain-bit]: https://github.com/hemaksh2007jain-bit
+
+
+# 2.42.1
+##### 2026-Aug-18
+
+#### :bug: Bugfixes
+* Fix `imagery_used` set to None ([#12721], thanks [@k-yle])
+* Fix Mapillary viewer not loading traffic signs and detected map features ([#12722], thanks [@k-yle])
+* Fix the `crossing_ways` validator not working ([#12734], thanks [@k-yle])
+* Fix auto-completion not working in the "Add field" dropdown ([#12735], thanks [@k-yle])
+* Fix the `outdated_tags` validator raising erroneous tag upgrades where no tags are actually proposed to be changed ([#12736], thanks [@k-yle])
+
+[#12721]: https://github.com/openstreetmap/iD/pull/12721
+[#12722]: https://github.com/openstreetmap/iD/pull/12722
+[#12734]: https://github.com/openstreetmap/iD/pull/12734
+[#12735]: https://github.com/openstreetmap/iD/pull/12735
+[#12736]: https://github.com/openstreetmap/iD/pull/12736
+
+
 # 2.42.0
 ##### 2026-Aug-10
 
 #### :newspaper: News
-* Update id-tagging-schema to [version 7](https://github.com/ideditor/schema-builder/blob/main/MIGRATION_GUIDE.md#v7-migration-guide), allowing to add more detailed information to be defined for presets and fields, adding [_pinhead_](https://pinhead.ink/) icon set, and unlocking additional functionality to be implemented for presets in the future ([#12358])
+* Update id-tagging-schema to [version 7](https://github.com/openstreetmap/id-tagging-schema/blob/main/MIGRATION_GUIDE.md#v7-migration-guide), allowing to add more detailed information to be defined for presets and fields, adding [_pinhead_](https://pinhead.ink/) icon set, and unlocking additional functionality to be implemented for presets in the future ([#12358])
 #### :sparkles: Usability & Accessibility
 * Display radio field options in a two-column layout if there is insufficient space for them in a single line ([#12455])
 * Render `highway=track` using different styles depending on the `tracktype` ([#12392], thanks [@RudyTheDev])
@@ -392,7 +460,7 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 * Do not select start/end vertex of an area or closed way multiple times when selecting all vertices of a way using the keyboard shortcut ([#12586], thanks [@RudyTheDev])
 * Fix vertices of multipolygons not being movable in some special circumstances ([#10120], thanks [@k-yle])
 * Fix minor bugs with the country and language input fields ([#12652], thanks [@k-yle])
-* Fix a condition where a modified node was falsely categorized as _delted_ in the changeset summary when it was changed from a _point_ to a _vertex_ geometry ([#12709])
+* Fix a condition where a modified node was falsely categorized as _deleted_ in the changeset summary when it was changed from a _point_ to a _vertex_ geometry ([#12709])
 #### :earth_asia: Localization
 * Improve some edge cases of rendering of mixed right-to-left and left-to-right text ([#8713])
 * When labelling features, match locale codes like `zh-CN` to name tags like `name:zh-Hans` ([#10911], thanks [@k-yle])
@@ -401,6 +469,7 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 * For radio fields: show "unknown" values (that don't match one of the specified radio options) as a temporary placeholder raw value option ([#12082])
 * Show tooltips with tag values (and descriptions if available) for options of `radio` and `check` fields (thanks [@bhavyaKhatri2703])
 #### :hammer: Development
+* Ongoing work to migrate the codebase from JavaScript to TypeScript ([view progress](https://github.com/openstreetmap/iD/milestone/47?closed=1))
 * Fix unit tests failing with nodejs v26 ([#12401], thanks [@brianstrauch])
 * Remove the unused lane parsing code, which was left over from an unfinished lane editor and was not reachable from any preset ([#12664], thanks [@wantaekchoi])
 * Converted a number of source code files from javascript to typescript (thanks [@k-yle])
@@ -489,6 +558,7 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 #### :earth_asia: Localization
 * Change the example phone format for Türkiye ([#12446], thanks [@w2r4])
 #### :hammer: Development
+* Ongoing work to migrate the codebase from JavaScript to TypeScript ([view progress](https://github.com/openstreetmap/iD/milestone/47?closed=1))
 * Remove redundant software dependencies to reduce the amount of the code that is bundled with iD ([#11634], [#12307], thanks [@k-yle])
 * Update name-suggestion-index to v7.2 ([#12337], thanks [@bjornstar])
 * Introduce location hash `change` events ([#12429])
@@ -616,6 +686,7 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 
 * Fix regression where some strings (like some section headings) are not rendered correctly ([#12083])
 
+[#12083]: https://github.com/openstreetmap/iD/issues/12083
 
 # 2.39.4
 ##### 2026-03-23

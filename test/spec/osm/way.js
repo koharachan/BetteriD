@@ -138,8 +138,8 @@ describe('iD.osmWay', function() {
         });
     });
 
-    describe('#segments', function() {
-        it('returns each way segment', function() {
+    describe('#segments', () => {
+        it('returns each way segment', () => {
             const n1 = new iD.osmNode({ id: 'n1', loc: [1, 1] });
             const n2 = new iD.osmNode({ id: 'n2', loc: [2, 2] });
             const n3 = new iD.osmNode({ id: 'n3', loc: [3, 3] });

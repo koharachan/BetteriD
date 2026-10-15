@@ -39,7 +39,7 @@ jobs:
         run: mkdir dist/id-tagging-schema && mv id-tagging-schema/dist dist/id-tagging-schema/dist
       # build iD using freshest version of presets and ELI
       - run: pnpm install --frozen-lockfile
-      - run: pnpm add editor-layer-index
+      - run: pnpm add @openstreetmap/editor-layer-index
       - run: mkdir dist/data
       - run: pnpm run imagery
       - run: pnpm run all

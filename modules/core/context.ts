@@ -1,7 +1,6 @@
 import { debounce, throttle, type DebouncedFunc } from 'es-toolkit/compat';
 
 import { dispatch as d3_dispatch, type Dispatch } from 'd3-dispatch';
-import { json as d3_json } from 'd3-fetch';
 import { select as d3_select } from 'd3-selection';
 
 import packageJSON from '../../package.json';
@@ -53,7 +52,6 @@ interface HashParams {
     theme?: Theme;
     presets?: string;
     locale?: string;
-    maprules?: string;
     comment?: string;
     source?: string;
     hashtags?: string;
@@ -177,7 +175,7 @@ export interface coreContext extends Pick<Dispatch<object, EventMap>, 'on'> {
     graph(): coreGraph;
     pauseChangeDispatch(): void;
     resumeChangeDispatch(): void;
-    perform: any;
+    perform: coreHistory['perform'];
     replace: coreHistory['replace'];
     pop: coreHistory['pop'];
     undo: coreHistory['undo'];
@@ -426,8 +424,13 @@ export function coreContext(this: object): coreContext {
   } as coreContext['inIntro'];
 
   // Immediately save the user's history to localstorage, if possible
-  // This is called someteimes, but also on the `window.onbeforeunload` handler
+  // This is called sometimes, but also on the `window.onbeforeunload` handler
   context.save = () => {
+    // prevent the tab from being closed while a changeset is being uploaded
+    if (context.uploader().isSaving()) {
+      return t('save.unsaved_changes');
+    }
+
     // no history save, no message onbeforeunload
     if (_inIntro || context.container().select('.modal').size()) return;
 
@@ -715,10 +718,10 @@ export function coreContext(this: object): coreContext {
     // of instantiation shouldn't matter.
     function instantiateInternal() {
 
-      _history = coreHistory(context);
-      context.graph = _history.graph;
-      context.pauseChangeDispatch = _history.pauseChangeDispatch;
-      context.resumeChangeDispatch = _history.resumeChangeDispatch;
+      _history = new coreHistory(context);
+      context.graph = () => _history.graph();
+      context.pauseChangeDispatch = () => _history.pauseChangeDispatch();
+      context.resumeChangeDispatch = () => _history.resumeChangeDispatch();
       context.perform = withDebouncedSave(_history.perform);
       context.replace = withDebouncedSave(_history.replace);
       context.pop = withDebouncedSave(_history.pop);
@@ -744,7 +747,6 @@ export function coreContext(this: object): coreContext {
     function initializeDependents() {
 
       if (context.initialHashParams.presets) {
-        // @ts-expect-error -- will be fixed in a different PR
         presetManager.addablePresetIDs(new Set(context.initialHashParams.presets.split(',')));
       }
 
@@ -758,7 +760,6 @@ export function coreContext(this: object): coreContext {
 
       // kick off some async work
       localizer.ensureLoaded();
-      // @ts-expect-error -- will be fixed in a different PR
       presetManager.ensureLoaded();
       _background.ensureLoaded();
 
@@ -774,15 +775,6 @@ export function coreContext(this: object): coreContext {
 
       // Migrate history data from localStorage to IndexedDB
       _history.migrateHistoryData();
-
-      if (services.maprules && context.initialHashParams.maprules) {
-        d3_json<unknown[]>(context.initialHashParams.maprules)
-          .then(mapcss => {
-            services.maprules.init();
-            mapcss!.forEach(mapcssSelector => services.maprules.addRule(mapcssSelector));
-          })
-          .catch(() => { /* ignore */ });
-      }
 
       // if the container isn't available, e.g. when testing, don't load the UI
       if (!context.container().empty()) {

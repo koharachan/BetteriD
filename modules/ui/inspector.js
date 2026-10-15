@@ -19,6 +19,8 @@ export function uiInspector(context) {
 
 
     function inspector(selection, options = {}) {
+        if (!_entityIDs?.length) return;
+
         presetList
             .entityIDs(_entityIDs)
             .geometryChoices(_presetGeometries)
