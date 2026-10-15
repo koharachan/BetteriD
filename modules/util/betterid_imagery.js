@@ -12,6 +12,11 @@
  */
 
 const MAX_CANVAS_PIXELS = 4000 * 4000;
+const BITMAP_CACHE_SIZE = 128;   // decoded cross-origin tiles (256x256 RGBA is ~256 KB, so ~32 MB at most)
+
+/** src -> drawable copy of a cross-origin tile, so a second wand click or a
+ *  brush stroke does not download and decode the same tiles again. */
+const _bitmaps = new Map();
 
 
 /** All tile images of the visible raster layers (topmost layer last). */
@@ -98,19 +103,43 @@ async function loadBitmap(image) {
     })();
 
     if (crossOrigin) {
+        const cached = _bitmaps.get(src);
+        if (cached) {
+            // refresh its position so it stays among the recently used
+            _bitmaps.delete(src);
+            _bitmaps.set(src, cached);
+            return cached;
+        }
         try {
             const response = await fetch(src, { mode: 'cors', credentials: 'omit' });
             if (!response.ok) return null;
             const blob = await response.blob();
             if (typeof createImageBitmap !== 'function') return null;
             const bitmap = await createImageBitmap(blob);
-            return { source: bitmap, x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+            const entry = { source: bitmap, x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+            _bitmaps.set(src, entry);
+            while (_bitmaps.size > BITMAP_CACHE_SIZE) {
+                const oldest = _bitmaps.keys().next().value;
+                const old = _bitmaps.get(oldest);
+                _bitmaps.delete(oldest);
+                if (old && old.source && typeof old.source.close === 'function') old.source.close();
+            }
+            return entry;
         } catch {
             return null;   // no CORS: this imagery cannot be read at all
         }
     }
 
     return usable;
+}
+
+
+/** Drop the decoded tile cache (tests, or when imagery changes a lot). */
+export function clearImageryCache() {
+    _bitmaps.forEach(entry => {
+        if (entry.source && typeof entry.source.close === 'function') entry.source.close();
+    });
+    _bitmaps.clear();
 }
 
 

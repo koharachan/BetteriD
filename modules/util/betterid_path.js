@@ -11,7 +11,7 @@
  */
 
 const MIN_SAMPLES = 16;
-const MAX_SAMPLES = 256;
+const MAX_SAMPLES = 160;
 
 
 export function vecAdd(a, b) { return [a[0] + b[0], a[1] + b[1]]; }
@@ -82,7 +82,7 @@ export function isStraight(p0, c1, c2, p3, tolerance) {
 export function arcLengthTable(p0, c1, c2, p3, steps) {
     if (!steps) {
         const hull = vecDistance(p0, c1) + vecDistance(c1, c2) + vecDistance(c2, p3);
-        steps = Math.max(MIN_SAMPLES, Math.min(MAX_SAMPLES, Math.ceil(hull / 2)));
+        steps = Math.max(MIN_SAMPLES, Math.min(MAX_SAMPLES, Math.ceil(hull / 3)));
     }
 
     const table = [{ s: 0, t: 0, p: p0 }];
@@ -99,9 +99,12 @@ export function arcLengthTable(p0, c1, c2, p3, steps) {
 }
 
 
-/** The point of the table at arc length `s`, with the index it sits before. */
-function pointAtLength(table, s) {
-    let index = 1;
+/**
+ * The point of the table at arc length `s`, with the index it sits before.
+ * `from` lets callers that ask for increasing lengths continue the walk.
+ */
+function pointAtLength(table, s, from) {
+    let index = Math.max(1, from || 1);
     while (index < table.length - 1 && table[index].s < s) index++;
     const a = table[index - 1];
     const b = table[index];
@@ -205,8 +208,11 @@ export function flattenCubic(p0, c1, c2, p3, options) {
 
     const candidatesFor = n => {
         const candidates = [];
+        let index = 1;
         for (let k = 1; k < n; k++) {
-            candidates.push(pointAtLength(table, total * k / n));
+            const candidate = pointAtLength(table, total * k / n, index);
+            index = candidate.index;
+            candidates.push(candidate);
         }
         candidates.push({ p: p3, index: table.length - 1 });
         return candidates;
@@ -287,12 +293,34 @@ export function flattenPath(anchors, closed, options) {
     const out = [{ p: anchors[0].p, anchor: anchors[0] }];
     if (anchors.length < 2) return out;
 
+    // `options.cache` (a Map) remembers each segment by its control points
+    // relative to its start, so dragging one anchor only re-flattens the two
+    // segments it touches, and panning the map re-flattens nothing at all
+    const cache = options && options.cache;
+    if (cache && cache.size > 1000) cache.clear();
+
     const segments = closed ? anchors.length : anchors.length - 1;
     for (let i = 0; i < segments; i++) {
         const a = anchors[i];
         const b = anchors[(i + 1) % anchors.length];
         const [p0, c1, c2, p3] = segmentControls(a, b);
-        const points = flattenCubic(p0, c1, c2, p3, options);
+        let points;
+        if (cache) {
+            const r1 = vecSub(c1, p0);
+            const r2 = vecSub(c2, p0);
+            const r3 = vecSub(p3, p0);
+            const key = r1 + '|' + r2 + '|' + r3 + '|' + (options.tolerance || 0) + '|' + (options.minSpacing || 0);
+            let relative = cache.get(key);
+            if (!relative) {
+                relative = flattenCubic([0, 0], r1, r2, r3, options);
+                cache.set(key, relative);
+            }
+            points = relative.map(p => vecAdd(p, p0));
+            // the end point must be exactly the anchor, not p0 + (p3 - p0) rounded
+            if (points.length) points[points.length - 1] = p3;
+        } else {
+            points = flattenCubic(p0, c1, c2, p3, options);
+        }
         points.forEach((p, k) => {
             const isAnchor = k === points.length - 1;
             if (closed && isAnchor && i === segments - 1) return;   // back at the start
@@ -304,27 +332,45 @@ export function flattenPath(anchors, closed, options) {
 
 
 /**
- * Nearest point of a path to `point`: the segment index, the parameter on
- * that segment and the distance, or `null` when nothing is within `radius`.
+ * The sampled segments of a path, for repeated hit testing: one arc-length
+ * table per segment plus its bounding box (control hull, for quick rejects).
  */
-export function nearestOnPath(anchors, closed, point, radius) {
-    if (anchors.length < 2) return null;
+export function pathTables(anchors, closed) {
+    if (anchors.length < 2) return [];
     const segments = closed ? anchors.length : anchors.length - 1;
-    let best = null;
-
+    const tables = [];
     for (let i = 0; i < segments; i++) {
         const a = anchors[i];
         const b = anchors[(i + 1) % anchors.length];
         const [p0, c1, c2, p3] = segmentControls(a, b);
+        tables.push({
+            segment: i,
+            table: arcLengthTable(p0, c1, c2, p3),
+            minX: Math.min(p0[0], c1[0], c2[0], p3[0]),
+            maxX: Math.max(p0[0], c1[0], c2[0], p3[0]),
+            minY: Math.min(p0[1], c1[1], c2[1], p3[1]),
+            maxY: Math.max(p0[1], c1[1], c2[1], p3[1])
+        });
+    }
+    return tables;
+}
 
-        // quick reject on the control hull
-        const minX = Math.min(p0[0], c1[0], c2[0], p3[0]) - radius;
-        const maxX = Math.max(p0[0], c1[0], c2[0], p3[0]) + radius;
-        const minY = Math.min(p0[1], c1[1], c2[1], p3[1]) - radius;
-        const maxY = Math.max(p0[1], c1[1], c2[1], p3[1]) + radius;
-        if (point[0] < minX || point[0] > maxX || point[1] < minY || point[1] > maxY) continue;
 
-        const table = arcLengthTable(p0, c1, c2, p3);
+/**
+ * Nearest point of a path to `point`: the segment index, the parameter on
+ * that segment and the distance, or `null` when nothing is within `radius`.
+ * `tables` may be passed from `pathTables()` to reuse the sampling.
+ */
+export function nearestOnPath(anchors, closed, point, radius, tables) {
+    if (anchors.length < 2) return null;
+    let best = null;
+
+    for (const entry of tables || pathTables(anchors, closed)) {
+        if (point[0] < entry.minX - radius || point[0] > entry.maxX + radius ||
+            point[1] < entry.minY - radius || point[1] > entry.maxY + radius) continue;
+
+        const table = entry.table;
+        const i = entry.segment;
         for (let k = 1; k < table.length; k++) {
             const d = pointSegmentDistance(point, table[k - 1].p, table[k].p);
             if (d <= radius && (!best || d < best.distance)) {

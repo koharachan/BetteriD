@@ -13,7 +13,7 @@ import { osmNode, osmWay } from '../osm';
 import { presetManager } from '../presets';
 import { utilFastMouse } from '../util';
 import {
-    alignOpposite, bezierSplit, constrainAngle, flattenPath, nearestOnPath,
+    alignOpposite, bezierSplit, constrainAngle, flattenPath, nearestOnPath, pathTables,
     segmentControls, vecAdd, vecDistance, vecSub
 } from '../util/betterid_path';
 
@@ -60,6 +60,8 @@ export function behaviorBetteridPen(context) {
     let _overlay = d3_select(null);
     let _layers = {};
     let _flatCache = { key: null, value: null };
+    let _hitCache = { key: null, tables: null, anchors: null };
+    const _segmentCache = new Map();   // flattened segments, see flattenPath()
 
 
     /* ----------------------------------------------------------- helpers -- */
@@ -127,7 +129,8 @@ export function behaviorBetteridPen(context) {
         return {
             tolerance: toleranceM / mpp,
             minSpacing: MIN_NODE_SPACING_M / mpp,
-            maxNodes: 96
+            maxNodes: 96,
+            cache: _segmentCache
         };
     }
 
@@ -237,9 +240,18 @@ export function behaviorBetteridPen(context) {
         return null;
     }
 
+    /** Path hit testing; the sampled segments survive between pointer moves. */
     function segmentAt(point) {
         if (_anchors.length < 2) return null;
-        return nearestOnPath(screenAnchors(_anchors), false, point, SEGMENT_RADIUS_PX);
+        const transform = context.projection.transform();
+        const key = [transform.k, transform.x, transform.y]
+            .concat(_anchors.map(a => [a.loc, a.handleIn, a.handleOut].join(',')))
+            .join(';');
+        if (_hitCache.key !== key) {
+            const anchors = screenAnchors(_anchors);
+            _hitCache = { key, anchors, tables: pathTables(anchors, false) };
+        }
+        return nearestOnPath(_hitCache.anchors, false, point, SEGMENT_RADIUS_PX, _hitCache.tables);
     }
 
 

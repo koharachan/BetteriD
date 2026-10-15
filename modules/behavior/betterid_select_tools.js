@@ -40,6 +40,7 @@ export function behaviorBetteridSelectTools(context) {
     var _menu = d3_select(null);
     var _pixels = null;      // the current imagery selection
     var _baseline = null;    // mask the next gesture combines with
+    var _outline = null;     // { mask, runs }: the mask outline, computed once per mask
 
 
     function activeTool() {
@@ -194,7 +195,12 @@ export function behaviorBetteridSelectTools(context) {
         var frame = maskFrame();
         if (!frame) return null;
 
-        var runs = maskOutline(_pixels.mask, _pixels.width, _pixels.height);
+        // the outline only changes with the mask; panning and zooming only
+        // move it, so the per-frame work is the projection below
+        if (!_outline || _outline.mask !== _pixels.mask) {
+            _outline = { mask: _pixels.mask, runs: maskOutline(_pixels.mask, _pixels.width, _pixels.height) };
+        }
+        var runs = _outline.runs;
         if (!runs.length) return null;
 
         var p0 = frame.p0;
@@ -217,6 +223,7 @@ export function behaviorBetteridSelectTools(context) {
     function clearPixels() {
         _pixels = null;
         _baseline = null;
+        _outline = null;
     }
 
 
