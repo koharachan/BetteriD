@@ -14,6 +14,9 @@ export const BETTERID_BRUSH_SIZE_PREF = 'betterid.tools.brush_size';
 export const BETTERID_WAND_TOLERANCE_PREF = 'betterid.tools.wand_tolerance';
 export const BETTERID_WAND_CONTIGUOUS_PREF = 'betterid.tools.wand_contiguous';
 export const BETTERID_SELECTION_LAST_PREF = 'betterid.tools.selection_last';
+export const BETTERID_PEN_TOLERANCE_PREF = 'betterid.tools.pen_tolerance';
+export const BETTERID_PEN_SNAPPING_PREF = 'betterid.tools.pen_snapping';
+export const BETTERID_PEN_RUBBER_BAND_PREF = 'betterid.tools.pen_rubber_band';
 export const BETTERID_ADOBE_SHORTCUTS_PREF = 'betterid.editing.adobe_shortcuts';
 export const BETTERID_SHORTCUT_PRESET_PREF = 'betterid.editing.shortcut_preset';
 export const BETTERID_SHORTCUT_PRESETS = Object.freeze(['off', 'photoshop', 'illustrator']);
@@ -27,14 +30,34 @@ const TOOL_DEFAULTS = {
     brushSize: 40,
     wandTolerance: 1,
     wandContiguous: true,
-    shortcutPreset: 'off'
+    shortcutPreset: 'off',
+    penTolerance: 0.75,
+    penSnapping: true,
+    penRubberBand: true
 };
+
+/** The pen's curve detail slider, in screen pixels of allowed deviation. */
+export const BETTERID_PEN_TOLERANCE_RANGE = Object.freeze([0.25, 2]);
 
 
 function clampedInt(value, fallback, min, max) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) return fallback;
     return Math.max(min, Math.min(max, parsed));
+}
+
+
+function clampedNumber(value, fallback, min, max) {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min, Math.min(max, parsed));
+}
+
+
+function boolPref(key, fallback) {
+    const value = prefs(key);
+    if (value === null || value === undefined) return fallback;
+    return value === 'true';
 }
 
 
@@ -129,14 +152,52 @@ export function setWandTolerance(tolerance) {
 
 
 export function wandContiguous() {
-    const value = prefs(BETTERID_WAND_CONTIGUOUS_PREF);
-    if (value === null || value === undefined) return TOOL_DEFAULTS.wandContiguous;
-    return value === 'true';
+    return boolPref(BETTERID_WAND_CONTIGUOUS_PREF, TOOL_DEFAULTS.wandContiguous);
 }
 
 
 export function setWandContiguous(value) {
     prefs(BETTERID_WAND_CONTIGUOUS_PREF, value ? 'true' : 'false');
+}
+
+
+/* ------------------------------------------------------------- pen options -- */
+
+/**
+ * How far (in screen pixels, at the zoom the path is drawn) the flattened way
+ * may deviate from the bezier curve: smaller = more nodes, smoother curve.
+ */
+export function penTolerance() {
+    const [min, max] = BETTERID_PEN_TOLERANCE_RANGE;
+    return clampedNumber(prefs(BETTERID_PEN_TOLERANCE_PREF), TOOL_DEFAULTS.penTolerance, min, max);
+}
+
+
+export function setPenTolerance(value) {
+    const [min, max] = BETTERID_PEN_TOLERANCE_RANGE;
+    prefs(BETTERID_PEN_TOLERANCE_PREF, String(clampedNumber(value, TOOL_DEFAULTS.penTolerance, min, max)));
+}
+
+
+/** Whether pen anchors connect to existing nodes and ways under the pointer. */
+export function penSnapping() {
+    return boolPref(BETTERID_PEN_SNAPPING_PREF, TOOL_DEFAULTS.penSnapping);
+}
+
+
+export function setPenSnapping(value) {
+    prefs(BETTERID_PEN_SNAPPING_PREF, value ? 'true' : 'false');
+}
+
+
+/** Photoshop's "Rubber Band": preview the segment that follows the pointer. */
+export function penRubberBand() {
+    return boolPref(BETTERID_PEN_RUBBER_BAND_PREF, TOOL_DEFAULTS.penRubberBand);
+}
+
+
+export function setPenRubberBand(value) {
+    prefs(BETTERID_PEN_RUBBER_BAND_PREF, value ? 'true' : 'false');
 }
 
 

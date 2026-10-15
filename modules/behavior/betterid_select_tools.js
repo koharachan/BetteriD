@@ -2,7 +2,7 @@ import { select as d3_select } from 'd3-selection';
 
 import {
     betteridTool, marqueeShape, brushSize, wandTolerance, wandContiguous,
-    selectionMode, combineSelection, adobeShortcutsEnabled, adobeShortcutsIllustrator,
+    selectionMode, combineSelection, adobeShortcutsIllustrator,
     BETTERID_TOOL_PREF
 } from '../core/betterid_tools';
 import { actionAddEntity } from '../actions/add_entity';
@@ -683,8 +683,9 @@ export function behaviorBetteridSelectTools(context) {
         var point = mouseLoc(d3_event);
         _liveMode = selectionMode(d3_event);
 
-        // Alt+click is the eyedropper (the Adobe layer does it too, when it is on)
-        if (d3_event.altKey && PIXEL_TOOLS.indexOf(tool) !== -1 && !adobeShortcutsEnabled()) {
+        // Alt+click is the eyedropper: the pixel tools sample the captured
+        // imagery (CORS-safe), and the Adobe layer leaves a handled click alone
+        if (d3_event.altKey && PIXEL_TOOLS.indexOf(tool) !== -1) {
             eyedropper(point);
             d3_event.preventDefault();
             d3_event.stopPropagation();

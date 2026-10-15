@@ -1,0 +1,145 @@
+/* BetteriD pen tool: Photoshop / Illustrator style preview and cursors
+   ------------------------------------------------------------------- */
+
+/* --- path preview (SVG on the map surface, screen space) --- */
+
+.betterid-pen-preview {
+  pointer-events: none;
+}
+
+.betterid-pen-preview .betterid-pen-halo {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+/* committed segments: this polyline is exactly the way that will be created */
+.betterid-pen-preview .betterid-pen-path {
+  fill: none;
+  stroke: #2d7ff9;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* the segment that still follows the pointer */
+.betterid-pen-preview .betterid-pen-rubber {
+  fill: none;
+  stroke: #2d7ff9;
+  stroke-width: 1.2;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+/* where the way nodes will land between the anchors */
+.betterid-pen-preview .betterid-pen-node {
+  fill: #2d7ff9;
+  stroke: #fff;
+  stroke-width: 0.8;
+  opacity: 0.85;
+}
+
+/* direction lines and their end points */
+.betterid-pen-preview .betterid-pen-handle {
+  stroke: #2d7ff9;
+  stroke-width: 1;
+  opacity: 0.9;
+}
+
+.betterid-pen-preview .betterid-pen-handle-end {
+  fill: #2d7ff9;
+  stroke: #fff;
+  stroke-width: 1.2;
+}
+
+/* anchors: squares for new points (hollow = placed, filled = current),
+   circles for anchors that reuse an existing OSM node */
+.betterid-pen-preview .betterid-pen-anchor rect,
+.betterid-pen-preview .betterid-pen-anchor circle {
+  fill: #fff;
+  stroke: #2d7ff9;
+  stroke-width: 1.4;
+  paint-order: stroke;
+}
+
+.betterid-pen-preview .betterid-pen-anchor.current rect,
+.betterid-pen-preview .betterid-pen-anchor.current circle {
+  fill: #2d7ff9;
+  stroke: #fff;
+  stroke-width: 1.4;
+}
+
+.betterid-pen-preview .betterid-pen-anchor.bound circle {
+  stroke: #1a8f55;
+}
+
+.betterid-pen-preview .betterid-pen-anchor.bound.current circle {
+  fill: #1a8f55;
+  stroke: #fff;
+}
+
+/* a halo around whatever a press would act on */
+.betterid-pen-preview .betterid-pen-hover-ring {
+  fill: none;
+  stroke: #2d7ff9;
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+
+.betterid-pen-preview .betterid-pen-hover-ring.delete {
+  stroke: #c93a3a;
+}
+
+.betterid-pen-preview .betterid-pen-hover-ring.add {
+  fill: #2d7ff9;
+  fill-opacity: 0.35;
+}
+
+.betterid-pen-preview .betterid-pen-hover-ring.connect-node,
+.betterid-pen-preview .betterid-pen-hover-ring.connect-way {
+  stroke: #1a8f55;
+  stroke-dasharray: 3 2;
+}
+
+/* --- cursors (Photoshop's nib with its little marks) --- */
+.ideditor.betterid-pen-tool .main-map,
+.ideditor.betterid-pen-tool.betterid-tool-active .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-add .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M16 19.5 H23 M19.5 16 V23' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 19.5 H23 M19.5 16 V23' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-delete .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M16 19.5 H23' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 19.5 H23' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-close .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Ccircle cx='19.5' cy='19.5' r='3.4' fill='none' stroke='%23fff' stroke-width='3.6'/%3E%3Ccircle cx='19.5' cy='19.5' r='3.4' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-convert .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M16 22 L19.5 16.5 L23 22' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 22 L19.5 16.5 L23 22' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-connect-node .main-map,
+.ideditor.betterid-pen-tool .vertex.target {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Ccircle cx='19.5' cy='19.5' r='3.2' fill='%23000' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-connect-way .main-map,
+.ideditor.betterid-pen-tool .way.target {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M15.5 23 L23.5 15' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15.5 23 L23.5 15' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='19.5' cy='19' r='2.3' fill='%23000' stroke='%23fff' stroke-width='1.4'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+/* grabbing a handle or an anchor: the direct selection arrow */
+.ideditor.betterid-pen-tool.betterid-pen-hover-handle .main-map,
+.ideditor.betterid-pen-tool.betterid-pen-hover-direct .main-map,
+.ideditor.betterid-pen-tool.betterid-pen-dragging .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M5 3 L5 19 L9.3 15.2 L12.3 22 L15 20.8 L12 14 L18 14 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 5 3, default;
+}
+
+/* while a palette tool is active, panning is Space + drag */
+.ideditor.betterid-pen-tool.betterid-hand-tool .main-map,
+.ideditor.betterid-pen-tool.betterid-hand-tool .vertex.target,
+.ideditor.betterid-pen-tool.betterid-hand-tool .way.target {
+  cursor: grab;
+}

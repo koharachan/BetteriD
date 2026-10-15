@@ -1,15 +1,16 @@
 import { select as d3_select } from 'd3-selection';
 
 import {
-    BETTERID_TOOL_GROUPS, BETTERID_MARQUEE_SHAPES,
+    BETTERID_TOOL_GROUPS, BETTERID_MARQUEE_SHAPES, BETTERID_PEN_TOLERANCE_RANGE,
     betteridTool, setBetteridTool, groupTool, setSelectionTool, shortcutPreset,
     marqueeShape, setMarqueeShape, cycleMarqueeShape,
     brushSize, setBrushSize,
     wandTolerance, setWandTolerance,
     wandContiguous, setWandContiguous,
-    BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF,
-    BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF,
-    BETTERID_SELECTION_LAST_PREF
+    penTolerance, setPenTolerance,
+    penSnapping, setPenSnapping,
+    penRubberBand, setPenRubberBand,
+    BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_SELECTION_LAST_PREF
 } from '../core/betterid_tools';
 import { BETTERID_PREFS, experimentalFeatureEnabled } from '../core/betterid_preferences';
 import { prefs } from '../core/preferences';
@@ -17,8 +18,6 @@ import { t } from '../core/localizer';
 import { svgIcon } from '../svg';
 import { uiTooltip } from './tooltip';
 
-
-var SPACE_KEYS = ['Space', ' '];
 
 var TOOL_ICONS = {
     select: '#iD-icon-betterid-select',
@@ -32,6 +31,11 @@ var MARQUEE_ICONS = {
     rect: '#iD-icon-betterid-marquee-rect',
     ellipse: '#iD-icon-betterid-marquee-ellipse'
 };
+
+// preferences whose change alters which buttons / options are shown; the
+// option values themselves are updated in place, so dragging a slider never
+// destroys the slider under the pointer
+var STRUCTURAL_PREFS = [BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_SELECTION_LAST_PREF];
 
 
 /** The marquee button shows the shape it will draw. */
@@ -80,11 +84,9 @@ function groupEntries(group) {
 /** Left hand tool palette (Photoshop style). */
 export function uiBetteridToolPalette(context) {
     var _container = d3_select(null);
-    var _spaceDown = false;
 
 
-    function chooseTool(tool) {
-        setBetteridTool(betteridTool() === tool && tool !== 'select' ? 'select' : tool);
+    function flashTool() {
         context.ui().flash
             .duration(1500)
             .iconName(toolIcon(betteridTool()))
@@ -93,9 +95,17 @@ export function uiBetteridToolPalette(context) {
     }
 
 
-    function optionRow(container, label, value, min, max, step, onInput) {
+    /** Like Photoshop, clicking the active tool keeps it active. */
+    function chooseTool(tool) {
+        setBetteridTool(tool);
+        flashTool();
+    }
+
+
+    function sliderRow(container, label, value, min, max, step, format, onInput) {
         var row = container.append('label').attr('class', 'betterid-tool-option');
         row.append('span').attr('class', 'betterid-tool-option-label').call(t.append(label));
+        var output;
         row.append('input')
             .attr('type', 'range')
             .attr('min', min)
@@ -103,9 +113,24 @@ export function uiBetteridToolPalette(context) {
             .attr('step', step)
             .property('value', value)
             .on('input', function() {
-                onInput(Number(this.value));
+                var next = Number(this.value);
+                output.text(format(next));
+                onInput(next);
             });
-        row.append('output').text(value);
+        output = row.append('output').text(format(value));
+        return row;
+    }
+
+
+    function checkRow(container, label, checked, onChange) {
+        var row = container.append('label').attr('class', 'betterid-tool-check');
+        row.append('input')
+            .attr('type', 'checkbox')
+            .property('checked', checked)
+            .on('change', function() {
+                onChange(this.checked);
+            });
+        row.append('span').call(t.append(label));
         return row;
     }
 
@@ -176,6 +201,30 @@ export function uiBetteridToolPalette(context) {
     }
 
 
+    function renderOptions(options, tool) {
+        if (tool === 'quickselect') {
+            sliderRow(options, 'betterid.tools.brush_size', brushSize(), 8, 200, 4,
+                v => String(v), setBrushSize);
+
+        } else if (tool === 'magicwand') {
+            sliderRow(options, 'betterid.tools.tolerance', wandTolerance(), 0, 10, 1,
+                v => String(v), setWandTolerance);
+            checkRow(options, 'betterid.tools.contiguous', wandContiguous(), setWandContiguous);
+
+        } else if (tool === 'pen') {
+            // the slider reads as "detail": left = more nodes / smoother
+            var range = BETTERID_PEN_TOLERANCE_RANGE;
+            sliderRow(options, 'betterid.tools.pen_detail', penTolerance(), range[0], range[1], 0.05,
+                v => v.toFixed(2) + 'px', setPenTolerance);
+            checkRow(options, 'betterid.tools.pen_snapping', penSnapping(), setPenSnapping);
+            checkRow(options, 'betterid.tools.pen_rubber_band', penRubberBand(), setPenRubberBand);
+            options.append('p')
+                .attr('class', 'betterid-tool-hint')
+                .call(t.append('betterid.tools.pen_help'));
+        }
+    }
+
+
     function render(selection) {
         closeGroupMenu();
         selection.selectAll('.betterid-tool-palette').remove();
@@ -225,30 +274,7 @@ export function uiBetteridToolPalette(context) {
         });
 
         var options = palette.append('div').attr('class', 'betterid-tool-options');
-        var tool = betteridTool();
-
-        if (tool === 'quickselect') {
-            optionRow(options, 'betterid.tools.brush_size', brushSize(), 8, 200, 4, function(value) {
-                setBrushSize(value);
-            });
-
-        } else if (tool === 'magicwand') {
-            optionRow(options, 'betterid.tools.tolerance', wandTolerance(), 0, 10, 1, function(value) {
-                setWandTolerance(value);
-            });
-
-            var contiguousLabel = options.append('label').attr('class', 'betterid-tool-check');
-            contiguousLabel
-                .append('input')
-                .attr('type', 'checkbox')
-                .property('checked', wandContiguous())
-                .on('change', function() {
-                    setWandContiguous(this.checked);
-                });
-            contiguousLabel
-                .append('span')
-                .call(t.append('betterid.tools.contiguous'));
-        }
+        renderOptions(options, betteridTool());
 
         // tools without options keep the palette a compact icon strip
         if (!options.node().childNodes.length) options.remove();
@@ -259,58 +285,27 @@ export function uiBetteridToolPalette(context) {
         _container = selection;
         render(selection);
 
-        // re-render whenever a tool preference changes
-        [
-            BETTERID_TOOL_PREF, BETTERID_MARQUEE_SHAPE_PREF, BETTERID_BRUSH_SIZE_PREF,
-            BETTERID_WAND_TOLERANCE_PREF, BETTERID_WAND_CONTIGUOUS_PREF,
-            BETTERID_SELECTION_LAST_PREF
-        ].forEach(function(key) {
+        STRUCTURAL_PREFS.forEach(function(key) {
             prefs.onChange(key, function() {
                 if (!_container.empty()) render(_container);
             });
         });
 
-        d3_select(window)
-            .on('keydown.betteridToolKeys', keydown, true)
-            .on('keyup.betteridToolKeys', keyup);
-        d3_select(window).on('blur.betteridToolKeys', releaseSpace);
-    }
-
-
-    function keyup(d3_event) {
-        if (SPACE_KEYS.indexOf(d3_event.key) === -1) return;
-        releaseSpace();
-    }
-
-
-    function releaseSpace() {
-        _spaceDown = false;
-        context.container().classed('betterid-hand-tool', false);
+        d3_select(window).on('keydown.betteridToolKeys', keydown, true);
     }
 
 
     /**
-     * Photoshop's tool keys: `V` select, `M` marquee, `W` quick selection,
-     * `Shift+W` magic wand, `P` pen. Pressing the key of the active group again
-     * cycles its members (`Shift+M` cycles the marquee shapes directly).
+     * Photoshop's tool keys: `V` select, `M` marquee, `P` pen, and `Shift+W`
+     * for the selection group (quick selection / magic wand, press again to
+     * swap). Plain `W` stays iD's wireframe toggle, which the map handles
+     * before anyone else sees the key. Pressing the key of the active group
+     * again cycles its members (`Shift+M` cycles the marquee shapes directly).
      */
     function keydown(d3_event) {
         if (d3_event.ctrlKey || d3_event.metaKey || d3_event.altKey) return;
         var target = d3_event.target;
         if (target && target.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
-
-        // Hold Space for the hand tool whenever one of our tools is active: the
-        // pen and the selection tools swallow the drag otherwise, so panning
-        // would be impossible. With the plain select tool, stock iD keeps Space.
-        if (SPACE_KEYS.indexOf(d3_event.key) !== -1) {
-            if (betteridTool() === 'select') return;
-            if (_spaceDown) return;
-            _spaceDown = true;
-            context.container().classed('betterid-hand-tool', true);
-            d3_event.preventDefault();
-            d3_event.stopPropagation();
-            return;
-        }
 
         var key = (d3_event.key || '').toLowerCase();
 
@@ -321,6 +316,7 @@ export function uiBetteridToolPalette(context) {
             d3_event.stopPropagation();
             setMarqueeShape(key === 'm' ? 'rect' : 'ellipse');
             setBetteridTool('marquee');
+            flashTool();
             return;
         }
 
@@ -328,7 +324,7 @@ export function uiBetteridToolPalette(context) {
         if (key === 'v') tool = 'select';
         else if (key === 'm') tool = 'marquee';
         else if (key === 'p') tool = 'pen';
-        else if (key === 'w') tool = d3_event.shiftKey ? 'magicwand' : 'quickselect';
+        else if (key === 'w' && d3_event.shiftKey) tool = groupTool('selection');
         else return;
 
         // WASD navigation owns its keys when it is switched on
@@ -348,13 +344,12 @@ export function uiBetteridToolPalette(context) {
         } else if (tool === 'magicwand') {
             setSelectionTool('quickselect');
             setBetteridTool('quickselect');
-        } else {
-            chooseTool(tool);
         }
 
-        if (tool === 'marquee' && d3_event.shiftKey && betteridTool() === 'marquee') {
+        if (tool === 'marquee' && d3_event.shiftKey && !cycle) {
             cycleMarqueeShape();
         }
+        flashTool();
     }
 
 

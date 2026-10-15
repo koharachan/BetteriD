@@ -3,7 +3,7 @@ import { select as d3_select } from 'd3-selection';
 import { actionCopyEntities } from '../actions/copy_entities';
 import { actionDeleteMultiple } from '../actions/delete_multiple';
 import { actionMove } from '../actions/move';
-import { adobeShortcutsEnabled, adobeShortcutsIllustrator } from '../core/betterid_tools';
+import { adobeShortcutsEnabled, adobeShortcutsIllustrator, betteridTool } from '../core/betterid_tools';
 import { t } from '../core/localizer';
 import { modeRotate } from '../modes/rotate';
 import { modeSelect } from '../modes/select';
@@ -22,7 +22,9 @@ var SPACE_KEYS = ['Space', ' '];
  * Opt-in through `betterid.editing.shortcut_preset` (`off` by default) with a
  * Photoshop or Illustrator flavour:
  *   - wheel = vertical pan, Ctrl+wheel = horizontal pan, Alt+wheel = zoom
- *   - hold Space = temporary hand tool
+ *   - hold Space = temporary hand tool (this one is also on whenever a palette
+ *     tool other than "select" is active: the pen and the selection tools
+ *     swallow the drag, so without it the map could not be panned)
  *   - Alt+click = eyedropper (copies the hex colour under the pointer)
  *   - Photoshop: Ctrl+T free transform, Ctrl+J duplicate, Ctrl+Shift+J cut,
  *     Ctrl+Shift+V paste in place, Ctrl+Shift+T / Ctrl+Alt+Shift+T repeat
@@ -115,10 +117,16 @@ export function behaviorBetteridAdobe(context) {
 
     /* --------------------------------------------------------- space = hand */
 
+    function handToolAvailable() {
+        return enabled() || betteridTool() !== 'select';
+    }
+
+
     function keydown(d3_event) {
-        if (!enabled() || isTextEntry(d3_event)) return;
+        if (isTextEntry(d3_event)) return;
 
         if (SPACE_KEYS.indexOf(d3_event.key) !== -1) {
+            if (!handToolAvailable()) return;
             if (_spaceDown) return;
             _spaceDown = true;
             container().classed('betterid-hand-tool', true);
@@ -126,6 +134,8 @@ export function behaviorBetteridAdobe(context) {
             d3_event.stopPropagation();
             return;
         }
+
+        if (!enabled()) return;
 
         var key = (d3_event.key || '').toLowerCase();
         var command = d3_event.ctrlKey || d3_event.metaKey;
@@ -191,6 +201,9 @@ export function behaviorBetteridAdobe(context) {
         if (!enabled() || _spaceDown) return;
         if (!d3_event.altKey || d3_event.ctrlKey || d3_event.metaKey) return;
         if (!overMap(d3_event) || d3_event.button !== 0) return;
+        // a palette tool already used this Alt+click (the pen's convert point,
+        // the pixel tools' own eyedropper)
+        if (d3_event.defaultPrevented) return;
 
         var hex = sampleColor(d3_event.clientX, d3_event.clientY);
         if (!hex) return;

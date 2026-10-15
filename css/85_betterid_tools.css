@@ -30,7 +30,7 @@
   position: absolute;
   left: calc(100% + 6px);
   top: 0;
-  width: 132px;
+  width: 160px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -90,6 +90,15 @@
   min-width: 24px;
   text-align: right;
   color: var(--muted-text-color);
+}
+
+/* the one-paragraph cheat sheet under the pen options */
+.betterid-tool-hint {
+  margin: 2px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted-text-color);
+  white-space: normal;
 }
 
 /* Photoshop's fly-out menu: right-click a group button to pick its variants */
@@ -171,7 +180,7 @@
   cursor: crosshair;
 }
 
-/* marquee / brush / pen previews (SVG on the map surface) */
+/* marquee / brush previews (SVG on the map surface); the pen has its own file */
 .betterid-selection-preview .betterid-marquee {
   fill: #41874120;
   stroke: #418741;
@@ -204,38 +213,6 @@
 
 .betterid-selection-preview.intersect .betterid-brush {
   stroke: #7092ff;
-}
-
-.betterid-pen-preview .betterid-pen-path {
-  fill: none;
-  stroke: #418741;
-  stroke-width: 2;
-  stroke-linecap: round;
-  pointer-events: none;
-}
-
-/* the not-yet-committed segment that still follows the pointer */
-.betterid-pen-preview .betterid-pen-rubber {
-  fill: none;
-  stroke: #418741;
-  stroke-width: 1.5;
-  stroke-dasharray: 4 3;
-  stroke-linecap: round;
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.betterid-pen-preview .betterid-pen-point {
-  fill: #fff;
-  stroke: #333;
-  stroke-width: 1.5;
-  pointer-events: none;
-}
-
-.betterid-pen-preview .betterid-pen-handle {
-  stroke: #7092ff;
-  stroke-width: 1;
-  pointer-events: none;
 }
 
 @media (max-width: 767px) {
@@ -299,9 +276,4 @@
 
 .betterid-selection-menu .betterid-tool-menu-item kbd {
   margin-left: 8px;
-}
-
-/* while Alt/Ctrl turn the pen into the direct selection tool */
-.betterid-pen-direct .main-map {
-  cursor: move;
 }

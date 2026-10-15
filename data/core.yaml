@@ -1324,11 +1324,15 @@ en:
       marquee_rect: Rectangle
       marquee_ellipse: Ellipse
       quickselect: Quick selection tool
-      quickselect_key: W
+      quickselect_key: Shift+W
       magicwand: Magic wand tool
       magicwand_key: Shift+W
       pen: Pen tool
       pen_key: P
+      pen_detail: Curve detail
+      pen_snapping: Connect to existing features
+      pen_rubber_band: Rubber band preview
+      pen_help: "Click for a corner, drag for a smooth point. Shift constrains to 45°, Alt breaks a handle, Ctrl drags anchors. Click the first anchor to close, click the path to add an anchor, click an anchor to delete it. Enter / Esc / double-click finish, Backspace removes the last anchor."
       brush_size: Brush size
       tolerance: Tolerance
       contiguous: Contiguous

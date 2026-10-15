@@ -58,6 +58,14 @@ corePreferences.onChange = function(k, handler) {
   _listeners[k].push(handler);
 };
 
+// removes a listener added with `onChange` (behaviors that can be
+// uninstalled need this, otherwise every install leaks a handler)
+corePreferences.offChange = function(k, handler) {
+  if (!_listeners[k]) return;
+  _listeners[k] = _listeners[k].filter(h => h !== handler);
+  if (!_listeners[k].length) delete _listeners[k];
+};
+
 export { corePreferences as prefs };
 
 export const asyncPrefs = {
