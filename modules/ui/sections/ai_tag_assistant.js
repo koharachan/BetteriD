@@ -7,7 +7,7 @@ import { svgIcon } from '../../svg/icon';
 import { utilArrayIdentical } from '../../util/array';
 import { utilNoAuto, utilRebind } from '../../util';
 import { uiSection } from '../section';
-import { directAiAvailable, directAiJson } from '../../core/betterid_ai';
+import { aiTagSuggestions } from '../../core/betterid_ai';
 const BLOCKED_TAG_KEYS = new Set([
     'image', 'source', 'created_by', 'attribution', 'odbl', 'import',
     'timestamp', 'version', 'changeset', 'uid', 'user', 'visible'
@@ -226,31 +226,9 @@ export function uiSectionAiTagAssistant(context) {
             text_provider_order: getProviderOrder('text')
         };
 
-        // Ask the AI endpoint from the browser when the deployment configured
-        // one there (our servers cannot reach it); otherwise use the proxy.
-        const request = directAiAvailable()
-            ? directAiJson({
-                system: 'You are a careful OpenStreetMap assistant. Follow the requested output format exactly.',
-                maxTokens: 4096,
-                signal: _abortController.signal,
-                prompt: TAG_SUGGESTION_INSTRUCTION + '\n\nUntrusted feature data: ' +
-                    JSON.stringify({ untrusted_feature_data: payload })
-              })
-            : fetch('/api/osm-ai/tag-suggestions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal: _abortController.signal,
-                body: JSON.stringify(payload)
-            })
-                .then(async response => {
-                    const data = await response.json().catch(() => ({}));
-                    if (!response.ok) {
-                        const error = new Error(data.error || 'Suggestion request failed');
-                        error.status = response.status;
-                        throw error;
-                    }
-                    return data;
-                });
+        // the user's own provider / the deployment's endpoint from the
+        // browser, otherwise the server proxy (see core/betterid_ai.js)
+        const request = aiTagSuggestions(payload, TAG_SUGGESTION_INSTRUCTION, { signal: _abortController.signal });
 
         request
             .then(data => {

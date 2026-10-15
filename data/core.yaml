@@ -1138,6 +1138,11 @@ en:
       shortcut_preset_photoshop: Photoshop
       shortcut_preset_illustrator: Illustrator
       snap_tolerance: Snap range (pixels)
+      editable_zoom: Minimum zoom for editing
+      editable_zoom_description: Zoom 16 is iD's default. Lower levels show and load a larger area at once (four or sixteen times the data), which is slower and can hit the OSM API's per-request limits in dense cities.
+      editable_zoom_16: "16 (default)"
+      editable_zoom_15: "15 (4× area)"
+      editable_zoom_14: "14 (16× area)"
       smart_split: Smart split uploads
       smart_split_description: Split large uploads using the method configured below.
     language:
@@ -1161,6 +1166,37 @@ en:
         deepseek: DeepSeek
         kimi: Kimi Search
         mimo: MiMo
+      custom:
+        enabled: Use my own AI provider
+        enabled_description: Call an OpenAI-compatible API directly from this browser with your own key. Needed in the desktop app, which has no server; on the website it replaces the shared providers below.
+        preset: Fill in from a preset
+        preset_pick: Choose a provider…
+        presets:
+          openai: OpenAI
+          deepseek: DeepSeek
+          moonshot: Moonshot (Kimi)
+          gemini: Google Gemini (OpenAI-compatible endpoint)
+          openrouter: OpenRouter
+          ollama: Ollama (local)
+        base_url: API base URL
+        api_key: API key
+        api_key_description: Stored only in this browser (local storage) and sent only to the API base URL above.
+        reveal: Show or hide the key
+        text_model: Text model
+        vision_model: Vision model
+        vision_model_description: Used for photo analysis and for the vision-based AI tracer. Leave empty to reuse the text model.
+        image_model: Image model
+        image_model_description: An image editing model (e.g. gpt-image-1, gemini-2.5-flash-image). Needed by the AI tracer's red-outline method.
+        image_api: Image editing API
+        image_api_images: Images API (/images/edits)
+        image_api_chat: Chat completion that returns an image
+        disable_thinking: Disable reasoning mode
+        disable_thinking_description: Sends thinking=disabled, which DeepSeek-style models need for quick answers.
+        test: Test connection
+        testing: Testing…
+        test_incomplete: Enter the API base URL and key first.
+        test_ok: "Connected. The model answered: {answer}"
+        test_failed: "Failed: {message}"
     experimental:
       title: Experimental
       enabled: Enable experimental features
@@ -1340,6 +1376,34 @@ en:
       convert_to_path: Convert selection to path
       convert_to_path_key: Alt+Del
       eyedropper_copied: "Colour {color} copied"
+    trace:
+      title: AI trace
+      method: Method
+      method_outline: Image model, red outlines
+      method_vision: Vision model, polygons
+      feature: Trace
+      feature_building: Buildings
+      feature_water: Water
+      feature_wood: Woods
+      feature_parking: Parking lots
+      feature_grass: Grass
+      run: Trace visible area
+      cancel: Cancel
+      ready: Captures the imagery in view, asks the model, and adds the shapes as new areas for you to review.
+      help: Red outlines - the image model redraws the view with every feature outlined in red, and the outlines are traced into areas. Polygons - the vision model answers with pixel coordinates. Always check the result against the imagery before uploading; undo removes it in one step.
+      capturing: Capturing the visible imagery…
+      asking: "Asking {model}… this can take a minute."
+      done: "Added {count} areas, now selected. Check them against the imagery."
+      done_misaligned: "Added {count} areas, but the model changed the picture, so they may be offset. Check each one."
+      nothing: The model did not mark anything that could be traced. Zoom in on fewer features and try again.
+      cancelled: Cancelled.
+      failed: "Tracing failed: {message}"
+      error_image: The returned image could not be loaded.
+      zoom_in: Zoom in to an editable level first.
+      missing_provider: Configure your own AI provider in Preferences → AI first.
+      missing_image_model: Set an image model in Preferences → AI, or switch to the vision method.
+      missing_vision_model: Set a vision (or text) model in Preferences → AI.
+      annotation: "AI traced {count} areas."
     military_warning:
       title: Military-area editing is unavailable here
       message: Are you sure you want to do this? BetteriD does not allow creating or modifying military areas in China, including their member points. If you genuinely need to make this edit, continue on the official OpenStreetMap website.

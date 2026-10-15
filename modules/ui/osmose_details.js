@@ -7,6 +7,7 @@ import { modeSelect } from '../modes/select';
 import { t } from '../core/localizer';
 import { services } from '../services';
 import { svgIcon } from '../svg';
+import { aiTranslate } from '../core/betterid_ai';
 import { utilDisplayName, utilHighlightEntities } from '../util';
 
 
@@ -21,15 +22,7 @@ export function uiOsmoseDetails(context) {
       chunks.push(chars.slice(i, i + 450).join(''));
     }
 
-    return Promise.all(chunks.map(chunk => fetch('/api/osm-ai/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: chunk, target_langs: ['zh'] })
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('Translation failed');
-        return response.json();
-      })
+    return Promise.all(chunks.map(chunk => aiTranslate(chunk, ['zh'])
       .then(result => {
         const translation = (result.translations || []).find(item => item.lang === 'zh');
         if (!translation?.text) throw new Error('Translation result is empty');

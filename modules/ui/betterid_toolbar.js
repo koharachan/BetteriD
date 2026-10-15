@@ -16,6 +16,7 @@ import { BETTERID_PREFS, experimentalFeatureEnabled } from '../core/betterid_pre
 import { prefs } from '../core/preferences';
 import { t } from '../core/localizer';
 import { svgIcon } from '../svg';
+import { uiBetteridAiTrace } from './betterid_ai_trace';
 import { uiTooltip } from './tooltip';
 
 
@@ -84,6 +85,8 @@ function groupEntries(group) {
 /** Left hand tool palette (Photoshop style). */
 export function uiBetteridToolPalette(context) {
     var _container = d3_select(null);
+    // one instance: it keeps its panel state across palette re-renders
+    var _trace = uiBetteridAiTrace(context);
 
 
     function flashTool() {
@@ -278,6 +281,9 @@ export function uiBetteridToolPalette(context) {
 
         // tools without options keep the palette a compact icon strip
         if (!options.node().childNodes.length) options.remove();
+
+        // the AI tracer sits under the tools with its own fly-out panel
+        tools.call(_trace);
     }
 
 

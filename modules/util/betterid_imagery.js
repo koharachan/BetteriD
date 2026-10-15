@@ -125,8 +125,10 @@ export function pixelHex(imageData, x, y) {
 
 
 function colorLimit(tolerance) {
-    // the wand options are 0..10; each step is ~20 units of RGB distance
-    return Math.max(0, tolerance) * 20;
+    // the wand options are 0..10; each step is ~20 units of RGB distance.
+    // Returned squared, so the per-pixel test needs no square root.
+    const limit = Math.max(0, tolerance) * 20;
+    return limit * limit;
 }
 
 
@@ -134,7 +136,7 @@ function colorDistance(data, i, r, g, b) {
     const dr = data[i] - r;
     const dg = data[i + 1] - g;
     const db = data[i + 2] - b;
-    return Math.sqrt(dr * dr + dg * dg + db * db);
+    return dr * dr + dg * dg + db * db;
 }
 
 
@@ -310,16 +312,21 @@ function simplify(points, tolerance) {
 
 /**
  * Closed polygons around the selected pixels, simplified so they can become OSM
- * geometry. Coordinates are in mask pixels.
+ * geometry. Coordinates are in mask pixels. `tolerance` (pixels) defaults to
+ * a value that scales with the image, which suits a hand-made selection; the
+ * AI tracer passes a tighter one.
  */
-export function maskPolygons(mask, width, height) {
-    const edges = new Map();   // "x,y" -> ["x2,y2", ...]
+export function maskPolygons(mask, width, height, tolerance) {
+    // corner (x, y) -> list of corners an edge leads to; integer keys keep
+    // this out of string allocation for every pixel edge
+    const stride = width + 1;
+    const edges = new Map();
 
     const addEdge = (x1, y1, x2, y2) => {
-        const key = x1 + ',' + y1;
+        const key = y1 * stride + x1;
         const list = edges.get(key);
-        if (list) list.push([x2, y2]);
-        else edges.set(key, [[x2, y2]]);
+        if (list) list.push(y2 * stride + x2);
+        else edges.set(key, [y2 * stride + x2]);
     };
 
     for (let y = 0; y < height; y++) {
@@ -334,6 +341,7 @@ export function maskPolygons(mask, width, height) {
 
     const polygons = [];
     const startKeys = Array.from(edges.keys());
+    const epsilon = tolerance || Math.max(1, Math.round(Math.min(width, height) / 200));
 
     startKeys.forEach(startKey => {
         while (edges.has(startKey) && edges.get(startKey).length) {
@@ -341,18 +349,18 @@ export function maskPolygons(mask, width, height) {
             let key = startKey;
             let guard = 0;
 
-            while (key && edges.has(key) && edges.get(key).length && guard++ < 200000) {
-                const [x, y] = key.split(',').map(Number);
-                points.push([x, y]);
-                const next = edges.get(key).pop();
-                if (!edges.get(key).length) edges.delete(key);
-                key = next[0] + ',' + next[1];
+            while (key !== undefined && edges.has(key) && edges.get(key).length && guard++ < 200000) {
+                const x = key % stride;
+                points.push([x, (key - x) / stride]);
+                const list = edges.get(key);
+                const next = list.pop();
+                if (!list.length) edges.delete(key);
+                key = next;
                 if (key === startKey) break;
             }
 
             if (points.length >= 4) {
-                const tolerance = Math.max(1, Math.round(Math.min(width, height) / 200));
-                const simplified = simplify(points.concat([points[0]]), tolerance);
+                const simplified = simplify(points.concat([points[0]]), epsilon);
                 polygons.push(simplified.slice(0, -1));
             }
         }

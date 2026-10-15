@@ -142,3 +142,80 @@
   color: #4a430f;
   line-height: 1.45;
 }
+
+/* Preferences → AI: the user's own provider */
+.betterid-ai-custom-form .betterid-preference-row,
+.betterid-ai-custom-form .betterid-preference-text {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 55%);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: none;
+}
+
+.betterid-ai-custom-form .betterid-preference-row small,
+.betterid-ai-custom-form .betterid-preference-text small {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.betterid-ai-custom-form .betterid-preference-row input[type='checkbox'] {
+  justify-self: end;
+}
+
+.betterid-preference-input {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.betterid-preference-input input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.betterid-reveal {
+  flex: 0 0 auto;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.betterid-reveal .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.betterid-ai-test {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.betterid-ai-test button {
+  min-height: 30px;
+  padding: 0 12px;
+}
+
+.betterid-ai-test-result {
+  font-size: 12px;
+  color: #666;
+}
+
+.betterid-ai-test-result.ok {
+  color: #1a8f55;
+}
+
+.betterid-ai-test-result.error {
+  color: #c93a3a;
+}

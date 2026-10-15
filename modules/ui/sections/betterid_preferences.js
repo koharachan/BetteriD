@@ -1,8 +1,10 @@
 import { select as d3_select } from 'd3-selection';
 
 import {
+  BETTERID_EDITABLE_ZOOMS,
   BETTERID_PREFS,
   betteridBool,
+  getEditableZoom,
   getProviderOrder,
   getSnapTolerance,
   getTranslationLanguages,
@@ -11,6 +13,14 @@ import {
   setTranslationLanguages
 } from '../../core/betterid_preferences';
 import { localizer, t } from '../../core/localizer';
+import {
+  BETTERID_AI_IMAGE_APIS,
+  BETTERID_AI_PREFS,
+  BETTERID_AI_PRESETS,
+  directAiChat,
+  setUserAiProvider,
+  userAiProvider
+} from '../../core/betterid_ai';
 import {
   BETTERID_SHORTCUT_PRESET_PREF,
   BETTERID_SHORTCUT_PRESETS
@@ -157,6 +167,19 @@ export const uiSectionBetteridEditing = makeSimpleSection(
       options: BETTERID_SHORTCUT_PRESETS.map(value => ({
         value: value,
         label: 'preferences.editing.shortcut_preset_' + value
+      })),
+      onChange: section.reRender
+    });
+
+    renderSelect(selection, {
+      className: 'preference-editable-zoom',
+      pref: BETTERID_PREFS.editableZoom,
+      defaultValue: String(getEditableZoom()),
+      label: 'preferences.editing.editable_zoom',
+      description: 'preferences.editing.editable_zoom_description',
+      options: BETTERID_EDITABLE_ZOOMS.map(value => ({
+        value: String(value),
+        label: 'preferences.editing.editable_zoom_' + value
       })),
       onChange: section.reRender
     });
@@ -335,17 +358,218 @@ export const uiSectionBetteridValidation = makeSimpleSection(
 );
 
 
+function renderTextRow(selection, options) {
+  const current = prefs(options.pref) || '';
+  let row = selection.selectAll(`.${options.className}`).data([0]);
+
+  const rowEnter = row.enter()
+    .append('label')
+    .attr('class', `betterid-preference-row betterid-preference-text ${options.className}`);
+
+  rowEnter.append('span')
+    .attr('class', 'betterid-preference-label')
+    .call(t.append(options.label));
+
+  const wrap = rowEnter.append('span').attr('class', 'betterid-preference-input');
+  wrap.append('input')
+    .attr('type', options.type || 'text')
+    .attr('autocomplete', 'off')
+    .attr('spellcheck', 'false')
+    .attr('placeholder', options.placeholder || null)
+    .on('change', function() {
+      options.onChange(this.value);
+    });
+
+  if (options.type === 'password') {
+    // the key is pasted blind otherwise; a reveal toggle avoids typos
+    wrap.append('button')
+      .attr('type', 'button')
+      .attr('class', 'betterid-reveal')
+      .attr('title', t('preferences.ai.custom.reveal'))
+      .on('click', function(d3_event) {
+        d3_event.preventDefault();
+        const input = d3_select(this.parentNode).select('input');
+        input.attr('type', input.attr('type') === 'password' ? 'text' : 'password');
+      })
+      .call(svgIcon('#iD-icon-search'));
+  }
+
+  if (options.description) {
+    rowEnter.append('small').call(t.append(options.description));
+  }
+
+  row = rowEnter.merge(row);
+  row.classed('disabled', !!options.disabled);
+  const input = row.select('input');
+  if (input.node() !== document.activeElement) input.property('value', current);
+  input.property('disabled', !!options.disabled);
+}
+
+
 export const uiSectionBetteridAI = makeSimpleSection(
   'preferences-betterid-ai',
   'preferences.ai.title',
   (selection, section) => {
+    const provider = userAiProvider();
+    const custom = betteridBool(BETTERID_AI_PREFS.enabled, false);
+
+    /* --- the user's own provider ------------------------------------- */
+
+    let own = selection.selectAll('.betterid-ai-custom').data([0]);
+    own = own.enter().append('div')
+      .attr('class', 'betterid-ai-custom betterid-preference-subgroup')
+      .merge(own);
+
+    renderCheckbox(own, {
+      className: 'betterid-ai-custom-enabled',
+      pref: BETTERID_AI_PREFS.enabled,
+      defaultValue: false,
+      label: 'preferences.ai.custom.enabled',
+      description: 'preferences.ai.custom.enabled_description',
+      onChange: section.reRender
+    });
+
+    let form = own.selectAll('.betterid-ai-custom-form').data(custom ? [0] : []);
+    form.exit().remove();
+    form = form.enter().append('div')
+      .attr('class', 'betterid-ai-custom-form')
+      .merge(form);
+
+    if (custom) {
+      // a preset only pre-fills the form
+      const presetRow = form.selectAll('.betterid-ai-preset').data([0]);
+      const presetEnter = presetRow.enter().append('label')
+        .attr('class', 'betterid-preference-row betterid-ai-preset');
+      presetEnter.append('span')
+        .attr('class', 'betterid-preference-label')
+        .call(t.append('preferences.ai.custom.preset'));
+      const presetSelect = presetEnter.append('select')
+        .on('change', function() {
+          const preset = BETTERID_AI_PRESETS.find(p => p.id === this.value);
+          if (!preset) return;
+          setUserAiProvider({
+            baseUrl: preset.baseUrl,
+            textModel: preset.textModel,
+            visionModel: preset.visionModel,
+            imageModel: preset.imageModel,
+            imageApi: preset.imageApi
+          });
+          this.value = '';
+          section.reRender();
+        });
+      presetSelect.append('option').attr('value', '').call(t.append('preferences.ai.custom.preset_pick'));
+      presetSelect.selectAll('option.preset')
+        .data(BETTERID_AI_PRESETS)
+        .enter()
+        .append('option')
+        .attr('class', 'preset')
+        .attr('value', d => d.id)
+        .each(function(d) {
+          d3_select(this).call(t.append(`preferences.ai.custom.presets.${d.id}`));
+        });
+
+      renderTextRow(form, {
+        className: 'betterid-ai-base-url',
+        pref: BETTERID_AI_PREFS.baseUrl,
+        label: 'preferences.ai.custom.base_url',
+        placeholder: 'https://api.openai.com/v1',
+        onChange: value => { setUserAiProvider({ baseUrl: value }); section.reRender(); }
+      });
+      renderTextRow(form, {
+        className: 'betterid-ai-api-key',
+        pref: BETTERID_AI_PREFS.apiKey,
+        type: 'password',
+        label: 'preferences.ai.custom.api_key',
+        description: 'preferences.ai.custom.api_key_description',
+        onChange: value => { setUserAiProvider({ apiKey: value }); section.reRender(); }
+      });
+      renderTextRow(form, {
+        className: 'betterid-ai-text-model',
+        pref: BETTERID_AI_PREFS.textModel,
+        label: 'preferences.ai.custom.text_model',
+        placeholder: 'gpt-5-mini',
+        onChange: value => setUserAiProvider({ textModel: value })
+      });
+      renderTextRow(form, {
+        className: 'betterid-ai-vision-model',
+        pref: BETTERID_AI_PREFS.visionModel,
+        label: 'preferences.ai.custom.vision_model',
+        description: 'preferences.ai.custom.vision_model_description',
+        onChange: value => setUserAiProvider({ visionModel: value })
+      });
+      renderTextRow(form, {
+        className: 'betterid-ai-image-model',
+        pref: BETTERID_AI_PREFS.imageModel,
+        label: 'preferences.ai.custom.image_model',
+        description: 'preferences.ai.custom.image_model_description',
+        placeholder: 'gpt-image-1',
+        onChange: value => setUserAiProvider({ imageModel: value })
+      });
+      renderSelect(form, {
+        className: 'betterid-ai-image-api',
+        pref: BETTERID_AI_PREFS.imageApi,
+        defaultValue: 'images',
+        label: 'preferences.ai.custom.image_api',
+        options: BETTERID_AI_IMAGE_APIS.map(value => ({ value, label: `preferences.ai.custom.image_api_${value}` })),
+        onChange: section.reRender
+      });
+      renderCheckbox(form, {
+        className: 'betterid-ai-disable-thinking',
+        pref: BETTERID_AI_PREFS.disableThinking,
+        defaultValue: false,
+        label: 'preferences.ai.custom.disable_thinking',
+        description: 'preferences.ai.custom.disable_thinking_description'
+      });
+
+      // a round trip, so a wrong URL or key shows up here and not later
+      let test = form.selectAll('.betterid-ai-test').data([0]);
+      const testEnter = test.enter().append('div').attr('class', 'betterid-ai-test');
+      testEnter.append('button')
+        .attr('type', 'button')
+        .attr('class', 'action')
+        .call(t.append('preferences.ai.custom.test'))
+        .on('click', function(d3_event) {
+          d3_event.preventDefault();
+          const button = d3_select(this);
+          const result = d3_select(this.parentNode).select('.betterid-ai-test-result');
+          if (!userAiProvider()) {
+            result.attr('class', 'betterid-ai-test-result error').text(t('preferences.ai.custom.test_incomplete'));
+            return;
+          }
+          button.property('disabled', true);
+          result.attr('class', 'betterid-ai-test-result').text(t('preferences.ai.custom.testing'));
+          directAiChat({ prompt: 'Reply with the single word OK.', maxTokens: 16 })
+            .then(text => {
+              result.attr('class', 'betterid-ai-test-result ok')
+                .text(t('preferences.ai.custom.test_ok', { answer: text.trim().slice(0, 40) }));
+            })
+            .catch(error => {
+              result.attr('class', 'betterid-ai-test-result error')
+                .text(t('preferences.ai.custom.test_failed', { message: error.message }));
+            })
+            .finally(() => button.property('disabled', false));
+        });
+      testEnter.append('span').attr('class', 'betterid-ai-test-result');
+      test = testEnter.merge(test);
+      test.select('button').property('disabled', !provider);
+    }
+
+    /* --- the deployment's providers ---------------------------------- */
+
     const groups = [
       { kind: 'search', label: 'preferences.ai.search_order' },
       { kind: 'text', label: 'preferences.ai.text_order' },
       { kind: 'vision', label: 'preferences.ai.vision_order' }
     ];
 
-    let groupRows = selection.selectAll('.betterid-provider-group')
+    // the desktop app has no server, so there is nothing to order there
+    let server = selection.selectAll('.betterid-ai-server').data(globalThis.BETTERID_DESKTOP ? [] : [0]);
+    server.exit().remove();
+    server = server.enter().append('div')
+      .attr('class', 'betterid-ai-server')
+      .merge(server);
+
+    let groupRows = server.selectAll('.betterid-provider-group')
       .data(groups, d => d.kind);
     const groupEnter = groupRows.enter()
       .append('div')
@@ -355,6 +579,7 @@ export const uiSectionBetteridAI = makeSimpleSection(
     }));
     groupEnter.append('ol').attr('class', 'betterid-order-list');
     groupRows = groupEnter.merge(groupRows);
+    groupRows.classed('disabled', custom);
 
     groupRows.each(function(group) {
       const order = getProviderOrder(group.kind);
@@ -380,7 +605,7 @@ export const uiSectionBetteridAI = makeSimpleSection(
         }));
     });
 
-    let support = selection.selectAll('.betterid-ai-support').data([0]);
+    let support = server.selectAll('.betterid-ai-support').data([0]);
     support = support.enter().append('p')
       .attr('class', 'betterid-ai-support')
       .merge(support);

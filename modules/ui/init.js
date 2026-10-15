@@ -4,7 +4,7 @@ import {
 } from 'd3-selection';
 
 import { prefs } from '../core/preferences';
-import { BETTERID_PREFS, betteridBool } from '../core/betterid_preferences';
+import { BETTERID_PREFS, betteridBool, getEditableZoom } from '../core/betterid_preferences';
 import { t, localizer } from '../core/localizer';
 import { presetManager } from '../presets';
 import { behaviorHash } from '../behavior';
@@ -185,6 +185,13 @@ export function uiInit(context) {
 
         // Photoshop-style tool palette (marquee / quick selection / wand / pen)
         overMap.call(uiBetteridToolPalette(context));
+
+        // the zoom the editor unlocks at is a preference (16 = stock iD)
+        context.minEditableZoom(getEditableZoom());
+        prefs.onChange(BETTERID_PREFS.editableZoom, function() {
+            context.minEditableZoom(getEditableZoom());
+            context.map().immediateRedraw();
+        });
 
         context.install(behaviorBetteridSelectTools(context));
         context.install(behaviorBetteridPen(context));

@@ -1,10 +1,18 @@
 import {
+    BETTERID_AI_PREFS,
+    aiProvider,
+    aiTranslate,
     directAiAvailable,
     directAiChat,
+    directAiImageAvailable,
+    directAiImageEdit,
     directAiJson,
     directAiModel,
-    extractJsonObject
+    extractJsonObject,
+    setUserAiProvider,
+    userAiProvider
 } from '../../../modules/core/betterid_ai';
+import { prefs } from '../../../modules/core/preferences';
 
 
 describe('betterid direct AI client', function() {
@@ -103,5 +111,116 @@ describe('betterid direct AI client', function() {
         expect(extractJsonObject('{"a":"}{"}')).toStrictEqual({ a: '}{' });
         expect(extractJsonObject('prefix {"a":1} suffix')).toStrictEqual({ a: 1 });
         expect(extractJsonObject('nothing')).toEqual(null);
+    });
+});
+
+
+describe('betterid user-configured AI provider', function() {
+    const realFetch = globalThis.fetch;
+    let requests;
+
+    function stub(response, ok = true) {
+        globalThis.fetch = (url, init) => {
+            requests.push({ url, init });
+            return Promise.resolve({
+                ok,
+                status: ok ? 200 : 500,
+                json: () => Promise.resolve(response),
+                text: () => Promise.resolve(JSON.stringify(response))
+            });
+        };
+    }
+
+    beforeEach(function() {
+        requests = [];
+        delete globalThis.OSM_PROXY_CONFIG;
+        setUserAiProvider({ enabled: false, baseUrl: '', apiKey: '', textModel: '', visionModel: '', imageModel: '', imageApi: '' });
+    });
+
+    afterEach(function() {
+        globalThis.fetch = realFetch;
+        delete globalThis.OSM_PROXY_CONFIG;
+        delete globalThis.BETTERID_DESKTOP;
+        Object.values(BETTERID_AI_PREFS).forEach(key => prefs(key, null));
+    });
+
+    it('is only active when enabled with a base URL', function() {
+        expect(userAiProvider()).toBeNull();
+        setUserAiProvider({ enabled: true, baseUrl: ' https://api.example/v1 ', apiKey: ' sk-1 ', textModel: 'm1' });
+        const provider = userAiProvider();
+        expect(provider.source).toEqual('user');
+        expect(provider.baseUrl).toEqual('https://api.example/v1');
+        expect(provider.apiKey).toEqual('sk-1');
+        expect(provider.imageApi).toEqual('images');
+        expect(directAiAvailable()).toBe(true);
+
+        setUserAiProvider({ baseUrl: '' });
+        expect(userAiProvider()).toBeNull();
+    });
+
+    it('takes precedence over the deployment endpoint', function() {
+        globalThis.OSM_PROXY_CONFIG = { ai: { baseUrl: 'http://deploy/v1', apiKey: 'd', textModel: 'deploy-model' } };
+        expect(aiProvider().source).toEqual('deployment');
+        setUserAiProvider({ enabled: true, baseUrl: 'http://mine/v1', apiKey: 'k', textModel: 'my-model', imageModel: 'img' });
+        expect(aiProvider().source).toEqual('user');
+        expect(directAiModel('text')).toEqual('my-model');
+        expect(directAiModel('image')).toEqual('img');
+        expect(directAiImageAvailable()).toBe(true);
+    });
+
+    it('edits an image through the Images API and returns a data URL', async function() {
+        setUserAiProvider({ enabled: true, baseUrl: 'http://mine/v1', apiKey: 'k', imageModel: 'gpt-image-1', imageApi: 'images' });
+        stub({ data: [{ b64_json: 'AAAA' }] });
+
+        const result = await directAiImageEdit({
+            image: 'data:image/png;base64,iVBORw0KGgo=',
+            prompt: 'outline',
+            size: '1024x1024'
+        });
+        expect(result).toEqual('data:image/png;base64,AAAA');
+        expect(requests[0].url).toEqual('http://mine/v1/images/edits');
+        expect(requests[0].init.headers.Authorization).toEqual('Bearer k');
+        expect(requests[0].init.body).toBeInstanceOf(FormData);
+        expect(requests[0].init.body.get('model')).toEqual('gpt-image-1');
+        expect(requests[0].init.body.get('size')).toEqual('1024x1024');
+        expect(requests[0].init.body.get('response_format')).toBeNull();   // gpt-image-1 ignores it
+    });
+
+    it('edits an image through a chat completion that answers with one', async function() {
+        setUserAiProvider({ enabled: true, baseUrl: 'http://mine/v1', apiKey: 'k', imageModel: 'image-model', imageApi: 'chat' });
+        stub({ choices: [{ message: { content: 'done', images: [{ image_url: { url: 'data:image/png;base64,BBBB' } }] } }] });
+
+        const result = await directAiImageEdit({ image: 'data:image/png;base64,iVBORw0KGgo=', prompt: 'outline' });
+        expect(result).toEqual('data:image/png;base64,BBBB');
+        expect(requests[0].url).toEqual('http://mine/v1/chat/completions');
+        const body = JSON.parse(requests[0].init.body);
+        expect(body.model).toEqual('image-model');
+        expect(body.modalities).toEqual(['image', 'text']);
+    });
+
+    it('rejects when the model returns no image', async function() {
+        setUserAiProvider({ enabled: true, baseUrl: 'http://mine/v1', apiKey: 'k', imageModel: 'x', imageApi: 'chat' });
+        stub({ choices: [{ message: { content: 'sorry' } }] });
+        await expect(directAiImageEdit({ image: 'data:image/png;base64,AA==', prompt: 'p' }))
+            .rejects.toThrow('did not return an image');
+    });
+
+    it('translates through the proxy when no direct provider exists, and directly otherwise', async function() {
+        stub({ translations: [{ lang: 'zh', text: '湖' }] });
+        const viaProxy = await aiTranslate('lake', ['zh']);
+        expect(viaProxy.translations[0].text).toEqual('湖');
+        expect(requests[0].url).toEqual('/api/osm-ai/translate');
+
+        requests = [];
+        setUserAiProvider({ enabled: true, baseUrl: 'http://mine/v1', apiKey: 'k', textModel: 'm' });
+        stub({ choices: [{ message: { content: '{"translations":[{"lang":"zh","text":"湖泊"}]}' } }] });
+        const direct = await aiTranslate('lake', ['zh']);
+        expect(direct.translations[0].text).toEqual('湖泊');
+        expect(requests[0].url).toEqual('http://mine/v1/chat/completions');
+    });
+
+    it('has no proxy in the desktop app', async function() {
+        globalThis.BETTERID_DESKTOP = true;
+        await expect(aiTranslate('lake', ['zh'])).rejects.toMatchObject({ status: 503 });
     });
 });

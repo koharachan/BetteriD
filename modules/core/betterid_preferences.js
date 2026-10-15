@@ -13,6 +13,7 @@ export const BETTERID_PREFS = Object.freeze({
   rememberLocation: 'betterid.general.remember_location',
   rightDrag: 'betterid.editing.right_drag',
   snapTolerance: 'betterid.editing.snap_tolerance',
+  editableZoom: 'betterid.editing.editable_zoom',
   translationLanguages: 'betterid.translation.languages',
   searchOrder: 'betterid.ai.search_order',
   textOrder: 'betterid.ai.text_order',
@@ -42,6 +43,20 @@ export function betteridBool(key, defaultValue = false) {
 
 export function setBetteridBool(key, value) {
   prefs(key, value ? 'true' : 'false');
+}
+
+
+/** Zoom levels the editor may be unlocked at (iD's own default is 16). */
+export const BETTERID_EDITABLE_ZOOMS = Object.freeze([16, 15, 14]);
+
+
+/**
+ * The minimum zoom for editing. Lower values load bigger data tiles (the
+ * OSM API tiles follow this zoom), so the choice is deliberately limited.
+ */
+export function getEditableZoom() {
+  const value = Number.parseInt(prefs(BETTERID_PREFS.editableZoom), 10);
+  return BETTERID_EDITABLE_ZOOMS.includes(value) ? value : 16;
 }
 
 

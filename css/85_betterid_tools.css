@@ -277,3 +277,59 @@
 .betterid-selection-menu .betterid-tool-menu-item kbd {
   margin-left: 8px;
 }
+
+/* AI tracer: a button under the tools, its panel beside the palette */
+.betterid-tool-divider {
+  height: 1px;
+  margin: 3px 2px;
+  background: var(--border-color);
+}
+
+.betterid-ai-trace-button.running .icon {
+  animation: betterid-trace-pulse 1s ease-in-out infinite;
+}
+
+@keyframes betterid-trace-pulse {
+  50% { opacity: 0.35; }
+}
+
+.betterid-ai-trace-panel {
+  top: auto;
+  bottom: 0;
+  width: 190px;
+}
+
+.betterid-ai-trace-panel h4 {
+  margin: 0 0 2px;
+  font-size: 11px;
+}
+
+.betterid-ai-trace-panel select {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+}
+
+.betterid-ai-trace-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.betterid-ai-trace-actions button {
+  flex: 1 1 auto;
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.betterid-ai-trace-status {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  white-space: normal;
+  color: var(--muted-text-color);
+}
+
+.betterid-ai-trace-status.ok { color: #1a8f55; }
+.betterid-ai-trace-status.warn { color: #b07a00; }
+.betterid-ai-trace-status.error { color: #c93a3a; }

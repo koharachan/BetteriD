@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lucide-style (https://lucide.dev, ISC) stroke icon: a traced building with a sparkle -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" x="0" y="0" width="20" height="20" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 21h11" />
+        <path d="M5 21V9l4.5-3L14 9v12" />
+        <path d="M9 21v-4h1v4" />
+        <path d="M18.5 3.5 19.4 6l2.6.9-2.6.9-.9 2.7-.9-2.7L15 6.9l2.6-.9z" />
+        <path d="M18 14v2m-1-1h2" />
+    </g>
+</svg>
