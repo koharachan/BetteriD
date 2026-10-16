@@ -27,7 +27,8 @@ export function utilAIStatus() {
             // `fetch` is called inside the promise so that a synchronous throw
             // (no fetch at all, or a mocked one) degrades to "unavailable" like
             // a network error does, instead of crashing the UI that asked.
-            : new Promise(resolve => resolve(fetch('/api/osm-ai/status')))
+            : Promise.resolve()
+                .then(() => fetch('/api/osm-ai/status'))
                 .then(response => {
                     if (!response.ok) throw new Error('AI status request failed');
                     return response.json();

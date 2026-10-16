@@ -1,0 +1,13 @@
+{
+  "osm": {
+    "url": "https://www.openstreetmap.org",
+    "apiUrl": "https://api.openstreetmap.org",
+    "client_id": "0tmNTmd0Jo1dQp4AUmMBLtGiD9YpMuXzHefitcuVStc",
+    "redirect_uri": "http://127.0.0.1:8080/land.html"
+  },
+  "userAgent": "BetteriD-Desktop/{version} (+https://github.com/koharachan/BetteriD)",
+  "window": {
+    "width": 1366,
+    "height": 860
+  }
+}

@@ -158,8 +158,8 @@
     --outset-color: #fcfcfc; /* brighter than --border-color with white */
     --shadow-color: #bbb; /* mix 91.5% of --border-color with black */
     --text-color: #333;
-    --link-color: #7092ff;
-    --link-focus-color: #597be7;
+    --link-color: #2b4dc5;
+    --link-focus-color: #22409e;
     --muted-text-color: #aaa;
     --transparent-text-color: #2223;
     --transparent-text-emphasis-color: #0007;
@@ -539,6 +539,25 @@
 
 .ideditor g.vertex.selected .shadow {
     fill-opacity: 0.7;
+}
+
+/* circle to visualize radius/diameter */
+.ideditor g.point .radius,
+.ideditor g.vertex .radius {
+    fill: #333;
+    fill-opacity: 0.6;
+    stroke: #fff;
+    stroke-width: 0.5px;
+    stroke-opacity: 0.75;
+}
+
+.ideditor .fill-wireframe g.point .radius,
+.ideditor .fill-wireframe g.vertex .radius {
+    fill: none;
+}
+.ideditor .surface.tr g.point .radius,
+.ideditor .surface.tr g.vertex .radius {
+    display: none;
 }
 
 
@@ -2529,6 +2548,18 @@
 .ideditor path.line.casing.tag-tunnel,
 .ideditor path.line.casing.tag-location-underground,
 .ideditor path.line.casing.tag-location-underwater {
+    stroke-opacity: 0.5;
+    stroke-linecap: butt;
+    stroke-dasharray: none;
+}
+
+
+/* fords */
+.ideditor path.line.stroke.tag-highway.tag-ford {
+    stroke-opacity: 0.7;
+}
+.ideditor path.line.casing.tag-highway.tag-ford {
+    stroke: rgba(119, 221, 221, 0.6);
     stroke-opacity: 0.5;
     stroke-linecap: butt;
     stroke-dasharray: none;
@@ -8946,6 +8977,7 @@
     border-radius: 4px;
     margin: 0 3px;
     padding: 3px 6px;
+    vertical-align: middle;
 }
 
 
@@ -10658,6 +10690,83 @@
   color: #4a430f;
   line-height: 1.45;
 }
+
+/* Preferences → AI: the user's own provider */
+.ideditor .betterid-ai-custom-form .betterid-preference-row,
+.ideditor .betterid-ai-custom-form .betterid-preference-text {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 55%);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: none;
+}
+
+.ideditor .betterid-ai-custom-form .betterid-preference-row small,
+.ideditor .betterid-ai-custom-form .betterid-preference-text small {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.ideditor .betterid-ai-custom-form .betterid-preference-row input[type='checkbox'] {
+  justify-self: end;
+}
+
+.ideditor .betterid-preference-input {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ideditor .betterid-preference-input input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.ideditor .betterid-reveal {
+  flex: 0 0 auto;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.ideditor .betterid-reveal .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ideditor .betterid-ai-test {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.ideditor .betterid-ai-test button {
+  min-height: 30px;
+  padding: 0 12px;
+}
+
+.ideditor .betterid-ai-test-result {
+  font-size: 12px;
+  color: #666;
+}
+
+.ideditor .betterid-ai-test-result.ok {
+  color: #1a8f55;
+}
+
+.ideditor .betterid-ai-test-result.error {
+  color: #c93a3a;
+}
 .ideditor .experimental-background-group {
   padding-bottom: 10px;
   border-bottom: 1px solid #ddd;
@@ -10994,7 +11103,7 @@
   position: absolute;
   left: calc(100% + 6px);
   top: 0;
-  width: 132px;
+  width: 160px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -11054,6 +11163,15 @@
   min-width: 24px;
   text-align: right;
   color: var(--muted-text-color);
+}
+
+/* the one-paragraph cheat sheet under the pen options */
+.ideditor .betterid-tool-hint {
+  margin: 2px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted-text-color);
+  white-space: normal;
 }
 
 /* Photoshop's fly-out menu: right-click a group button to pick its variants */
@@ -11135,7 +11253,7 @@
   cursor: crosshair;
 }
 
-/* marquee / brush / pen previews (SVG on the map surface) */
+/* marquee / brush previews (SVG on the map surface); the pen has its own file */
 .ideditor .betterid-selection-preview .betterid-marquee {
   fill: #41874120;
   stroke: #418741;
@@ -11168,38 +11286,6 @@
 
 .ideditor .betterid-selection-preview.intersect .betterid-brush {
   stroke: #7092ff;
-}
-
-.ideditor .betterid-pen-preview .betterid-pen-path {
-  fill: none;
-  stroke: #418741;
-  stroke-width: 2;
-  stroke-linecap: round;
-  pointer-events: none;
-}
-
-/* the not-yet-committed segment that still follows the pointer */
-.ideditor .betterid-pen-preview .betterid-pen-rubber {
-  fill: none;
-  stroke: #418741;
-  stroke-width: 1.5;
-  stroke-dasharray: 4 3;
-  stroke-linecap: round;
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.ideditor .betterid-pen-preview .betterid-pen-point {
-  fill: #fff;
-  stroke: #333;
-  stroke-width: 1.5;
-  pointer-events: none;
-}
-
-.ideditor .betterid-pen-preview .betterid-pen-handle {
-  stroke: #7092ff;
-  stroke-width: 1;
-  pointer-events: none;
 }
 
 @media (max-width: 767px) {
@@ -11265,7 +11351,203 @@
   margin-left: 8px;
 }
 
-/* while Alt/Ctrl turn the pen into the direct selection tool */
-.ideditor .betterid-pen-direct .main-map {
-  cursor: move;
+/* AI tracer: a button under the tools, its panel beside the palette */
+.ideditor .betterid-tool-divider {
+  height: 1px;
+  margin: 3px 2px;
+  background: var(--border-color);
+}
+
+.ideditor .betterid-ai-trace-button.running .icon {
+  animation: betterid-trace-pulse 1s ease-in-out infinite;
+}
+
+@keyframes betterid-trace-pulse {
+  50% { opacity: 0.35; }
+}
+
+.ideditor .betterid-ai-trace-panel {
+  top: auto;
+  bottom: 0;
+  width: 190px;
+}
+
+.ideditor .betterid-ai-trace-panel h4 {
+  margin: 0 0 2px;
+  font-size: 11px;
+}
+
+.ideditor .betterid-ai-trace-panel select {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+}
+
+.ideditor .betterid-ai-trace-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.ideditor .betterid-ai-trace-actions button {
+  flex: 1 1 auto;
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.ideditor .betterid-ai-trace-status {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  white-space: normal;
+  color: var(--muted-text-color);
+}
+
+.ideditor .betterid-ai-trace-status.ok { color: #1a8f55; }
+.ideditor .betterid-ai-trace-status.warn { color: #b07a00; }
+.ideditor .betterid-ai-trace-status.error { color: #c93a3a; }
+/* BetteriD pen tool: Photoshop / Illustrator style preview and cursors
+   ------------------------------------------------------------------- */
+
+/* --- path preview (SVG on the map surface, screen space) --- */
+
+.ideditor .betterid-pen-preview {
+  pointer-events: none;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-halo {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+/* committed segments: this polyline is exactly the way that will be created */
+.ideditor .betterid-pen-preview .betterid-pen-path {
+  fill: none;
+  stroke: #2d7ff9;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* the segment that still follows the pointer */
+.ideditor .betterid-pen-preview .betterid-pen-rubber {
+  fill: none;
+  stroke: #2d7ff9;
+  stroke-width: 1.2;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+/* where the way nodes will land between the anchors */
+.ideditor .betterid-pen-preview .betterid-pen-node {
+  fill: #2d7ff9;
+  stroke: #fff;
+  stroke-width: 0.8;
+  opacity: 0.85;
+}
+
+/* direction lines and their end points */
+.ideditor .betterid-pen-preview .betterid-pen-handle {
+  stroke: #2d7ff9;
+  stroke-width: 1;
+  opacity: 0.9;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-handle-end {
+  fill: #2d7ff9;
+  stroke: #fff;
+  stroke-width: 1.2;
+}
+
+/* anchors: squares for new points (hollow = placed, filled = current),
+   circles for anchors that reuse an existing OSM node */
+.ideditor .betterid-pen-preview .betterid-pen-anchor rect,
+.ideditor .betterid-pen-preview .betterid-pen-anchor circle {
+  fill: #fff;
+  stroke: #2d7ff9;
+  stroke-width: 1.4;
+  paint-order: stroke;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-anchor.current rect,
+.ideditor .betterid-pen-preview .betterid-pen-anchor.current circle {
+  fill: #2d7ff9;
+  stroke: #fff;
+  stroke-width: 1.4;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-anchor.bound circle {
+  stroke: #1a8f55;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-anchor.bound.current circle {
+  fill: #1a8f55;
+  stroke: #fff;
+}
+
+/* a halo around whatever a press would act on */
+.ideditor .betterid-pen-preview .betterid-pen-hover-ring {
+  fill: none;
+  stroke: #2d7ff9;
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-hover-ring.delete {
+  stroke: #c93a3a;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-hover-ring.add {
+  fill: #2d7ff9;
+  fill-opacity: 0.35;
+}
+
+.ideditor .betterid-pen-preview .betterid-pen-hover-ring.connect-node,
+.ideditor .betterid-pen-preview .betterid-pen-hover-ring.connect-way {
+  stroke: #1a8f55;
+  stroke-dasharray: 3 2;
+}
+
+/* --- cursors (Photoshop's nib with its little marks) --- */
+.ideditor.betterid-pen-tool .main-map,
+.ideditor.betterid-pen-tool.betterid-tool-active .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-add .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M16 19.5 H23 M19.5 16 V23' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 19.5 H23 M19.5 16 V23' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-delete .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M16 19.5 H23' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 19.5 H23' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-close .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Ccircle cx='19.5' cy='19.5' r='3.4' fill='none' stroke='%23fff' stroke-width='3.6'/%3E%3Ccircle cx='19.5' cy='19.5' r='3.4' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-convert .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M16 22 L19.5 16.5 L23 22' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 22 L19.5 16.5 L23 22' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-connect-node .main-map,
+.ideditor.betterid-pen-tool .vertex.target {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Ccircle cx='19.5' cy='19.5' r='3.2' fill='%23000' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+.ideditor.betterid-pen-tool.betterid-pen-hover-connect-way .main-map,
+.ideditor.betterid-pen-tool .way.target {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 2.5 L13 6 L14.5 14.5 L6 13 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M2.5 2.5 L9.3 9.3' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3Ccircle cx='9.6' cy='9.6' r='1.5' fill='%23fff' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M15.5 23 L23.5 15' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15.5 23 L23.5 15' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='19.5' cy='19' r='2.3' fill='%23000' stroke='%23fff' stroke-width='1.4'/%3E%3C/svg%3E") 3 3, crosshair;
+}
+/* grabbing a handle or an anchor: the direct selection arrow */
+.ideditor.betterid-pen-tool.betterid-pen-hover-handle .main-map,
+.ideditor.betterid-pen-tool.betterid-pen-hover-direct .main-map,
+.ideditor.betterid-pen-tool.betterid-pen-dragging .main-map {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M5 3 L5 19 L9.3 15.2 L12.3 22 L15 20.8 L12 14 L18 14 Z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 5 3, default;
+}
+
+/* while a palette tool is active, panning is Space + drag */
+.ideditor.betterid-pen-tool.betterid-hand-tool .main-map,
+.ideditor.betterid-pen-tool.betterid-hand-tool .vertex.target,
+.ideditor.betterid-pen-tool.betterid-hand-tool .way.target {
+  cursor: grab;
 }

@@ -1,7 +1,9 @@
 packages:
   - '.'
   - 'mcp'
+  - 'desktop'
 
 onlyBuiltDependencies:
   - '@actions/github-script'
   - esbuild
+  - electron

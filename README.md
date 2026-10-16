@@ -89,6 +89,7 @@ Full notes: [0.1.4 changelog](CHANGELOG.md#betterid-014).
 - 根据用户描述、现有标签、几何类型和位置检索 OSM 标签建议，并展示依据与来源。
 - 生成简洁的 changeset comment；失败不会阻止正常提交。
 - 文本、搜索和视觉任务分别配置服务端提供商顺序，并在配额或上游错误时静默回退。
+- 在“偏好设置 → AI”中可启用自定义 OpenAI 兼容来源，填写自己的 API 地址、密钥、文本/视觉/生图模型；密钥只保存在本机浏览器中。
 - AI 输出只作为候选建议，应用标签和上传变更前始终需要人工复核。
 
 ### 编辑体验
@@ -101,7 +102,8 @@ Full notes: [0.1.4 changelog](CHANGELOG.md#betterid-014).
 ### Photoshop 风格工具栏与 Adobe 快捷键
 
 - 地图左侧工具面板：框选（矩形/椭圆）、快速选择（笔刷）、魔棒（容差 + 连通，按标签相似度扩展）和钢笔
-  （单击角点、拖动出曲线，曲线按 12px 采样成 OSM 节点；`Alt` 单击断手柄、`Backspace` 退格、`Enter` 完成）。
+  （单击角点、拖动出曲线，直线不产生多余节点，曲线按容差优化采样成 OSM 节点；`Alt` 转换点、`Ctrl` 直接选择、单击路径自动加点）。
+- AI 描边工具可把当前底图交给生图模型做纯红色建筑/水域描边，或让视觉模型直接返回多边形，再转换为可检查、可撤销的 OSM 面。
 - 选择修饰键与 Photoshop 一致：`Shift` 加选、`Alt` 减选、`Shift+Alt` 交集。
 - 可开关的 Adobe 快捷键层：滚轮上下滚动、`Ctrl`+滚轮左右滚动、`Alt`+滚轮在指针处缩放、
   按住空格拖动平移、`Alt`+单击吸取指针处 hex 颜色并复制；`Ctrl+T` 自由变换、`Ctrl+J` 复制、
@@ -141,7 +143,25 @@ pnpm run all
 pnpm test
 ```
 
-## 运行完整服务
+### Windows / Linux 桌面端（无 BetteriD 服务器）
+
+仓库提供 Electron 桌面壳：编辑器和数据资源随应用打包，OSM API、底图和 OAuth 直接从桌面端访问；不需要运行 Rust/Node 服务器。桌面端的 AI 使用“偏好设置 → AI”中填写的自定义来源，未配置时不会请求 BetteriD 服务端。
+
+```bash
+# 开发运行
+pnpm run desktop:bundle
+pnpm run desktop:start
+
+# Windows：NSIS 安装包 + portable
+pnpm run desktop:dist:win
+
+# Linux：AppImage + deb
+pnpm run desktop:dist:linux
+```
+
+桌面端配置文件在首次启动后位于系统用户数据目录，也可以在应用菜单中打开。自建 OAuth 客户端时，将回调地址注册为 `http://127.0.0.1:8080/land.html`；桌面壳会在导航离开前截获回调，不会启动本地 HTTP 服务。详细说明见 [docs/BETTERID_DESKTOP.md](docs/BETTERID_DESKTOP.md)。
+
+### 运行完整服务
 
 先在仓库根目录构建编辑器，再启动 Rust 代理：
 
@@ -158,7 +178,7 @@ cargo run
 线上实例的容器化部署（镜像构建、回源切换、上线检查、密钥与主机信息管理）见
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
 
-所有提供商密钥只应配置在代理进程或 `.env` 中，不得写入前端源码、提交到 Git，或返回给浏览器。
+- 所有服务端提供商密钥应配置在代理进程或 `.env` 中，不得写入前端源码、提交到 Git，或返回给浏览器。桌面端自定义来源的密钥是用户主动选择的本机配置，只发送到用户填写的 API 地址。
 
 ## 文档
 

@@ -1,0 +1,78 @@
+{
+  "name": "betterid-desktop",
+  "version": "0.9.9-rc-2",
+  "private": true,
+  "description": "BetteriD for Windows and Linux: the editor as a desktop app, talking to OpenStreetMap directly, without a BetteriD server",
+  "author": "koharachan",
+  "license": "ISC",
+  "main": "main.js",
+  "homepage": "https://github.com/koharachan/BetteriD",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "pack": "electron-builder --dir",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "asia.osm.betterid.desktop",
+    "productName": "BetteriD",
+    "artifactName": "BetteriD-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "../dist-desktop/packages",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "config.json",
+      "app/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "dist",
+        "filter": [
+          "**/*",
+          "!iD.js",
+          "!iD.min.js",
+          "!*.map",
+          "!esbuild.json"
+        ]
+      },
+      {
+        "from": "../dist-desktop/iD.min.js",
+        "to": "dist/iD.min.js"
+      },
+      {
+        "from": "../land.html",
+        "to": "dist/land.html"
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "BetteriD"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "category": "Education",
+      "synopsis": "OpenStreetMap editor",
+      "maintainer": "koharachan <194654923+koharachan@users.noreply.github.com>"
+    }
+  }
+}

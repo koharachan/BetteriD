@@ -30,3 +30,5 @@ transifex.auth
 SERVERS.local.md
 *.env.local
 /dist-dev/
+/dist-desktop/
+/desktop/node_modules/

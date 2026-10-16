@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <title>BetteriD</title>
+    <meta http-equiv='Content-Security-Policy' content="default-src 'self' betterid:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*; font-src 'self' data: https:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:;">
+    <link rel='stylesheet' href='dist/iD.css'>
+    <style type='text/css'>
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background-color: #212529; }
+      }
+      #id-container { width: 100%; height: 100%; }
+      .betterid-desktop-error {
+        padding: 24px;
+        font: 14px/1.5 system-ui, sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id='id-container'></div>
+
+    <script>
+      // the smoke test reads these; users see them in the devtools console
+      window.__betteridErrors = [];
+      window.addEventListener('error', function(event) {
+        window.__betteridErrors.push('error: ' + String(event.message || event.error));
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        window.__betteridErrors.push('rejection: ' + String(event.reason && event.reason.stack || event.reason));
+      });
+      var originalConsoleError = console.error;
+      console.error = function() {
+        window.__betteridErrors.push('console: ' + Array.from(arguments).join(' '));
+        originalConsoleError.apply(console, arguments);
+      };
+
+      (async function() {
+        var container = document.getElementById('id-container');
+        var desktop = await window.BETTERID_DESKTOP.config();
+
+        // the same runtime config the BetteriD server injects on the website,
+        // minus everything that needs a server
+        window.OSM_PROXY_CONFIG = {
+          osmApiConnection: {
+            url: desktop.osm.url,
+            apiUrl: desktop.osm.apiUrl || desktop.osm.url,
+            client_id: desktop.osm.client_id,
+            redirect_uri: desktop.osm.redirect_uri
+          }
+        };
+
+        // osm-auth listens on this channel for the redirect URL that the main
+        // process intercepts in the login popup
+        window.BETTERID_DESKTOP.onOAuthCallback(function(url) {
+          new BroadcastChannel('osm-api-auth-complete').postMessage(url);
+        });
+
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.onload = start;
+        script.onerror = function() { fail('dist/iD.min.js could not be loaded. Build the editor first (pnpm run all && pnpm run dist).'); };
+        script.src = 'dist/iD.min.js';
+        document.head.appendChild(script);
+
+        function fail(message) {
+          container.className = 'betterid-desktop-error';
+          container.textContent = message;
+        }
+
+        function start() {
+          if (typeof iD === 'undefined' || !iD.utilDetect().support) {
+            fail('This build of BetteriD cannot run in the bundled browser engine.');
+            return;
+          }
+          var context = iD.coreContext()
+            .assetPath('dist/')
+            .containerNode(container);
+          window.context = window.id = context;  // for debugging
+          context.init();
+          document.title = 'BetteriD ' + desktop.version;
+        }
+      })();
+    </script>
+  </body>
+</html>

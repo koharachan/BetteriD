@@ -170,6 +170,15 @@ export default tseslint.config(
     }
   },
   {
+    files: ['desktop/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+      sourceType: 'commonjs',
+    }
+  },
+  {
     files: ['eslint.config.js'],
     rules: {
       'sort-keys': ['error', 'asc', { minKeys: 5 }]
