@@ -17,6 +17,15 @@ BetteriD 是面向中文 OpenStreetMap 编辑场景的网页编辑器，基于
 > 上传前请逐项核对标签、来源和变更说明，并遵守
 > [OpenStreetMap 贡献条款](https://www.openstreetmap.org/copyright)。
 
+## 1.0.0-beta 预览版
+
+- 新增 Windows / Linux 无服务器桌面端；编辑器、预设和名称索引随应用打包。
+- 新增自定义 AI API 来源、API Key、文本/视觉/生图模型配置。
+- 新增 AI 红色描边和视觉多边形转 OSM 面工具。
+- 钢笔工具、节点优化、导入/导出/撤销/重做工具栏和中文本地化完成一轮重构。
+
+完整内容见 [1.0.0-beta changelog](CHANGELOG.md#betterid-100-beta)。
+
 ## 0.1.5 Release
 
 - Standard OpenStreetMap tiles are now routed through the Rust proxy with

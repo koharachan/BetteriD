@@ -11406,6 +11406,59 @@
 .ideditor .betterid-ai-trace-status.ok { color: #1a8f55; }
 .ideditor .betterid-ai-trace-status.warn { color: #b07a00; }
 .ideditor .betterid-ai-trace-status.error { color: #c93a3a; }
+
+/* A compact, labeled file/edit workflow keeps the tool palette useful beyond
+   mode switching: import/export and local undo/redo are always discoverable. */
+.ideditor .betterid-tool-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 3px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border-color);
+}
+
+.ideditor .betterid-tool-actions-title {
+  padding: 0 3px 2px;
+  color: var(--muted-text-color);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.ideditor .betterid-tool-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+}
+
+.ideditor .betterid-tool-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.ideditor .betterid-tool-action:hover:not(.disabled) {
+  background: var(--active-bg-color);
+}
+
+.ideditor .betterid-tool-action.disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ideditor .betterid-tool-action .icon {
+  width: 16px;
+  height: 16px;
+}
 /* BetteriD pen tool: Photoshop / Illustrator style preview and cursors
    ------------------------------------------------------------------- */
 

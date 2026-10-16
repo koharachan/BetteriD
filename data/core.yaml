@@ -1376,6 +1376,14 @@ en:
       convert_to_path: Convert selection to path
       convert_to_path_key: Alt+Del
       eyedropper_copied: "Colour {color} copied"
+      workflow:
+        title: File and edit
+        import: Import edits
+        export: Export edits
+        undo: Undo
+        redo: Redo
+        no_changes: There are no pending edits to export.
+        exported: Current edits exported as betterid-changes.osc.
     trace:
       title: AI trace
       method: Method

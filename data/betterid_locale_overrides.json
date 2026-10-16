@@ -190,7 +190,16 @@
           "imagery_unreadable": "当前底图不允许读取像素（缺少跨域头），魔棒与快速选择无法对它取色。",
           "convert_to_path": "转换为路径",
           "convert_to_path_key": "Alt+Del",
-          "eyedropper_copied": "已复制颜色 {color}"
+          "eyedropper_copied": "已复制颜色 {color}",
+          "workflow": {
+            "title": "文件与编辑",
+            "import": "导入编辑",
+            "export": "导出编辑",
+            "undo": "撤销",
+            "redo": "重做",
+            "no_changes": "当前没有可导出的待处理编辑。",
+            "exported": "当前编辑已导出为 betterid-changes.osc。"
+          }
         },
         "trace": {
           "title": "AI 描边",
@@ -468,7 +477,16 @@
           "imagery_unreadable": "目前底圖不允許讀取像素（缺少跨域標頭），魔術棒與快速選取無法對它取色。",
           "convert_to_path": "轉換為路徑",
           "convert_to_path_key": "Alt+Del",
-          "eyedropper_copied": "已複製顏色 {color}"
+          "eyedropper_copied": "已複製顏色 {color}",
+          "workflow": {
+            "title": "檔案與編輯",
+            "import": "匯入編輯",
+            "export": "匯出編輯",
+            "undo": "復原",
+            "redo": "重做",
+            "no_changes": "目前沒有可匯出的待處理編輯。",
+            "exported": "目前編輯已匯出為 betterid-changes.osc。"
+          }
         },
         "import_edits": {
           "help": "匯入 .osc / .osm 編輯檔案；也可以把檔案直接拖到地圖上。",

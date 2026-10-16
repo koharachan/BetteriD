@@ -34,8 +34,52 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 -->
 
 
-# BetteriD 0.9.9-rc-1
-##### 2026-Sep-12
+# BetteriD 1.0.0-beta
+##### 2026-Oct-16
+
+#### :mega: Release Highlights
+* First 1.0 beta of the BetteriD editing workflow: upstream iD is synchronized
+  through the current develop line used for this release, while BetteriD keeps
+  its Chinese editing features and policy fixes.
+* Windows and Linux desktop builds run without a BetteriD server. The editor,
+  preset data and name index are bundled locally; OSM API, imagery and OAuth are
+  accessed directly from the desktop app.
+* Custom AI sources are configured in Preferences → AI. Users can provide an
+  OpenAI-compatible URL, API key, text / vision / image models, and use either
+  the Images API or a chat image response. Desktop builds never call the
+  BetteriD server for AI.
+
+#### :tada: New Features
+* AI trace can use a vision model's pixel polygons or a generative image model's
+  pure-red building / water outlines, convert the result to OSM areas, and keep
+  the result as one undoable edit for manual review.
+* The BetteriD palette now has a labeled **File and edit** group: import `.osm`
+  / `.osc`, export the current pending edit as `betterid-changes.osc`, undo,
+  and redo. The import control also accepts files dropped onto the editor.
+* The pen tool adds path insertion/deletion, existing-node/way snapping, direct
+  selection, curve-error-based node optimization, and meaningful Photoshop /
+  Illustrator-style cursors.
+* Editing can be unlocked at zoom 16, 15 or 14 from Preferences → Editing;
+  the larger data-volume trade-off is shown next to the setting.
+
+#### :earth_asia: Localization
+* Fork-owned English strings now have Simplified Chinese and Traditional
+  Chinese overrides, including the custom AI form, AI trace, desktop workflow,
+  editable zoom and help text. `zh-CN` also overrides the fork's BetteriD help
+  strings instead of inheriting iD's English-project wording.
+
+#### :hourglass: Performance
+* Cache path flattening, path hit testing, marching-ant outlines and decoded
+  imagery tiles so repeated pointer moves and pan/zoom redraws do less work.
+* Straight pen segments produce no unnecessary intermediate OSM nodes; curves
+  are simplified against an explicit screen-error tolerance.
+
+#### :white_check_mark: Verification
+* Full Vitest suite: 2,475 passed, 9 skipped, 5 todo.
+* Typecheck and source lint pass; lint retains only pre-existing warnings.
+* Electron desktop smoke check passes with the map, five palette controls and no
+  renderer errors.
+
 
 #### :mega: Release Highlights
 * A Photoshop-style tool palette on the left edge of the map: marquee (rectangle /

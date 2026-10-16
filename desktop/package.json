@@ -1,6 +1,6 @@
 {
   "name": "betterid-desktop",
-  "version": "0.9.9-rc-2",
+  "version": "1.0.0-beta",
   "private": true,
   "description": "BetteriD for Windows and Linux: the editor as a desktop app, talking to OpenStreetMap directly, without a BetteriD server",
   "author": "koharachan",

@@ -17,6 +17,7 @@ import { prefs } from '../core/preferences';
 import { t } from '../core/localizer';
 import { svgIcon } from '../svg';
 import { uiBetteridAiTrace } from './betterid_ai_trace';
+import { uiBetteridWorkflow } from './betterid_workflow';
 import { uiTooltip } from './tooltip';
 
 
@@ -87,6 +88,7 @@ export function uiBetteridToolPalette(context) {
     var _container = d3_select(null);
     // one instance: it keeps its panel state across palette re-renders
     var _trace = uiBetteridAiTrace(context);
+    var _workflow = uiBetteridWorkflow(context);
 
 
     function flashTool() {
@@ -284,6 +286,11 @@ export function uiBetteridToolPalette(context) {
 
         // the AI tracer sits under the tools with its own fly-out panel
         tools.call(_trace);
+
+        // file import/export and local edit history live beside the tools, so
+        // the custom toolbar has a useful editing workflow instead of being
+        // only a mode switcher
+        palette.call(_workflow);
     }
 
 

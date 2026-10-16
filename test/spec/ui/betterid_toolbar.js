@@ -39,6 +39,9 @@ describe('uiBetteridToolPalette', function() {
     it('renders one button per tool group', function() {
         expect(overMap.selectAll('.betterid-tool-group').size()).toEqual(4);
         expect(overMap.select('.betterid-ai-trace-button').empty()).toBe(false);
+        expect(overMap.select('.betterid-tool-actions').empty()).toBe(false);
+        expect(overMap.selectAll('.betterid-tool-action').size()).toEqual(4);
+        expect(overMap.select('.betterid-tool-action[data-action="export"]').classed('disabled')).toBe(true);
         expect(button('select').classed('active')).toBe(true);
     });
 

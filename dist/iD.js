@@ -43795,7 +43795,7 @@ Please report this to https://github.com/markedjs/marked.`, e3) {
     "package.json"() {
       package_default = {
         name: "BetteriD",
-        version: "0.9.9-rc-1",
+        version: "1.0.0-beta",
         description: "A friendly editor for OpenStreetMap",
         main: "dist/iD.min.js",
         repository: {
@@ -83421,6 +83421,151 @@ ${tag}` : tag;
     }
   });
 
+  // modules/ui/betterid_workflow.js
+  var betterid_workflow_exports = {};
+  __export(betterid_workflow_exports, {
+    uiBetteridWorkflow: () => uiBetteridWorkflow
+  });
+  function uiBetteridWorkflow(context) {
+    let _container = select_default2(null);
+    let _buttons = select_default2(null);
+    let _discardTags = {};
+    let _discardTagsPromise2;
+    function loadDiscardTags2() {
+      if (!_discardTagsPromise2) {
+        _discardTagsPromise2 = _mainFileFetcher.get("discarded").then((tags) => {
+          _discardTags = tags || {};
+          return _discardTags;
+        }).catch(() => _discardTags);
+      }
+      return _discardTagsPromise2;
+    }
+    function flash(key, icon2, iconClass, values3) {
+      context.ui().flash.duration(4500).iconName(icon2).iconClass(iconClass).label(_t.append(key, values3 || {}))();
+    }
+    function importFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onerror = () => flash(
+        "commit.import_failed",
+        "#iD-icon-no",
+        "operation disabled",
+        { message: _t("betterid.import_edits.read_error") }
+      );
+      reader.onload = () => {
+        try {
+          const result2 = coreImportEdits(context, String(reader.result));
+          flash("commit.import_success", "#iD-icon-load", "operation", result2);
+          update3();
+        } catch (error) {
+          flash("commit.import_failed", "#iD-icon-no", "operation disabled", {
+            message: error.message
+          });
+        }
+      };
+      reader.readAsText(file);
+    }
+    function importFiles(files) {
+      Array.from(files || []).forEach(importFile);
+    }
+    function exportChanges() {
+      const history = context.history();
+      if (!history.hasChanges()) {
+        flash("betterid.tools.workflow.no_changes", "#iD-icon-no", "operation disabled");
+        return;
+      }
+      loadDiscardTags2().then((discardTags) => {
+        const changeset = new osmChangeset().update({ id: void 0 });
+        const changes = history.changes(actionDiscardTags(history.difference(), discardTags));
+        delete changeset.id;
+        const data = JXON.stringify(changeset.osmChangeJXON(changes));
+        const blob = new Blob([data], { type: "text/xml;charset=utf-8" });
+        const url = window.URL.createObjectURL(blob);
+        const link2 = document.createElement("a");
+        link2.href = url;
+        link2.download = "betterid-changes.osc";
+        link2.click();
+        window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+        flash("betterid.tools.workflow.exported", "#iD-icon-betterid-export", "operation");
+      });
+    }
+    function edit(action) {
+      const history = context.history();
+      if (action === "undo" && history.undoAnnotation()) context.undo();
+      if (action === "redo" && history.redoAnnotation()) context.redo();
+      update3();
+    }
+    function actionButton(parent, action, icon2, label, onClick) {
+      const button = parent.append("button").attr("type", "button").attr("class", "betterid-tool-action").attr("data-action", action).attr("aria-label", _t(label)).on("click", function(event) {
+        event.preventDefault();
+        onClick();
+      }).call(uiTooltip().placement("right").title(() => _t.append(label)).scrollContainer(context.container().select(".over-map")));
+      button.call(svgIcon(icon2));
+      button.append("span").call(_t.append(label));
+      return button;
+    }
+    function update3() {
+      if (_buttons.empty()) return;
+      const history = context.history();
+      const canUndo = Boolean(history.undoAnnotation());
+      const canRedo = Boolean(history.redoAnnotation());
+      const canExport = history.hasChanges();
+      _buttons.select('[data-action="export"]').classed("disabled", !canExport).attr("aria-disabled", !canExport ? "true" : null);
+      _buttons.select('[data-action="undo"]').classed("disabled", !canUndo).attr("aria-disabled", !canUndo ? "true" : null);
+      _buttons.select('[data-action="redo"]').classed("disabled", !canRedo).attr("aria-disabled", !canRedo ? "true" : null);
+    }
+    function workflow(selection3) {
+      _container = selection3;
+      _container.selectAll(".betterid-tool-actions").remove();
+      const section = _container.append("div").attr("class", "betterid-tool-actions").attr("aria-label", _t("betterid.tools.workflow.title"));
+      section.append("div").attr("class", "betterid-tool-actions-title").call(_t.append("betterid.tools.workflow.title"));
+      _buttons = section.append("div").attr("class", "betterid-tool-action-buttons");
+      const fileInput = section.append("input").attr("type", "file").attr("class", "betterid-tool-import-input").attr("accept", ".osc,.osm,.xml,text/xml,application/xml").style("display", "none").on("change", function(event) {
+        importFiles(event.target.files);
+        event.target.value = "";
+      });
+      actionButton(_buttons, "import", "#iD-icon-betterid-import", "betterid.tools.workflow.import", () => {
+        fileInput.node().click();
+      });
+      actionButton(_buttons, "export", "#iD-icon-betterid-export", "betterid.tools.workflow.export", exportChanges);
+      actionButton(_buttons, "undo", "#iD-icon-undo", "betterid.tools.workflow.undo", () => edit("undo"));
+      actionButton(_buttons, "redo", "#iD-icon-redo", "betterid.tools.workflow.redo", () => edit("redo"));
+      if (!workflow._bound) {
+        workflow._bound = true;
+        context.history().on("change.betteridWorkflow", update3);
+        context.on("enter.betteridWorkflow", update3);
+        context.container().on("dragover.betteridWorkflow", (event) => event.preventDefault()).on("drop.betteridWorkflow", (event) => {
+          event.preventDefault();
+          importFiles(event.dataTransfer && event.dataTransfer.files);
+        });
+      }
+      update3();
+    }
+    workflow.uninstall = function() {
+      context.history().on("change.betteridWorkflow", null);
+      context.on("enter.betteridWorkflow", null);
+      context.container().on("dragover.betteridWorkflow", null).on("drop.betteridWorkflow", null);
+      workflow._bound = false;
+      _container = select_default2(null);
+      _buttons = select_default2(null);
+    };
+    return workflow;
+  }
+  var init_betterid_workflow = __esm({
+    "modules/ui/betterid_workflow.js"() {
+      "use strict";
+      init_src6();
+      init_discard_tags();
+      init_file_fetcher();
+      init_import_edits();
+      init_localizer();
+      init_osm();
+      init_svg();
+      init_jxon();
+      init_tooltip();
+    }
+  });
+
   // modules/ui/betterid_toolbar.js
   var betterid_toolbar_exports = {};
   __export(betterid_toolbar_exports, {
@@ -83461,6 +83606,7 @@ ${tag}` : tag;
   function uiBetteridToolPalette(context) {
     var _container = select_default2(null);
     var _trace = uiBetteridAiTrace(context);
+    var _workflow = uiBetteridWorkflow(context);
     function flashTool() {
       context.ui().flash.duration(1500).iconName(toolIcon(betteridTool())).iconClass("operation").label(_t("betterid.tools.active", { tool: _t("betterid.tools." + betteridTool()) }))();
     }
@@ -83598,6 +83744,7 @@ ${tag}` : tag;
       renderOptions(options, betteridTool());
       if (!options.node().childNodes.length) options.remove();
       tools.call(_trace);
+      palette2.call(_workflow);
     }
     function palette(selection3) {
       _container = selection3;
@@ -83661,6 +83808,7 @@ ${tag}` : tag;
       init_localizer();
       init_svg();
       init_betterid_ai_trace();
+      init_betterid_workflow();
       init_tooltip();
       TOOL_ICONS = {
         select: "#iD-icon-betterid-select",
@@ -110117,6 +110265,7 @@ this.ifd0Offset: ${this.ifd0Offset}, file.byteLength: ${e3.byteLength}`), e3.tif
         "../ui/attribution.js": () => Promise.resolve().then(() => (init_attribution(), attribution_exports)),
         "../ui/betterid_ai_trace.js": () => Promise.resolve().then(() => (init_betterid_ai_trace(), betterid_ai_trace_exports)),
         "../ui/betterid_toolbar.js": () => Promise.resolve().then(() => (init_betterid_toolbar(), betterid_toolbar_exports)),
+        "../ui/betterid_workflow.js": () => Promise.resolve().then(() => (init_betterid_workflow(), betterid_workflow_exports)),
         "../ui/changeset_editor.js": () => Promise.resolve().then(() => (init_changeset_editor(), changeset_editor_exports)),
         "../ui/cmd.ts": () => Promise.resolve().then(() => (init_cmd(), cmd_exports)),
         "../ui/cmd_sequence.ts": () => Promise.resolve().then(() => (init_cmd_sequence(), cmd_sequence_exports)),
