@@ -61,9 +61,13 @@
       ]
     },
     "nsis": {
+      "artifactName": "BetteriD-${version}-win-x64-setup.exe",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "BetteriD"
+    },
+    "portable": {
+      "artifactName": "BetteriD-${version}-win-x64-portable.exe"
     },
     "linux": {
       "target": [
