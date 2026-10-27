@@ -32,7 +32,7 @@ pnpm run desktop:dist:linux
 
 生成物位于 `dist-desktop/packages/`：`BetteriD-<version>-linux-x64.AppImage`、`BetteriD-<version>-linux-amd64.deb`、`BetteriD-<version>-linux-x64.tar.gz`（deb 按 Debian 习惯用 amd64 后缀）。`dist-desktop/` 不提交到仓库。
 
-推送 `v*` 标签（或在 Actions 里手动运行 `desktop-linux`）会触发 `.github/workflows/desktop-linux.yml`，在 ubuntu-latest 上构建上面三个 Linux 产物并上传到同名 release。
+仓库目前没有自动化桌面打包流程，Linux 产物是在本地构建后用 `gh release upload v1.0.0-beta dist-desktop/packages/*` 挂到 release 上的。要改成 CI 打包，把本地那份 `.github/workflows/desktop-linux.yml` 推送上去即可（它会在 `v*` 标签触发，构建上面三个产物并自动上传）——推送 `.github/workflows/` 需要 token 带 `workflow` 权限，`gh auth refresh -s workflow` 可加。
 
 ## Linux 安装
 
