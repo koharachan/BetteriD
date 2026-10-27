@@ -6,6 +6,7 @@
   "author": "koharachan",
   "license": "ISC",
   "main": "main.js",
+  "desktopName": "betterid.desktop",
   "homepage": "https://github.com/koharachan/BetteriD",
   "scripts": {
     "start": "electron .",
@@ -31,6 +32,7 @@
       "preload.js",
       "config.json",
       "app/**/*",
+      "build/icon.png",
       "package.json"
     ],
     "extraResources": [
@@ -69,14 +71,48 @@
     "portable": {
       "artifactName": "BetteriD-${version}-win-x64-portable.exe"
     },
+    "appImage": {
+      "artifactName": "BetteriD-${version}-linux-x64.AppImage"
+    },
+    "deb": {
+      "artifactName": "BetteriD-${version}-linux-amd64.deb",
+      "depends": [
+        "libgtk-3-0 | libgtk-3-0t64",
+        "libnotify4 | libnotify4t64",
+        "libnss3",
+        "libxss1",
+        "libxtst6 | libxtst6t64",
+        "xdg-utils",
+        "libatspi2.0-0 | libatspi2.0-0t64",
+        "libuuid1",
+        "libsecret-1-0 | libsecret-1-0t64"
+      ]
+    },
     "linux": {
       "target": [
         { "target": "AppImage", "arch": ["x64"] },
-        { "target": "deb", "arch": ["x64"] }
+        { "target": "deb", "arch": ["x64"] },
+        { "target": "tar.gz", "arch": ["x64"] }
       ],
+      "icon": "build/icons",
+      "executableName": "betterid",
+      "syncDesktopName": true,
       "category": "Education",
       "synopsis": "OpenStreetMap editor",
-      "maintainer": "koharachan <194654923+koharachan@users.noreply.github.com>"
+      "description": "BetteriD: the OpenStreetMap editor as a desktop app. The editor, presets, NSI data and icons ship with the app; OpenStreetMap API, imagery and OAuth are reached directly, without a BetteriD server.",
+      "maintainer": "koharachan <194654923+koharachan@users.noreply.github.com>",
+      "vendor": "koharachan",
+      "artifactName": "BetteriD-${version}-linux-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "BetteriD",
+          "GenericName": "OpenStreetMap Editor",
+          "Comment": "Edit OpenStreetMap directly from the desktop",
+          "Keywords": "OpenStreetMap;OSM;map;editor;GIS;",
+          "StartupWMClass": "betterid",
+          "StartupNotify": "true"
+        }
+      }
     }
   }
 }

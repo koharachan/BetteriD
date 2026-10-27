@@ -21,14 +21,28 @@ pnpm run desktop:smoke
 ## 打包
 
 ```bash
-# Windows x64：NSIS 安装包和 portable 包
+# Windows x64：NSIS 安装包和 portable 包（在 Windows 上执行）
 pnpm run desktop:dist:win
 
-# Linux x64：AppImage 和 deb
+# Linux x64：AppImage、deb 和 tar.gz
 pnpm run desktop:dist:linux
 ```
 
-生成物位于 `dist-desktop/packages/`。`dist-desktop/` 不提交到仓库。
+两条命令都会先执行 `desktop:bundle`。它们不会自己构建编辑器资源，所以干净克隆上要先跑一次 `pnpm run all`（CSS、数据、精灵图、`dist/iD.js`），否则 `dist/` 是空的。
+
+生成物位于 `dist-desktop/packages/`：`BetteriD-<version>-linux-x64.AppImage`、`BetteriD-<version>-linux-amd64.deb`、`BetteriD-<version>-linux-x64.tar.gz`（deb 按 Debian 习惯用 amd64 后缀）。`dist-desktop/` 不提交到仓库。
+
+推送 `v*` 标签（或在 Actions 里手动运行 `desktop-linux`）会触发 `.github/workflows/desktop-linux.yml`，在 ubuntu-latest 上构建上面三个 Linux 产物并上传到同名 release。
+
+## Linux 安装
+
+- **deb**：`sudo apt install ./BetteriD-<version>-linux-amd64.deb`。apt 会一起装 GTK、NSS 等依赖，并写入桌面菜单项。
+- **AppImage**：`chmod +x BetteriD-<version>-linux-x64.AppImage` 后直接运行。AppImage 依赖 FUSE；Ubuntu 26.04 这类不带 libfuse2 的发行版用 `./BetteriD-<version>-linux-x64.AppImage --appimage-extract-and-run`，或者改用 deb / tar.gz。
+- **tar.gz**：解压后运行目录里的 `betterid` 可执行文件。AppImage 和 tar.gz 都不会写系统菜单。
+
+启动时报 `The SUID sandbox helper binary was found, but is not configured correctly`，是因为 `chrome-sandbox` 不是 root 拥有、4755 权限（手动解压 tar.gz 时常见）。要么用 deb 安装（postinst 会设好），要么临时用 `--no-sandbox` 启动。
+
+窗口图标取自打包进来的 `build/icon.png`。`desktop/package.json` 里 `desktopName: "betterid.desktop"` 加 `linux.syncDesktopName: true`，`.desktop` 文件名、`StartupWMClass` 和 Electron 的 `app_id` 三者一致（都是 `betterid`），桌面环境才能把运行中的窗口和菜单项对应起来。
 
 ## 桌面端没有服务器
 
