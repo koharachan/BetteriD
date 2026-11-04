@@ -56,6 +56,10 @@
       {
         "from": "../land.html",
         "to": "dist/land.html"
+      },
+      {
+        "from": "../scripts/mcp_admin.mjs",
+        "to": "mcp_admin.mjs"
       }
     ],
     "win": {

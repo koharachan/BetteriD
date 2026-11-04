@@ -36,6 +36,7 @@ let allowUnload = false;
 let closePromptOpen = false;
 let probeTimer = null;
 let probeSettled = false;
+let mcpAdmin = null;
 
 
 /* ------------------------------------------------------------- config -- */
@@ -56,7 +57,8 @@ function loadConfig() {
         ...defaults,
         ...user,
         osm: { ...defaults.osm, ...(user.osm || {}) },
-        window: { ...defaults.window, ...(user.window || {}) }
+        window: { ...defaults.window, ...(user.window || {}) },
+        mcp: { ...(defaults.mcp || {}), ...(user.mcp || {}) }
     };
     merged.userAgent = String(merged.userAgent || '').replace('{version}', app.getVersion());
     merged.userFile = userFile;
@@ -431,12 +433,43 @@ function runSmokeTest(win) {
 }
 
 
+function mcpAdminModulePath() {
+    if (app.isPackaged) return path.join(process.resourcesPath, 'mcp_admin.mjs');
+    return path.join(__dirname, '..', 'scripts', 'mcp_admin.mjs');
+}
+
+
+/** Local page for MCP servers and Codex sign-in. Failure here must not stop the editor. */
+async function startMcpAdmin() {
+    try {
+        const { createMcpAdmin } = await import(pathToFileURL(mcpAdminModulePath()).href);
+        mcpAdmin = createMcpAdmin({
+            prefix: '',
+            storePath: path.join(app.getPath('userData'), 'mcp-servers.json')
+        });
+        const started = await mcpAdmin.start({
+            host: '127.0.0.1',
+            port: Number(config.mcp && config.mcp.port) || 9179
+        });
+        config.mcpAdminUrl = started.url;
+    } catch (error) {
+        config.mcpAdminUrl = '';
+        console.error('MCP settings did not start:', error);
+    }
+}
+
+
 function buildMenu() {
     const template = [
         {
             label: 'BetteriD',
             submenu: [
                 { label: 'Open settings file…', click: () => shell.openPath(config.userFile).then(() => shell.showItemInFolder(config.userFile)) },
+                {
+                    label: 'Open MCP settings',
+                    enabled: Boolean(config.mcpAdminUrl),
+                    click: () => shell.openExternal(config.mcpAdminUrl)
+                },
                 { type: 'separator' },
                 { role: 'quit' }
             ]
@@ -478,17 +511,19 @@ if (!app.requestSingleInstanceLock()) {
         }
     });
 
-    app.whenReady().then(() => {
+    app.whenReady().then(async () => {
         config = loadConfig();
         registerScheme();
         installRequestFilters(session.defaultSession);
+        await startMcpAdmin();
         buildMenu();
 
         ipcMain.handle('betterid:config', () => ({
             version: app.getVersion(),
             platform: process.platform,
             osm: config.osm,
-            userFile: config.userFile
+            userFile: config.userFile,
+            mcpAdminUrl: config.mcpAdminUrl || ''
         }));
         ipcMain.on('betterid:open-external', (event, url) => {
             if (/^https?:/.test(String(url))) shell.openExternal(String(url));
@@ -561,6 +596,7 @@ if (!app.requestSingleInstanceLock()) {
         if (QUIT_PROBE) {
             console.log('[quit-probe] OK: window closed');   // eslint-disable-line no-console
         }
+        if (mcpAdmin) mcpAdmin.stop();
         app.quit();
     });
 }

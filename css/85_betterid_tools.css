@@ -330,9 +330,12 @@
   color: var(--muted-text-color);
 }
 
-.betterid-ai-trace-status.ok { color: #1a8f55; }
-.betterid-ai-trace-status.warn { color: #b07a00; }
-.betterid-ai-trace-status.error { color: #c93a3a; }
+.betterid-ai-trace-status,
+.betterid-ai-trace-status.ok,
+.betterid-ai-trace-status.warn,
+.betterid-ai-trace-status.error {
+  color: var(--muted-text-color);
+}
 
 /* A compact, labeled file/edit workflow keeps the tool palette useful beyond
    mode switching: import/export and local undo/redo are always discoverable. */
@@ -385,4 +388,23 @@
 .betterid-tool-action .icon {
   width: 16px;
   height: 16px;
+}
+
+.betterid-tool-action span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.betterid-plugin-hello {
+  margin: 0;
+  padding: 0 8px 4px;
+  color: var(--muted-text-color);
+  font-size: 11px;
 }

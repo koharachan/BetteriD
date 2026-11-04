@@ -164,6 +164,53 @@
   justify-self: end;
 }
 
+.betterid-ai-codex,
+.betterid-plugin-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.betterid-ai-mcp {
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  font-size: 12px;
+}
+
+.betterid-ai-mcp a {
+  word-break: break-all;
+}
+
+.betterid-plugin-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.betterid-plugin-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.betterid-plugin-text p,
+.betterid-plugin-help,
+.betterid-plugin-extra-error {
+  margin: 2px 0 0;
+  color: var(--muted-text-color);
+  font-size: 12px;
+}
+
+.betterid-plugin-manifest {
+  flex: 1 1 100%;
+  min-height: 72px;
+  font: 12px ui-monospace, monospace;
+}
+
 .betterid-preference-input {
   display: flex;
   gap: 4px;

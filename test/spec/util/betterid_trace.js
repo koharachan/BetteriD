@@ -1,5 +1,5 @@
 import {
-    alignmentScore, dilate, enclosedRegions, parseVisionPolygons, polygonArea, redMask, traceOutlines
+    alignmentScore, dilate, enclosedRegions, parseVisionPolygons, polygonArea, redMask, traceAnnotatedImage, traceOutlines
 } from '../../../modules/util/betterid_trace';
 
 
@@ -80,6 +80,31 @@ describe('betterid AI tracing', function() {
         expect(Math.abs(by1 - 20)).toBeLessThanOrEqual(1);
         expect(Math.abs(bx2 - 76)).toBeLessThanOrEqual(1);
         expect(Math.abs(by2 - 56)).toBeLessThanOrEqual(1);
+    });
+
+    it('splits red building strokes from green area strokes', function() {
+        const img = image(90, 40, i => {
+            redRect(i, 5, 5, 30, 30);
+            redRect(i, 40, 8, 80, 32, [0, 220, 40]);
+        });
+        const traced = traceAnnotatedImage(img, { strokeGrow: 1 });
+        expect(traced.buildings.length).toBeGreaterThanOrEqual(1);
+        expect(traced.areas.length).toBeGreaterThanOrEqual(1);
+        const building = bounds(traced.buildings[0].points);
+        const area = bounds(traced.areas[0].points);
+        expect(building[0]).toBeLessThan(35);
+        expect(area[0]).toBeGreaterThan(35);
+    });
+
+    it('outlines a filled green area that has no interior hole', function() {
+        const img = image(40, 40, i => {
+            for (let y = 8; y <= 28; y++) {
+                for (let x = 8; x <= 28; x++) setPixel(i, x, y, [0, 220, 40]);
+            }
+        });
+        const traced = traceAnnotatedImage(img);
+        expect(traced.buildings).toHaveLength(0);
+        expect(traced.areas.length).toBeGreaterThanOrEqual(1);
     });
 
     it('closes small gaps in a stroke', function() {

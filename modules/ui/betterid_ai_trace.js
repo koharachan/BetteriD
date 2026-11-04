@@ -281,6 +281,13 @@ export function uiBetteridAiTrace(context) {
 
     function setStatus(kind, text) {
         _status = { kind, text };
+        if ((kind === 'ok' || kind === 'warn' || kind === 'error') && context.ui().flash) {
+            context.ui().flash
+                .duration(4500)
+                .iconName(kind === 'error' ? '#iD-icon-no' : '#iD-icon-apply')
+                .iconClass(kind === 'error' ? 'operation disabled' : 'operation')
+                .label(text)();
+        }
         render();
     }
 
@@ -331,7 +338,6 @@ export function uiBetteridAiTrace(context) {
             .on('click', d3_event => { d3_event.preventDefault(); cancel(); });
 
         panelEnter.append('p').attr('class', 'betterid-ai-trace-status');
-        panelEnter.append('p').attr('class', 'betterid-tool-hint').call(t.append('betterid.trace.help'));
 
         panel = panelEnter.merge(panel);
         if (panel.empty()) return;

@@ -1,0 +1,15 @@
+{
+  "plugins": [
+    {
+      "id": "betterid.hello",
+      "name": "Map status note",
+      "description": "Example plugin that adds one quiet line under the map. Ship your own by opening a PR that adds an entry like this.",
+      "icon": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%231a73c7'/%3E%3C/svg%3E",
+      "version": "1.0.0",
+      "author": "BetteriD",
+      "license": "ISC",
+      "homepage": "https://github.com/koharachan/BetteriD",
+      "builtin": "hello"
+    }
+  ]
+}

@@ -4,8 +4,24 @@ import { actionDiscardTags } from '../actions/discard_tags';
 import { fileFetcher } from '../core/file_fetcher';
 import { coreImportEdits } from '../core/import_edits';
 import { t } from '../core/localizer';
+import { modeSelect } from '../modes/select';
 import { osmChangeset } from '../osm';
 import { svgIcon } from '../svg';
+import { captureImagery } from '../util/betterid_imagery';
+import {
+    GEOREF_KEYWORD,
+    buildGeoref,
+    commitAnnotatedFeatures,
+    cropWindow,
+    dataUrlToBytes,
+    downloadBytes,
+    embedPngText,
+    featuresFromAnnotation,
+    georefForImage,
+    readPngText,
+    rememberGeoref,
+    rememberedGeoref
+} from '../util/betterid_imagery_exchange';
 import { JXON } from '../util/jxon';
 import { uiTooltip } from './tooltip';
 
@@ -71,8 +87,132 @@ export function uiBetteridWorkflow(context) {
     }
 
 
+    function isImageFile(file) {
+        if (!file) return false;
+        return /^image\//.test(file.type || '') || /\.(png|jpe?g|webp)$/i.test(file.name || '');
+    }
+
+
     function importFiles(files) {
-        Array.from(files || []).forEach(importFile);
+        Array.from(files || []).forEach(file => {
+            if (isImageFile(file)) importAnnotation(file);
+            else importFile(file);
+        });
+    }
+
+
+    function selectionPixels() {
+        const projection = context.projection;
+        if (typeof projection !== 'function' || typeof context.selectedIDs !== 'function') return [];
+        const graph = context.graph();
+        const points = [];
+        context.selectedIDs().forEach(id => {
+            const entity = context.hasEntity(id);
+            if (!entity || typeof entity.extent !== 'function') return;
+            const extent = entity.extent(graph);
+            if (!extent || !extent[0] || !extent[1]) return;
+            [
+                [extent[0][0], extent[0][1]],
+                [extent[1][0], extent[0][1]],
+                [extent[0][0], extent[1][1]],
+                [extent[1][0], extent[1][1]]
+            ].forEach(loc => {
+                const pixel = projection(loc);
+                if (pixel && Number.isFinite(pixel[0]) && Number.isFinite(pixel[1])) points.push(pixel);
+            });
+        });
+        return points;
+    }
+
+
+    function exportImagery() {
+        const projection = context.projection;
+        if (!projection || typeof projection.transform !== 'function') {
+            flash('betterid.tools.workflow.imagery_failed', '#iD-icon-no', 'operation disabled', {
+                message: t('betterid.tools.imagery_unreadable')
+            });
+            return;
+        }
+        captureImagery(context).then(sheet => {
+            if (!sheet) {
+                flash('betterid.tools.imagery_unreadable', '#iD-icon-no', 'operation disabled');
+                return;
+            }
+            const crop = cropWindow(sheet.width, sheet.height, selectionPixels());
+            const piece = document.createElement('canvas');
+            piece.width = crop.width;
+            piece.height = crop.height;
+            piece.getContext('2d').drawImage(
+                sheet.canvas, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height
+            );
+            const transform = projection.transform();
+            const georef = buildGeoref(transform, crop);
+            rememberGeoref(georef);
+            const bytes = embedPngText(
+                dataUrlToBytes(piece.toDataURL('image/png')),
+                GEOREF_KEYWORD,
+                JSON.stringify(georef)
+            );
+            downloadBytes(bytes, 'betterid-imagery.png', 'image/png');
+            flash('betterid.tools.workflow.imagery_exported', '#iD-icon-betterid-export', 'operation');
+        }).catch(error => {
+            flash('betterid.tools.workflow.imagery_failed', '#iD-icon-no', 'operation disabled', {
+                message: error.message
+            });
+        });
+    }
+
+
+    function importAnnotation(file) {
+        const reader = new FileReader();
+        reader.onerror = () => flash(
+            'betterid.tools.workflow.imagery_failed', '#iD-icon-no', 'operation disabled',
+            { message: t('betterid.import_edits.read_error') }
+        );
+        reader.onload = () => {
+            try {
+                const bytes = new Uint8Array(reader.result);
+                let georef = null;
+                const embedded = readPngText(bytes, GEOREF_KEYWORD);
+                if (embedded) georef = JSON.parse(embedded);
+                if (!georef || !georef.transform) georef = rememberedGeoref();
+                if (!georef) {
+                    flash('betterid.tools.workflow.imagery_no_georef', '#iD-icon-no', 'operation disabled');
+                    return;
+                }
+                const url = URL.createObjectURL(new Blob([bytes], { type: file.type || 'image/png' }));
+                const image = new Image();
+                image.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = image.naturalWidth;
+                    canvas.height = image.naturalHeight;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(image, 0, 0);
+                    const placed = georefForImage(georef, canvas.width, canvas.height);
+                    const features = featuresFromAnnotation(ctx.getImageData(0, 0, canvas.width, canvas.height), placed);
+                    const ids = commitAnnotatedFeatures(context, features);
+                    URL.revokeObjectURL(url);
+                    if (!ids.length) {
+                        flash('betterid.tools.workflow.imagery_nothing', '#iD-icon-no', 'operation disabled');
+                        return;
+                    }
+                    context.enter(modeSelect(context, ids));
+                    flash('betterid.tools.workflow.imagery_imported', '#iD-icon-apply', 'operation', { count: ids.length });
+                };
+                image.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    flash('betterid.tools.workflow.imagery_failed', '#iD-icon-no', 'operation disabled', {
+                        message: t('betterid.trace.error_image')
+                    });
+                };
+                image.src = url;
+            } catch (error) {
+                flash('betterid.tools.workflow.imagery_failed', '#iD-icon-no', 'operation disabled', {
+                    message: error.message
+                });
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
 
 
@@ -172,11 +312,25 @@ export function uiBetteridWorkflow(context) {
                 importFiles(event.target.files);
                 event.target.value = '';
             });
+        const imageInput = section.append('input')
+            .attr('type', 'file')
+            .attr('class', 'betterid-tool-imagery-input')
+            .attr('accept', 'image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp')
+            .style('display', 'none')
+            .on('change', function(event) {
+                const file = event.target.files && event.target.files[0];
+                if (file) importAnnotation(file);
+                event.target.value = '';
+            });
 
         actionButton(_buttons, 'import', '#iD-icon-betterid-import', 'betterid.tools.workflow.import', () => {
             fileInput.node().click();
         });
         actionButton(_buttons, 'export', '#iD-icon-betterid-export', 'betterid.tools.workflow.export', exportChanges);
+        actionButton(_buttons, 'export-imagery', '#iD-icon-betterid-export', 'betterid.tools.workflow.export_imagery', exportImagery);
+        actionButton(_buttons, 'import-imagery', '#iD-icon-betterid-import', 'betterid.tools.workflow.import_imagery', () => {
+            imageInput.node().click();
+        });
         actionButton(_buttons, 'undo', '#iD-icon-undo', 'betterid.tools.workflow.undo', () => edit('undo'));
         actionButton(_buttons, 'redo', '#iD-icon-redo', 'betterid.tools.workflow.redo', () => edit('redo'));
 

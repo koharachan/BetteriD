@@ -1168,16 +1168,37 @@ en:
         mimo: MiMo
       custom:
         enabled: Use my own AI provider
-        enabled_description: Call an OpenAI-compatible API directly from this browser with your own key. Needed in the desktop app, which has no server; on the website it replaces the shared providers below.
+        enabled_description: Call your own API from this browser. Pick OpenAI Chat Completions, OpenAI Responses, Anthropic, Gemini, or Codex. The desktop app has no shared server; on the website this replaces the shared providers below.
         preset: Fill in from a preset
         preset_pick: Choose a provider…
         presets:
           openai: OpenAI
+          openai_responses: OpenAI Responses
+          anthropic: Anthropic Claude
+          gemini: Google Gemini (OpenAI-compatible endpoint)
+          gemini_native: Google Gemini
+          codex: Codex
           deepseek: DeepSeek
           moonshot: Moonshot (Kimi)
-          gemini: Google Gemini (OpenAI-compatible endpoint)
           openrouter: OpenRouter
           ollama: Ollama (local)
+        protocol: Protocol
+        protocol_description: How requests are formatted. Image editing still uses an OpenAI-compatible Images or chat endpoint.
+        protocols:
+          openai: OpenAI Chat Completions
+          openai_responses: OpenAI Responses (streaming)
+          anthropic: Anthropic Messages
+          gemini: Google Gemini
+          codex: Codex (ChatGPT sign-in)
+        stream: Stream responses
+        stream_description: Read the answer as it arrives (server-sent events). Leave this off for providers that only return one JSON body.
+        codex_sign_in: Sign in to Codex
+        codex_device: Use a device code
+        codex_signed_in: Signed in to Codex on this browser.
+        codex_waiting: Waiting for Codex…
+        codex_code: "Code {code}. Open {url} if the browser does not."
+        codex_failed: "Codex sign-in failed: {message}"
+        mcp_link: "While BetteriD is running, manage MCP servers at {url}."
         base_url: API base URL
         api_key: API key
         api_key_description: Stored only in this browser (local storage) and sent only to the API base URL above.
@@ -1197,6 +1218,14 @@ en:
         test_incomplete: Enter the API base URL and key first.
         test_ok: "Connected. The model answered: {answer}"
         test_failed: "Failed: {message}"
+    plugins:
+      title: Plugins
+      help: Install a plugin from this list, or paste a manifest. To publish one, open a pull request that adds an entry to data/plugins/marketplace.json.
+      install: Install
+      disable: Disable
+      reload_hint: Disabling a plugin applies the next time you reload BetteriD.
+      add_extra: Add plugin from JSON
+      manifest_placeholder: '{"id":"example.tool","name":"Example","description":"What it does","entry":"https://example.com/plugin.js"}'
     experimental:
       title: Experimental
       enabled: Enable experimental features
@@ -1384,6 +1413,14 @@ en:
         redo: Redo
         no_changes: There are no pending edits to export.
         exported: Current edits exported as betterid-changes.osc.
+        export_imagery: Export imagery crop
+        import_imagery: Import annotated imagery
+        imagery_exported: Saved a georeferenced PNG. Draw buildings in red and areas in green, then import it.
+        imagery_imported: "Added {count} features from the annotated image. Check them before uploading."
+        imagery_nothing: No closed red or green marks were found in that image.
+        imagery_no_georef: This image has no map position. Export a crop from this map first, and keep the PNG text metadata if you can.
+        imagery_failed: "Could not import the image: {message}"
+        imagery_annotation: "Annotated imagery: {count} features."
     trace:
       title: AI trace
       method: Method
@@ -1397,8 +1434,8 @@ en:
       feature_grass: Grass
       run: Trace visible area
       cancel: Cancel
-      ready: Captures the imagery in view, asks the model, and adds the shapes as new areas for you to review.
-      help: Red outlines - the image model redraws the view with every feature outlined in red, and the outlines are traced into areas. Polygons - the vision model answers with pixel coordinates. Always check the result against the imagery before uploading; undo removes it in one step.
+      ready: Trace the visible imagery, then review the new areas.
+      help: Results are added as areas you can undo. Check them against the imagery before uploading.
       capturing: Capturing the visible imagery…
       asking: "Asking {model}… this can take a minute."
       done: "Added {count} areas, now selected. Check them against the imagery."

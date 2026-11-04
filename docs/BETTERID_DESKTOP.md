@@ -51,6 +51,7 @@ pnpm run desktop:dist:linux
 - OAuth 登录在 Electron popup 内完成；桌面壳在回调导航发生前截获 URL，再通过 `BroadcastChannel` 交给 `osm-auth`。默认回调地址是 `http://127.0.0.1:8080/land.html`，这里不是服务端地址，也不会监听端口。
 - 自己注册 OAuth 客户端时，必须把实际回调地址注册为与 `desktop/config.json` 一致的精确值，并在用户配置文件中替换 `client_id`。
 - 每个请求带有 `BetteriD-Desktop/<version>` User-Agent。桌面端为底图读取补充 CORS 响应头，使魔棒、快速选择和 AI 描边能够读取允许跨域的影像。
+- MCP 设置和 Codex 登录另开一个只监听 127.0.0.1 的页面（见下文），和 OSM OAuth 不是同一个端口。编辑器页面本身仍走 `betterid://`。
 
 ## 配置文件
 
@@ -81,7 +82,23 @@ pnpm run desktop:dist:linux
 - 文本、视觉、生图模型；
 - 图片编辑 API 类型：`/images/edits` 或返回图片的 chat completion。
 
-提供了 OpenAI、DeepSeek、Moonshot/Kimi、Gemini、OpenRouter 和本机 Ollama 预设，也可以填写任意兼容来源。API key 存在当前浏览器 origin 的 localStorage 中，只发送到用户填写的 base URL；不会进入仓库、桌面资源包或 BetteriD 服务器。
+提供了 OpenAI、OpenAI Responses、Anthropic、Gemini（原生与 OpenAI 兼容）、Codex、DeepSeek、Moonshot/Kimi、OpenRouter 和本机 Ollama 预设，也可以填写任意兼容来源。协议决定请求格式：
+
+- **OpenAI Chat Completions**：`POST {base}/chat/completions`，可选 SSE。
+- **OpenAI Responses**：`POST {base}/responses`，读取 `response.output_text.delta`。
+- **Anthropic**：`POST {base}/v1/messages`，带 `x-api-key` 和 `anthropic-version`。
+- **Gemini**：`POST {base}/models/{model}:generateContent`，流式时用 `streamGenerateContent?alt=sse`，密钥放在 `x-goog-api-key`。
+- **Codex**：用菜单里的 MCP 设置页走浏览器 PKCE 或设备码登录。令牌存在本机偏好里，请求发到 `https://chatgpt.com/backend-api/codex/responses`。
+
+图片编辑（红色描边那条生图路径）仍走 OpenAI 兼容的 Images 或对话接口。API key 存在当前浏览器 origin 的 localStorage 中，只发送到用户填写的 base URL；不会进入仓库、桌面资源包或 BetteriD 服务器。
+
+## MCP 设置页
+
+桌面端启动后会在 `127.0.0.1` 上打开 MCP 管理页，默认端口 `9179`（被占用时顺延）。地址写进 `window.BETTERID_MCP_ADMIN_URL`，菜单 **BetteriD → Open MCP settings** 也能打开。`desktop/config.json` 的 `mcp.port` 可改端口。
+
+页面可以添加、修改、删除 MCP 服务器（stdio、HTTP、SSE），并导出一份客户端配置。它**不会**启动 stdio 命令。HTTP/SSE 可以做一次探测。服务器列表存在用户数据目录的 `mcp-servers.json`。
+
+开发服务器 `pnpm start` 把同一页面挂在 <http://127.0.0.1:8080/mcp>。线上的 Rust 代理目前不提供这个页面。
 
 桌面端支持两种 AI 描边方式：
 

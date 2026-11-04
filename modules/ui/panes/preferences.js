@@ -8,6 +8,7 @@ import {
   uiSectionBetteridLanguage,
   uiSectionBetteridValidation
 } from '../sections/betterid_preferences';
+import { uiSectionBetteridPlugins } from '../sections/betterid_plugins';
 import { uiSectionPrivacy } from '../sections/privacy';
 
 export function uiPanePreferences(context) {
@@ -23,6 +24,7 @@ export function uiPanePreferences(context) {
         uiSectionBetteridLanguage(context),
         uiSectionBetteridValidation(context),
         uiSectionBetteridAI(context),
+        uiSectionBetteridPlugins(context),
         uiSectionBetteridExperimental(context),
         uiSectionPrivacy(context)
     ]);

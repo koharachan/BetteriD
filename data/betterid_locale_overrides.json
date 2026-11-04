@@ -57,17 +57,39 @@
           },
           "custom": {
             "enabled": "使用我自己的 AI 来源",
-            "enabled_description": "用你自己的密钥，直接从本浏览器调用 OpenAI 兼容接口。桌面版没有服务器，必须这样配置；网页版配置后会取代下面的共享来源。",
+            "enabled_description": "从本浏览器调用你自己的 API。可选 OpenAI Chat Completions、OpenAI Responses、Anthropic、Gemini 或 Codex。桌面版没有共享服务器；网页版启用后会取代下面的共享来源。",
             "preset": "按预设填入",
             "preset_pick": "选择一个来源…",
             "presets": {
               "openai": "OpenAI",
+              "openai_responses": "OpenAI Responses",
+              "anthropic": "Anthropic Claude",
+              "gemini": "Google Gemini（OpenAI 兼容端点）",
+              "gemini_native": "Google Gemini",
+              "codex": "Codex",
               "deepseek": "DeepSeek",
               "moonshot": "Moonshot（Kimi）",
-              "gemini": "Google Gemini（OpenAI 兼容端点）",
               "openrouter": "OpenRouter",
               "ollama": "Ollama（本机）"
             },
+            "protocol": "协议",
+            "protocol_description": "请求的格式。图片编辑仍使用 OpenAI 兼容的 Images 或对话接口。",
+            "protocols": {
+              "openai": "OpenAI Chat Completions",
+              "openai_responses": "OpenAI Responses（流式）",
+              "anthropic": "Anthropic Messages",
+              "gemini": "Google Gemini",
+              "codex": "Codex（ChatGPT 登录）"
+            },
+            "stream": "流式返回",
+            "stream_description": "边生成边读取（SSE）。只返回一整段 JSON 的来源请保持关闭。",
+            "codex_sign_in": "登录 Codex",
+            "codex_device": "使用设备码",
+            "codex_signed_in": "已在此浏览器登录 Codex。",
+            "codex_waiting": "正在等待 Codex…",
+            "codex_code": "验证码 {code}。若浏览器没有打开，请访问 {url}。",
+            "codex_failed": "Codex 登录失败：{message}",
+            "mcp_link": "BetteriD 运行时，可在 {url} 管理 MCP 服务器。",
             "base_url": "API 地址（base URL）",
             "api_key": "API 密钥",
             "api_key_description": "只保存在本浏览器（localStorage），只会发送到上面填写的 API 地址。",
@@ -88,6 +110,15 @@
             "test_ok": "已连接。模型回答：{answer}",
             "test_failed": "失败：{message}"
           }
+        },
+        "plugins": {
+          "title": "插件",
+          "help": "从列表安装插件，或粘贴一份清单。要把插件放进市场，请提交拉取请求，把条目加到 data/plugins/marketplace.json。",
+          "install": "安装",
+          "disable": "停用",
+          "reload_hint": "停用会在下次重新打开 BetteriD 时生效。",
+          "add_extra": "从 JSON 添加插件",
+          "manifest_placeholder": "{\"id\":\"example.tool\",\"name\":\"示例\",\"description\":\"它做什么\",\"entry\":\"https://example.com/plugin.js\"}"
         },
         "experimental": {
           "title": "实验性功能",
@@ -198,7 +229,15 @@
             "undo": "撤销",
             "redo": "重做",
             "no_changes": "当前没有可导出的待处理编辑。",
-            "exported": "当前编辑已导出为 betterid-changes.osc。"
+            "exported": "当前编辑已导出为 betterid-changes.osc。",
+            "export_imagery": "导出影像裁切",
+            "import_imagery": "导入标注影像",
+            "imagery_exported": "已保存带坐标的 PNG。用红色画建筑、绿色画区域，再导入。",
+            "imagery_imported": "已从标注图添加 {count} 个要素。上传前请检查。",
+            "imagery_nothing": "图中没有找到闭合的红线或绿线。",
+            "imagery_no_georef": "这张图没有地图位置。请先从当前地图导出裁切，并尽量保留 PNG 里的文字元数据。",
+            "imagery_failed": "无法导入图片：{message}",
+            "imagery_annotation": "标注影像：{count} 个要素。"
           }
         },
         "trace": {
@@ -214,8 +253,8 @@
           "feature_grass": "草地",
           "run": "描绘可见区域",
           "cancel": "取消",
-          "ready": "截取当前视野的底图交给模型，把识别出的形状加为新的面要素，供你检查。",
-          "help": "红色描边：生图模型把视野重绘一遍、给每个目标描上红边，再把红边描成面。多边形：视觉模型直接给出像素坐标。上传前务必对照底图检查，撤销可一步全部移除。",
+          "ready": "描绘当前可见底图，然后检查新生成的面。",
+          "help": "结果会作为面加入地图，可以一步撤销。上传前请对照底图检查。",
           "capturing": "正在截取可见底图…",
           "asking": "正在询问 {model}…可能需要一分钟。",
           "done": "已添加 {count} 个面并选中，请对照底图检查。",
@@ -344,17 +383,39 @@
           },
           "custom": {
             "enabled": "使用我自己的 AI 來源",
-            "enabled_description": "用你自己的金鑰，直接從本瀏覽器呼叫 OpenAI 相容介面。桌面版沒有伺服器，必須這樣設定；網頁版設定後會取代下面的共享來源。",
+            "enabled_description": "從本瀏覽器呼叫你自己的 API。可選 OpenAI Chat Completions、OpenAI Responses、Anthropic、Gemini 或 Codex。桌面版沒有共享伺服器；網頁版啟用後會取代下面的共享來源。",
             "preset": "依預設值填入",
             "preset_pick": "選擇一個來源…",
             "presets": {
               "openai": "OpenAI",
+              "openai_responses": "OpenAI Responses",
+              "anthropic": "Anthropic Claude",
+              "gemini": "Google Gemini（OpenAI 相容端點）",
+              "gemini_native": "Google Gemini",
+              "codex": "Codex",
               "deepseek": "DeepSeek",
               "moonshot": "Moonshot（Kimi）",
-              "gemini": "Google Gemini（OpenAI 相容端點）",
               "openrouter": "OpenRouter",
               "ollama": "Ollama（本機）"
             },
+            "protocol": "協定",
+            "protocol_description": "請求的格式。圖片編輯仍使用 OpenAI 相容的 Images 或對話介面。",
+            "protocols": {
+              "openai": "OpenAI Chat Completions",
+              "openai_responses": "OpenAI Responses（串流）",
+              "anthropic": "Anthropic Messages",
+              "gemini": "Google Gemini",
+              "codex": "Codex（ChatGPT 登入）"
+            },
+            "stream": "串流回應",
+            "stream_description": "邊產生邊讀取（SSE）。只回傳一整段 JSON 的來源請保持關閉。",
+            "codex_sign_in": "登入 Codex",
+            "codex_device": "使用裝置碼",
+            "codex_signed_in": "已在此瀏覽器登入 Codex。",
+            "codex_waiting": "正在等待 Codex…",
+            "codex_code": "驗證碼 {code}。若瀏覽器沒有開啟，請造訪 {url}。",
+            "codex_failed": "Codex 登入失敗：{message}",
+            "mcp_link": "BetteriD 執行時，可在 {url} 管理 MCP 伺服器。",
             "base_url": "API 位址（base URL）",
             "api_key": "API 金鑰",
             "api_key_description": "只儲存在本瀏覽器（localStorage），只會傳送到上面填寫的 API 位址。",
@@ -375,6 +436,15 @@
             "test_ok": "已連線。模型回答：{answer}",
             "test_failed": "失敗：{message}"
           }
+        },
+        "plugins": {
+          "title": "外掛",
+          "help": "從清單安裝外掛，或貼上一份清單。要把外掛放進市集，請提交拉取請求，把條目加到 data/plugins/marketplace.json。",
+          "install": "安裝",
+          "disable": "停用",
+          "reload_hint": "停用會在下次重新開啟 BetteriD 時生效。",
+          "add_extra": "從 JSON 新增外掛",
+          "manifest_placeholder": "{\"id\":\"example.tool\",\"name\":\"範例\",\"description\":\"它做什麼\",\"entry\":\"https://example.com/plugin.js\"}"
         },
         "experimental": {
           "title": "實驗性功能",
@@ -485,7 +555,15 @@
             "undo": "復原",
             "redo": "重做",
             "no_changes": "目前沒有可匯出的待處理編輯。",
-            "exported": "目前編輯已匯出為 betterid-changes.osc。"
+            "exported": "目前編輯已匯出為 betterid-changes.osc。",
+            "export_imagery": "匯出影像裁切",
+            "import_imagery": "匯入標註影像",
+            "imagery_exported": "已儲存帶座標的 PNG。用紅色畫建築、綠色畫區域，再匯入。",
+            "imagery_imported": "已從標註圖新增 {count} 個圖徵。上傳前請檢查。",
+            "imagery_nothing": "圖中沒有找到閉合的紅線或綠線。",
+            "imagery_no_georef": "這張圖沒有地圖位置。請先從目前地圖匯出裁切，並盡量保留 PNG 裡的文字中繼資料。",
+            "imagery_failed": "無法匯入圖片：{message}",
+            "imagery_annotation": "標註影像：{count} 個圖徵。"
           }
         },
         "import_edits": {
@@ -510,8 +588,8 @@
           "feature_grass": "草地",
           "run": "描繪可見區域",
           "cancel": "取消",
-          "ready": "擷取目前視野的底圖交給模型，把辨識出的形狀加為新的面圖徵，供你檢查。",
-          "help": "紅色描邊：生圖模型把視野重繪一遍、為每個目標描上紅邊，再把紅邊描成面。多邊形：視覺模型直接給出像素座標。上傳前務必對照底圖檢查，復原可一步全部移除。",
+          "ready": "描繪目前可見底圖，然後檢查新產生的面。",
+          "help": "結果會作為面加入地圖，可以一步復原。上傳前請對照底圖檢查。",
           "capturing": "正在擷取可見底圖…",
           "asking": "正在詢問 {model}…可能需要一分鐘。",
           "done": "已新增 {count} 個面並選取，請對照底圖檢查。",

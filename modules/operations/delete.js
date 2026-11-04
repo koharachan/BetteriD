@@ -10,7 +10,6 @@ import { utilGetAllNodes, utilTotalExtent } from '../util';
 
 export function operationDelete(context, selectedIDs) {
     var multi = (selectedIDs.length === 1 ? 'single' : 'multiple');
-    var action = actionDeleteMultiple(selectedIDs);
     var nodes = utilGetAllNodes(selectedIDs, context.graph());
     var coords = nodes.map(function(n) { return n.loc; });
     var extent = utilTotalExtent(selectedIDs, context.graph());
@@ -28,22 +27,36 @@ export function operationDelete(context, selectedIDs) {
             var parent = parents[0];
 
             // Select the next closest node in the way.
-            if (geometry === 'vertex') {
-                var nodes = parent.nodes;
-                var i = nodes.indexOf(id);
+            if (geometry === 'vertex' && parent) {
+                var wayNodes = parent.nodes;
+                var i = wayNodes.indexOf(id);
 
                 if (i === 0) {
                     i++;
-                } else if (i === nodes.length - 1) {
+                } else if (i === wayNodes.length - 1) {
                     i--;
                 } else {
-                    var a = geoSphericalDistance(entity.loc, context.entity(nodes[i - 1]).loc);
-                    var b = geoSphericalDistance(entity.loc, context.entity(nodes[i + 1]).loc);
-                    i = a < b ? i - 1 : i + 1;
+                    var prev = context.hasEntity(wayNodes[i - 1]);
+                    var next = context.hasEntity(wayNodes[i + 1]);
+                    if (prev && next) {
+                        var a = geoSphericalDistance(entity.loc, prev.loc);
+                        var b = geoSphericalDistance(entity.loc, next.loc);
+                        i = a < b ? i - 1 : i + 1;
+                    } else if (prev) {
+                        i = i - 1;
+                    } else if (next) {
+                        i = i + 1;
+                    } else {
+                        i = -1;
+                    }
                 }
 
-                nextSelectedID = nodes[i];
-                nextSelectedLoc = nextSelectedID && context.entity(nextSelectedID).loc;
+                nextSelectedID = i >= 0 ? wayNodes[i] : null;
+                if (nextSelectedID && context.hasEntity(nextSelectedID)) {
+                    nextSelectedLoc = context.entity(nextSelectedID).loc;
+                } else {
+                    nextSelectedID = null;
+                }
             }
         }
 
@@ -62,10 +75,81 @@ export function operationDelete(context, selectedIDs) {
             context.enter(modeBrowse(context));
         }
 
-        context.perform(action, operation.annotation());
+        var preserve = [];
+        if (selectionIsWays()) {
+            selectedIDs.forEach(function(wayID) {
+                var way = context.hasEntity(wayID);
+                if (!way) return;
+                way.nodes.forEach(function(nodeID) {
+                    var node = context.hasEntity(nodeID);
+                    if (node && nodeUnloaded(node)) preserve.push(nodeID);
+                });
+            });
+        }
+
+        context.perform(
+            actionDeleteMultiple(selectedIDs, preserve.length ? { preserveNodeIDs: preserve } : undefined),
+            operation.annotation()
+        );
         context.validator().validate();
 
     };
+
+
+    function osmConnection() {
+        if (typeof context.connection !== 'function') return null;
+        return context.connection();
+    }
+
+
+    function selectionIsWays() {
+        return selectedIDs.length > 0 && selectedIDs.every(function(id) {
+            var entity = context.hasEntity(id);
+            return entity && entity.type === 'way';
+        });
+    }
+
+
+    function wayIsIncomplete(id) {
+        var entity = context.hasEntity(id);
+        if (!entity || entity.type !== 'way') return false;
+        return entity.nodes.some(function(nodeID) { return !context.hasEntity(nodeID); });
+    }
+
+
+    /** True when the tile around this node has not been downloaded yet. */
+    function nodeUnloaded(node) {
+        if (typeof context.inIntro === 'function' && context.inIntro()) return false;
+        var osm = osmConnection();
+        if (!osm || typeof osm.isDataLoaded !== 'function') return false;
+        return !osm.isDataLoaded(node.loc);
+    }
+
+
+    function someMissing() {
+        if (typeof context.inIntro === 'function' && context.inIntro()) return false;
+        var osm = osmConnection();
+        if (osm && typeof osm.isDataLoaded === 'function') {
+            var missing = coords.filter(function(loc) { return !osm.isDataLoaded(loc); });
+            if (missing.length) {
+                if (typeof context.loadTileAtLoc === 'function') {
+                    missing.forEach(function(loc) { context.loadTileAtLoc(loc); });
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    /**
+     * A whole way may be deleted before its geometry or the surrounding
+     * tiles have finished loading. Individual vertices stay blocked, and a
+     * fully loaded way that is mostly off-screen stays blocked.
+     */
+    function wayStillLoading() {
+        return selectionIsWays() && (selectedIDs.some(wayIsIncomplete) || someMissing());
+    }
 
 
     operation.available = function() {
@@ -74,11 +158,12 @@ export function operationDelete(context, selectedIDs) {
 
 
     operation.disabled = function() {
-        if (extent.percentContainedIn(context.map().extent()) < 0.8) {
+        var loading = wayStillLoading();
+        if (!loading && mostlyOffscreen()) {
             return 'too_large';
-        } else if (someMissing()) {
+        } else if (!selectionIsWays() && someMissing()) {
             return 'not_downloaded';
-        } else if (selectedIDs.some(context.hasHiddenConnections)) {
+        } else if (selectedIDs.some(hiddenConnection)) {
             return 'connected_to_hidden';
         } else if (selectedIDs.some(protectedMember)) {
             return 'part_of_relation';
@@ -91,17 +176,21 @@ export function operationDelete(context, selectedIDs) {
         return false;
 
 
-        function someMissing() {
-            if (context.inIntro()) return false;
-            var osm = context.connection();
-            if (osm) {
-                var missing = coords.filter(function(loc) { return !osm.isDataLoaded(loc); });
-                if (missing.length) {
-                    missing.forEach(function(loc) { context.loadTileAtLoc(loc); });
-                    return true;
-                }
+        function mostlyOffscreen() {
+            if (typeof context.map !== 'function') return false;
+            var map = context.map();
+            if (!map || typeof map.extent !== 'function') return false;
+            return extent.percentContainedIn(map.extent()) < 0.8;
+        }
+
+        function hiddenConnection(id) {
+            if (typeof context.hasHiddenConnections !== 'function') return false;
+            try {
+                return context.hasHiddenConnections(id);
+            } catch {
+                // child nodes that are not in the graph yet cannot be checked
+                return false;
             }
-            return false;
         }
 
         function hasWikidataTag(id) {

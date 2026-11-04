@@ -17,6 +17,8 @@
  */
 
 import { prefs } from './preferences';
+import { buildChatCall, extractCompletionText } from './betterid_ai_protocols';
+import { codexAccessToken, codexAccountId, ensureCodexAccess } from './betterid_codex_auth';
 
 const DEFAULT_TIMEOUT = 120000;
 const IMAGE_TIMEOUT = 180000;
@@ -29,7 +31,13 @@ export const BETTERID_AI_PREFS = Object.freeze({
   visionModel: 'betterid.ai.custom.vision_model',
   imageModel: 'betterid.ai.custom.image_model',
   imageApi: 'betterid.ai.custom.image_api',
-  disableThinking: 'betterid.ai.custom.disable_thinking'
+  disableThinking: 'betterid.ai.custom.disable_thinking',
+  protocol: 'betterid.ai.custom.protocol',
+  stream: 'betterid.ai.custom.stream',
+  codexAccess: 'betterid.ai.custom.codex_access',
+  codexRefresh: 'betterid.ai.custom.codex_refresh',
+  codexExpires: 'betterid.ai.custom.codex_expires',
+  codexAccount: 'betterid.ai.custom.codex_account'
 });
 
 /** How the provider edits images: OpenAI's Images API, or a chat completion that answers with an image. */
@@ -40,12 +48,16 @@ export const BETTERID_AI_IMAGE_APIS = Object.freeze(['images', 'chat']);
  * still type anything; these only pre-fill the form.
  */
 export const BETTERID_AI_PRESETS = Object.freeze([
-  { id: 'openai', baseUrl: 'https://api.openai.com/v1', textModel: 'gpt-5-mini', visionModel: 'gpt-5-mini', imageModel: 'gpt-image-1', imageApi: 'images' },
-  { id: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', textModel: 'deepseek-chat', visionModel: '', imageModel: '', imageApi: 'images' },
-  { id: 'moonshot', baseUrl: 'https://api.moonshot.cn/v1', textModel: 'kimi-k2-0905-preview', visionModel: 'moonshot-v1-32k-vision-preview', imageModel: '', imageApi: 'images' },
-  { id: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', textModel: 'gemini-2.5-flash', visionModel: 'gemini-2.5-flash', imageModel: 'gemini-2.5-flash-image', imageApi: 'chat' },
-  { id: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', textModel: 'openai/gpt-5-mini', visionModel: 'openai/gpt-5-mini', imageModel: 'google/gemini-2.5-flash-image', imageApi: 'chat' },
-  { id: 'ollama', baseUrl: 'http://127.0.0.1:11434/v1', textModel: 'qwen3:8b', visionModel: 'qwen2.5vl:7b', imageModel: '', imageApi: 'chat' }
+  { id: 'openai', protocol: 'openai', baseUrl: 'https://api.openai.com/v1', textModel: 'gpt-5-mini', visionModel: 'gpt-5-mini', imageModel: 'gpt-image-1', imageApi: 'images' },
+  { id: 'openai_responses', protocol: 'openai-responses', baseUrl: 'https://api.openai.com/v1', textModel: 'gpt-5-mini', visionModel: 'gpt-5-mini', imageModel: '', imageApi: 'chat' },
+  { id: 'anthropic', protocol: 'anthropic', baseUrl: 'https://api.anthropic.com', textModel: 'claude-sonnet-4-5', visionModel: 'claude-sonnet-4-5', imageModel: '', imageApi: 'chat' },
+  { id: 'gemini_native', protocol: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', textModel: 'gemini-2.5-flash', visionModel: 'gemini-2.5-flash', imageModel: '', imageApi: 'chat' },
+  { id: 'codex', protocol: 'codex', baseUrl: 'https://chatgpt.com/backend-api/codex', textModel: 'gpt-5.1-codex', visionModel: 'gpt-5.1-codex', imageModel: '', imageApi: 'chat' },
+  { id: 'deepseek', protocol: 'openai', baseUrl: 'https://api.deepseek.com/v1', textModel: 'deepseek-chat', visionModel: '', imageModel: '', imageApi: 'images' },
+  { id: 'moonshot', protocol: 'openai', baseUrl: 'https://api.moonshot.cn/v1', textModel: 'kimi-k2-0905-preview', visionModel: 'moonshot-v1-32k-vision-preview', imageModel: '', imageApi: 'images' },
+  { id: 'gemini', protocol: 'openai', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', textModel: 'gemini-2.5-flash', visionModel: 'gemini-2.5-flash', imageModel: 'gemini-2.5-flash-image', imageApi: 'chat' },
+  { id: 'openrouter', protocol: 'openai', baseUrl: 'https://openrouter.ai/api/v1', textModel: 'openai/gpt-5-mini', visionModel: 'openai/gpt-5-mini', imageModel: 'google/gemini-2.5-flash-image', imageApi: 'chat' },
+  { id: 'ollama', protocol: 'openai', baseUrl: 'http://127.0.0.1:11434/v1', textModel: 'qwen3:8b', visionModel: 'qwen2.5vl:7b', imageModel: '', imageApi: 'chat' }
 ]);
 
 
@@ -55,17 +67,28 @@ function trimmed(key) {
 }
 
 
+function configuredProtocol() {
+  const value = trimmed(BETTERID_AI_PREFS.protocol);
+  return ['openai', 'openai-responses', 'anthropic', 'gemini', 'codex'].includes(value) ? value : 'openai';
+}
+
+
 /** The provider the user configured in this browser, or `null`. */
 export function userAiProvider() {
   if (prefs(BETTERID_AI_PREFS.enabled) !== 'true') return null;
   const baseUrl = trimmed(BETTERID_AI_PREFS.baseUrl);
-  const apiKey = trimmed(BETTERID_AI_PREFS.apiKey);
   if (!baseUrl) return null;
+  const protocol = configuredProtocol();
+  let apiKey = trimmed(BETTERID_AI_PREFS.apiKey);
+  if (protocol === 'codex' && codexAccessToken()) apiKey = codexAccessToken();
   const imageApi = trimmed(BETTERID_AI_PREFS.imageApi);
   return {
     source: 'user',
+    protocol,
+    stream: prefs(BETTERID_AI_PREFS.stream) === 'true',
     baseUrl,
     apiKey,
+    accountId: protocol === 'codex' ? codexAccountId() : '',
     textModel: trimmed(BETTERID_AI_PREFS.textModel) || null,
     visionModel: trimmed(BETTERID_AI_PREFS.visionModel) || null,
     imageModel: trimmed(BETTERID_AI_PREFS.imageModel) || null,
@@ -86,6 +109,13 @@ export function setUserAiProvider(settings) {
   if (settings.imageModel !== undefined) write(BETTERID_AI_PREFS.imageModel, settings.imageModel.trim());
   if (settings.imageApi !== undefined) write(BETTERID_AI_PREFS.imageApi, BETTERID_AI_IMAGE_APIS.includes(settings.imageApi) ? settings.imageApi : null);
   if (settings.disableThinking !== undefined) prefs(BETTERID_AI_PREFS.disableThinking, settings.disableThinking ? 'true' : 'false');
+  if (settings.protocol !== undefined) {
+    const protocol = ['openai', 'openai-responses', 'anthropic', 'gemini', 'codex'].includes(settings.protocol)
+      ? settings.protocol
+      : 'openai';
+    write(BETTERID_AI_PREFS.protocol, protocol);
+  }
+  if (settings.stream !== undefined) prefs(BETTERID_AI_PREFS.stream, settings.stream ? 'true' : 'false');
 }
 
 
@@ -94,8 +124,11 @@ function deploymentProvider() {
   if (!ai || !ai.baseUrl || !ai.apiKey) return null;
   return {
     source: 'deployment',
+    protocol: 'openai',
+    stream: false,
     baseUrl: ai.baseUrl,
     apiKey: ai.apiKey,
+    accountId: '',
     textModel: ai.textModel || null,
     visionModel: ai.visionModel || ai.textModel || null,
     imageModel: ai.imageModel || null,
@@ -219,50 +252,27 @@ async function providerFetch(ai, url, init, timeout) {
  * @returns {Promise<string>} the assistant text
  */
 export async function directAiChat(request) {
-  const ai = aiProvider();
+  let ai = aiProvider();
   if (!ai) throw new Error('AI endpoint is not configured');
+  if (ai.protocol === 'codex') {
+    const token = await ensureCodexAccess();
+    if (token) ai = Object.assign({}, ai, { apiKey: token, accountId: codexAccountId() });
+    if (!ai.apiKey) throw new Error('Sign in to Codex first');
+  }
 
   const model = request.model || directAiModel(request.image ? 'vision' : 'text');
   if (!model) throw new Error('No AI model is configured for this request');
 
-  const content = request.image
-    ? [
-      { type: 'text', text: request.prompt },
-      { type: 'image_url', image_url: { url: request.image } }
-    ]
-    : request.prompt;
-
-  const messages = [];
-  if (request.system) messages.push({ role: 'system', content: request.system });
-  messages.push({ role: 'user', content });
-
-  const payload = {
-    model,
-    messages,
-    stream: false,
-    max_tokens: request.maxTokens || 2048
-  };
-  if (ai.disableThinking && !request.image) {
-    payload.thinking = { type: 'disabled' };
-  }
-  // The tag assistant needs a strict object: without this the model may answer
-  // with its own schema (it happens with web-search flavoured prompts).
-  if (request.json) {
-    payload.response_format = { type: 'json_object' };
-  }
-
-  const response = await providerFetch(ai, endpoint(ai, '/chat/completions'), {
+  const call = buildChatCall(ai, Object.assign({}, request, { model }));
+  const response = await providerFetch(ai, call.url, {
     method: 'POST',
-    headers: authHeaders(ai, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify(payload),
+    headers: call.headers,
+    body: JSON.stringify(call.body),
     signal: request.signal
   });
 
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content;
-  if (typeof text !== 'string' || !text.trim()) {
-    throw new Error('AI endpoint returned an empty completion');
-  }
+  const text = extractCompletionText(await response.text(), ai.protocol);
+  if (!text.trim()) throw new Error('AI endpoint returned an empty completion');
   return text;
 }
 
@@ -329,6 +339,9 @@ export async function directAiImageEdit(request) {
   if (!ai) throw new Error('AI endpoint is not configured');
   const model = request.model || directAiModel('image');
   if (!model) throw new Error('No image model is configured');
+  if ((ai.protocol || 'openai') !== 'openai') {
+    throw new Error('Image editing uses an OpenAI-compatible endpoint. Switch the protocol to OpenAI or use chat/vision on this provider.');
+  }
 
   if (ai.imageApi === 'chat') {
     const response = await providerFetch(ai, endpoint(ai, '/chat/completions'), {
