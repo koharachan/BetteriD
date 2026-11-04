@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>quit-probe</title>
+  </head>
+  <body>
+    <script src="leave-guard.js"></script>
+    <script>
+      var clean = new URLSearchParams(location.search).has('clean');
+      window.onbeforeunload = function() {
+        return clean ? undefined : 'You have unsaved changes';
+      };
+      window.BetteriDLeaveGuard.install();
+      document.title = 'quit-probe-ready';
+    </script>
+  </body>
+</html>
