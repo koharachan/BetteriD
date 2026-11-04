@@ -13,10 +13,52 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, net, protocol, session, shell
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { unloadPrompt, wantsToLeave } = require('./quit');
 
 const SCHEME = 'betterid';
 const ORIGIN = `${SCHEME}://app`;
 const SMOKE = process.argv.includes('--smoke');
+const QUIT_PROBE = readQuitProbe();
+
+// Asks the page the same question `window.onbeforeunload` asks, and waits
+// until the restore copy has been written. Must run while the page is still
+// responsive: once beforeunload has returned a string, Electron freezes the
+// renderer until the main process decides.
+const READ_UNSAVED_SCRIPT = `(async () => {
+    const empty = { message: '', locale: '' };
+    try {
+        const context = window.context;
+        if (!context || typeof context.save !== 'function') return empty;
+        if (context.debouncedSave && typeof context.debouncedSave.cancel === 'function') {
+            context.debouncedSave.cancel();
+        }
+        const value = context.save();
+        const history = typeof context.history === 'function' ? context.history() : null;
+        if (history && typeof history.pendingSave === 'function') {
+            await Promise.race([
+                history.pendingSave(),
+                new Promise((resolve) => setTimeout(resolve, 2000))
+            ]);
+        }
+        const locale = (document.documentElement && document.documentElement.lang) || navigator.language || '';
+        return { message: value ? String(value) : '', locale: locale ? String(locale) : '' };
+    } catch (error) {
+        return { message: '', locale: '', failed: true };
+    }
+})()`;
+
+const QUIT_PROBE_MODES = new Set(['clean', 'leave', 'stay', 'menu-leave']);
+
+let allowUnload = false;
+let quitPromptOpen = false;
+let lastEditorLocale = '';
+let leaveAsks = 0;
+
+function readQuitProbe() {
+    const arg = process.argv.find(item => item.startsWith('--quit-probe='));
+    if (!arg) return null;
+    return arg.slice('--quit-probe='.length);
+}
 
 let mainWindow = null;
 let config = null;
@@ -191,6 +233,126 @@ function saveBounds(win) {
     } catch { /* ignore */ }
 }
 
+/**
+ * `context.save()` returns the unsaved-changes string when a quit should be
+ * confirmed, and that string is what the page's `onbeforeunload` returns.
+ * Electron then cancels the close without a dialog (see desktop/quit.js).
+ * Ask here, from the main process, and only then let the window close.
+ */
+function askToLeave(win, info, intent) {
+    if (QUIT_PROBE) {
+        leaveAsks += 1;
+        console.log(`[quit-probe] confirm #${leaveAsks} (${intent})`);   // eslint-disable-line no-console
+    }
+    if (QUIT_PROBE === 'clean') {
+        console.error('[quit-probe] confirmation dialog opened with nothing unsaved');   // eslint-disable-line no-console
+        app.exit(4);
+        return false;
+    }
+    if (QUIT_PROBE === 'leave' || QUIT_PROBE === 'menu-leave') return true;
+    if (QUIT_PROBE === 'stay') return false;
+
+    if (!win || win.isDestroyed()) return false;
+    const locale = (info && info.locale) || lastEditorLocale || app.getLocale();
+    const choice = dialog.showMessageBoxSync(win, unloadPrompt(locale, info && info.message, intent));
+    return wantsToLeave(choice);
+}
+
+function readUnsaved(win) {
+    return win.webContents.executeJavaScript(READ_UNSAVED_SCRIPT, true);
+}
+
+function finishQuit(win) {
+    const expectedAsks = (QUIT_PROBE === 'leave' || QUIT_PROBE === 'menu-leave') ? 1 : 0;
+    if (QUIT_PROBE && QUIT_PROBE !== 'stay' && leaveAsks !== expectedAsks) {
+        console.error(`[quit-probe] expected ${expectedAsks} confirmation(s), saw ${leaveAsks}`);   // eslint-disable-line no-console
+        app.exit(6);
+        return;
+    }
+    allowUnload = true;
+    for (const other of BrowserWindow.getAllWindows()) {
+        if (other !== win && !other.isDestroyed()) other.destroy();
+    }
+    if (!win.isDestroyed()) win.close();
+    // If beforeunload still refuses, don't leave the portable wrapper (and
+    // the Electron process behind it) running for Task Manager to kill.
+    setTimeout(() => {
+        if (!allowUnload || win.isDestroyed()) return;
+        win.destroy();
+        app.quit();
+    }, 2000);
+}
+
+async function promptToClose(win) {
+    let info = { message: '', locale: '' };
+    try {
+        info = await readUnsaved(win) || info;
+    } catch {
+        info = { message: '', locale: '', failed: true };
+    }
+    if (win.isDestroyed()) return;
+    if (info.locale) lastEditorLocale = info.locale;
+
+    const needsConfirm = info.failed || !!info.message;
+    if (needsConfirm && !askToLeave(win, info, 'quit')) return;
+
+    if (needsConfirm && !win.isDestroyed()) {
+        try { await readUnsaved(win); } catch { /* the copy from the first save still stands */ }
+    }
+    if (!win.isDestroyed()) finishQuit(win);
+}
+
+function installQuitHandling(win) {
+    win.on('close', (event) => {
+        if (!win.isDestroyed()) saveBounds(win);
+        if (allowUnload || SMOKE) return;
+        event.preventDefault();
+        if (quitPromptOpen) return;
+        quitPromptOpen = true;
+        promptToClose(win).finally(() => { quitPromptOpen = false; });
+    });
+
+    // Reload (and any other navigation) hits beforeunload without a window
+    // `close` event. Same silent cancel, so confirm here too.
+    win.webContents.on('will-prevent-unload', (event) => {
+        if (allowUnload || SMOKE) {
+            event.preventDefault();
+            return;
+        }
+        if (askToLeave(win, { message: '', locale: lastEditorLocale }, 'continue')) {
+            event.preventDefault();
+        }
+    });
+}
+
+function startQuitProbe(win, mode) {
+    const unsaved = mode === 'clean' ? 'undefined' : "'You have unsaved changes.'";
+    const html = `<!DOCTYPE html><html lang="en"><body><script>
+        window.context = { save: function() { return ${unsaved}; } };
+        window.onbeforeunload = function() { return window.context.save(); };
+    </script></body></html>`;
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    win.webContents.once('did-finish-load', () => {
+        if (mode === 'menu-leave') app.quit();
+        else win.close();
+
+        if (mode === 'stay') {
+            setTimeout(() => {
+                const stillOpen = BrowserWindow.getAllWindows().some(open => !open.isDestroyed());
+                console.log(`[quit-probe] stay window open=${stillOpen} confirms=${leaveAsks}`);   // eslint-disable-line no-console
+                if (!stillOpen) app.exit(2);
+                else if (leaveAsks !== 1) app.exit(6);
+                else app.exit(0);
+            }, 1000);
+            return;
+        }
+        setTimeout(() => {
+            console.error(`[quit-probe] ${mode} did not exit`);   // eslint-disable-line no-console
+            app.exit(3);
+        }, 4000);
+    });
+}
+
 function createWindow() {
     const saved = restoreBounds();
     mainWindow = new BrowserWindow({
@@ -215,8 +377,15 @@ function createWindow() {
     if (saved.maximized) mainWindow.maximize();
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
-    mainWindow.on('close', () => saveBounds(mainWindow));
-    mainWindow.on('closed', () => { mainWindow = null; });
+    installQuitHandling(mainWindow);
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+        // The Exit menu calls app.quit(), which does not emit
+        // window-all-closed. Closing from the title bar does. Quit from
+        // here so both paths end the process, including the portable wrapper
+        // that waits on it.
+        if (allowUnload) app.quit();
+    });
 
     // only osm-auth's popup stays inside the app; every other link opens in
     // the system browser
@@ -245,6 +414,11 @@ function createWindow() {
         event.preventDefault();
         if (/^https?:/.test(url)) shell.openExternal(url);
     });
+
+    if (QUIT_PROBE) {
+        startQuitProbe(mainWindow, QUIT_PROBE);
+        return;
+    }
 
     mainWindow.loadURL(`${ORIGIN}/index.html`);
 
@@ -349,6 +523,12 @@ if (!app.requestSingleInstanceLock()) {
         ipcMain.on('betterid:open-external', (event, url) => {
             if (/^https?:/.test(String(url))) shell.openExternal(String(url));
         });
+
+        if (QUIT_PROBE && !QUIT_PROBE_MODES.has(QUIT_PROBE)) {
+            console.error(`[quit-probe] unknown mode ${QUIT_PROBE}`);   // eslint-disable-line no-console
+            app.exit(5);
+            return;
+        }
 
         createWindow();
 
