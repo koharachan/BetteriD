@@ -27,6 +27,7 @@
   <body>
     <div id='id-container'></div>
 
+    <script src="leave-guard.js"></script>
     <script>
       // the smoke test reads these; users see them in the devtools console
       window.__betteridErrors = [];
@@ -85,6 +86,7 @@
             .containerNode(container);
           window.context = window.id = context;  // for debugging
           context.init();
+          if (window.BetteriDLeaveGuard) window.BetteriDLeaveGuard.install();
           document.title = 'BetteriD ' + desktop.version;
         }
       })();

@@ -11,15 +11,31 @@
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, net, protocol, session, shell } = require('electron');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { leaveApproved: choiceAllowsLeave, leaveDialogOptions } = require('./leave-prompt.js');
 
 const SCHEME = 'betterid';
 const ORIGIN = `${SCHEME}://app`;
 const SMOKE = process.argv.includes('--smoke');
 
+function quitProbeMode() {
+    const arg = process.argv.find(item => item.startsWith('--quit-probe='));
+    if (!arg) return null;
+    const mode = arg.slice('--quit-probe='.length);
+    return mode === 'quit' || mode === 'menu' || mode === 'stay' || mode === 'clean' ? mode : null;
+}
+
+const QUIT_PROBE = quitProbeMode();
+
 let mainWindow = null;
 let config = null;
+// Set once the user has confirmed Exit, so the second close is not prompted again.
+let allowUnload = false;
+let closePromptOpen = false;
+let probeTimer = null;
+let probeSettled = false;
 
 
 /* ------------------------------------------------------------- config -- */
@@ -57,6 +73,7 @@ function loadConfig() {
  */
 function resourceRoots() {
     const roots = [path.join(__dirname, 'app')];
+    if (!app.isPackaged) roots.push(path.join(__dirname, 'test'));   // quit-probe.html
     if (app.isPackaged) {
         roots.push(path.join(process.resourcesPath, 'dist'));
     } else {
@@ -215,8 +232,25 @@ function createWindow() {
     if (saved.maximized) mainWindow.maximize();
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
-    mainWindow.on('close', () => saveBounds(mainWindow));
+    // Electron never shows the browser beforeunload prompt: a returned string
+    // cancels the close with no dialog. The title-bar X and the Exit menu
+    // (role: quit → app.quit → this event) both hit that path once the editor
+    // has unsaved changes. Ask ourselves, then close for real.
+    mainWindow.on('close', (event) => {
+        saveBounds(mainWindow);
+        if (allowUnload) {
+            for (const win of BrowserWindow.getAllWindows()) {
+                if (win !== mainWindow && !win.isDestroyed()) win.destroy();
+            }
+            return;
+        }
+        event.preventDefault();
+        beginClose(mainWindow);
+    });
     mainWindow.on('closed', () => { mainWindow = null; });
+    mainWindow.webContents.on('will-prevent-unload', (event) => {
+        if (allowUnload) event.preventDefault();
+    });
 
     // only osm-auth's popup stays inside the app; every other link opens in
     // the system browser
@@ -246,9 +280,113 @@ function createWindow() {
         if (/^https?:/.test(url)) shell.openExternal(url);
     });
 
-    mainWindow.loadURL(`${ORIGIN}/index.html`);
+    const page = QUIT_PROBE
+        ? `${ORIGIN}/quit-probe.html${QUIT_PROBE === 'clean' ? '?clean=1' : ''}`
+        : `${ORIGIN}/index.html`;
+    mainWindow.loadURL(page);
 
     if (SMOKE) runSmokeTest(mainWindow);
+    if (QUIT_PROBE) runQuitProbe(mainWindow);
+}
+
+
+/**
+ * The editor's `beforeunload` handler returns a warning string when there are
+ * unsaved changes, after writing them to local storage. Show that warning and,
+ * if the user exits, let the window close so the process can quit.
+ */
+function beginClose(win) {
+    if (allowUnload || win.isDestroyed() || closePromptOpen) return;
+    closePromptOpen = true;
+
+    const finish = (approved) => {
+        closePromptOpen = false;
+        if (!approved || win.isDestroyed()) {
+            if (QUIT_PROBE === 'stay' && !approved) {
+                setTimeout(() => {
+                    const alive = mainWindow && !mainWindow.isDestroyed();
+                    finishProbe(alive, alive ? 'window stayed open' : 'closed after cancel');
+                }, 800);
+            }
+            return;
+        }
+        allowUnload = true;
+        const leave = () => {
+            if (win.isDestroyed()) return;
+            win.close();
+            // A cancelled app.quit() can leave the portable wrapper alive after the
+            // window is gone. If nothing is left open, end the process.
+            setTimeout(() => {
+                if (QUIT_PROBE || probeSettled) return;
+                if (BrowserWindow.getAllWindows().length === 0) app.exit(0);
+            }, 1000);
+        };
+        win.webContents.executeJavaScript('window.__betteridAllowLeave = true').then(leave, leave);
+    };
+
+    win.webContents.executeJavaScript(`(() => {
+        if (!window.BetteriDLeaveGuard || typeof window.BetteriDLeaveGuard.pendingMessage !== 'function') {
+            return { message: '', locale: '' };
+        }
+        return window.BetteriDLeaveGuard.pendingMessage();
+    })()`).then((state) => {
+        const message = state && state.message ? String(state.message) : '';
+        if (!message) return finish(true);
+        if (QUIT_PROBE === 'clean') {
+            console.log('[quit-probe] FAIL: prompted with no unsaved changes');   // eslint-disable-line no-console
+            finishProbe(false, 'prompted with no unsaved changes');
+            return;
+        }
+        if (QUIT_PROBE === 'quit' || QUIT_PROBE === 'menu') return finish(true);
+        if (QUIT_PROBE === 'stay') return finish(false);
+
+        const locale = String((state && state.locale) || app.getLocale() || '');
+        let approved = true;
+        try {
+            const choice = dialog.showMessageBoxSync(win, leaveDialogOptions({
+                locale,
+                message,
+                platform: process.platform
+            }));
+            approved = choiceAllowsLeave(choice);
+        } catch (error) {
+            // A broken dialog must not leave the process unkillable except from Task Manager.
+            console.error('[betterid] quit dialog failed:', error);   // eslint-disable-line no-console
+            approved = true;
+        }
+        finish(approved);
+    }, () => finish(true));
+}
+
+
+function finishProbe(ok, message) {
+    if (probeSettled) return;
+    probeSettled = true;
+    if (probeTimer) clearTimeout(probeTimer);
+    probeTimer = null;
+    console.log(`[quit-probe] ${ok ? 'OK' : 'FAIL'}: ${message}`);   // eslint-disable-line no-console
+    app.exit(ok ? 0 : 1);
+}
+
+
+/** `--quit-probe`: close a page with and without an unsaved-changes warning. */
+function runQuitProbe(win) {
+    const finish = (ok, message) => finishProbe(ok, message);
+    probeTimer = setTimeout(() => finish(false, 'timed out'), 15000);
+
+    win.webContents.once('did-fail-load', (event, code, description) => {
+        finish(false, `load failed: ${code} ${description}`);
+    });
+    win.webContents.once('did-finish-load', () => {
+        win.webContents.executeJavaScript('document.title').then((title) => {
+            if (title !== 'quit-probe-ready') {
+                finish(false, `probe page did not load (${title})`);
+                return;
+            }
+            if (QUIT_PROBE === 'menu') app.quit();
+            else win.close();
+        }).catch((error) => finish(false, error.message));
+    });
 }
 
 
@@ -273,6 +411,7 @@ function runSmokeTest(win) {
                     map: !!document.querySelector('.main-map svg'),
                     palette: document.querySelectorAll('.betterid-tool-button').length,
                     desktop: !!window.BETTERID_DESKTOP,
+                    leaveGuard: window.__betteridLeaveGuardInstalled === true,
                     errors: window.__betteridErrors || [],
                     body: document.body.innerText.slice(0, 500),
                     html: document.querySelector('#id-container').innerHTML.slice(0, 500)
@@ -281,7 +420,7 @@ function runSmokeTest(win) {
                 const image = await win.webContents.capturePage();
                 fs.writeFileSync(path.join(outDir, 'smoke.png'), image.toPNG());
                 clearTimeout(timer);
-                const ok = state.hasID && state.map && state.palette >= 4 && state.desktop && !state.errors.length;
+                const ok = state.hasID && state.map && state.palette >= 4 && state.desktop && state.leaveGuard && !state.errors.length;
                 finish(ok, JSON.stringify(state));
             } catch (error) {
                 clearTimeout(timer);
@@ -324,6 +463,11 @@ protocol.registerSchemesAsPrivileged([{
     privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true }
 }]);
 
+if (QUIT_PROBE) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'betterid-quit-probe-'));
+    app.setPath('userData', dir);
+}
+
 if (!app.requestSingleInstanceLock()) {
     app.quit();
 } else {
@@ -349,6 +493,54 @@ if (!app.requestSingleInstanceLock()) {
         ipcMain.on('betterid:open-external', (event, url) => {
             if (/^https?:/.test(String(url))) shell.openExternal(String(url));
         });
+        // Reload (and any unload that is not the window `close` event) still
+        // goes through the page's beforeunload handler, which asks here.
+        ipcMain.on('betterid:confirm-leave', (event, payload) => {
+            if (QUIT_PROBE) {
+                // Window close is handled in the main process. If beforeunload
+                // also runs, the user would get a second dialog.
+                console.log('[quit-probe] FAIL: beforeunload ran during close');   // eslint-disable-line no-console
+                event.returnValue = false;
+                finishProbe(false, 'beforeunload ran during close');
+                return;
+            }
+            const request = payload && typeof payload === 'object' ? payload : { message: payload };
+            const message = String(request.message || '');
+            const locale = String(request.locale || app.getLocale() || '');
+            if (!message) {
+                event.returnValue = true;
+                return;
+            }
+            if (QUIT_PROBE === 'quit' || QUIT_PROBE === 'menu') {
+                allowUnload = true;
+                event.returnValue = true;
+                return;
+            }
+            if (QUIT_PROBE === 'stay' || QUIT_PROBE === 'clean') {
+                event.returnValue = false;
+                return;
+            }
+            const win = BrowserWindow.fromWebContents(event.sender);
+            if (!win || win.isDestroyed()) {
+                allowUnload = true;
+                event.returnValue = true;
+                return;
+            }
+            try {
+                const choice = dialog.showMessageBoxSync(win, leaveDialogOptions({
+                    locale,
+                    message,
+                    platform: process.platform
+                }));
+                const approved = choiceAllowsLeave(choice);
+                if (approved) allowUnload = true;
+                event.returnValue = approved;
+            } catch (error) {
+                console.error('[betterid] quit dialog failed:', error);   // eslint-disable-line no-console
+                allowUnload = true;
+                event.returnValue = true;
+            }
+        });
 
         createWindow();
 
@@ -358,6 +550,17 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     app.on('window-all-closed', () => {
+        if (QUIT_PROBE === 'stay') {
+            finishProbe(false, 'window closed');
+            return;
+        }
+        if (probeTimer) {
+            clearTimeout(probeTimer);
+            probeTimer = null;
+        }
+        if (QUIT_PROBE) {
+            console.log('[quit-probe] OK: window closed');   // eslint-disable-line no-console
+        }
         app.quit();
     });
 }

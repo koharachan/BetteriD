@@ -11,6 +11,7 @@
   "scripts": {
     "start": "electron .",
     "smoke": "electron . --smoke",
+    "quit-probe": "node test/run-quit-probe.mjs",
     "pack": "electron-builder --dir",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux"
@@ -30,6 +31,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "leave-prompt.js",
       "config.json",
       "app/**/*",
       "build/icon.png",
