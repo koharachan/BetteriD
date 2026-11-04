@@ -11,6 +11,7 @@
   "scripts": {
     "start": "electron .",
     "smoke": "electron . --smoke",
+    "test:quit": "node --test quit.test.js && electron --no-sandbox --disable-gpu . --quit-probe=clean && electron --no-sandbox --disable-gpu . --quit-probe=leave && electron --no-sandbox --disable-gpu . --quit-probe=stay && electron --no-sandbox --disable-gpu . --quit-probe=menu-leave",
     "pack": "electron-builder --dir",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux"
@@ -29,6 +30,7 @@
     },
     "files": [
       "main.js",
+      "quit.js",
       "preload.js",
       "config.json",
       "app/**/*",

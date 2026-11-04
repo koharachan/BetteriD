@@ -121,6 +121,8 @@ export class coreHistory extends EventDispatcher<EventMap> {
     private _stack!: Stack[];
     private _index!: number;
     private _tree!: coreTree;
+    // Settles when the IndexedDB write from the latest save() finishes.
+    private _pendingSave: Promise<unknown> = Promise.resolve();
 
     constructor(context: coreContext) {
         super('reset', 'change', 'merge', 'restore', 'undone', 'redone', 'storage_error');
@@ -784,16 +786,23 @@ export class coreHistory extends EventDispatcher<EventMap> {
 
                 const historyData = this.toJSON();
                 if (!historyData) {
-                    asyncPrefs.del('saved_history')
+                    this._pendingSave = asyncPrefs.del('saved_history')
                         .then(() => prefs('has_saved_history', null))
                         .catch(() => this.dispatch.call('storage_error'));
                 } else {
-                    asyncPrefs.set('saved_history', historyData)
+                    this._pendingSave = asyncPrefs.set('saved_history', historyData)
                         .then(() => prefs('has_saved_history', true))
                         .catch(() => this.dispatch.call('storage_error'));
                 }
             }
             return this;
+        }
+
+
+        // The desktop shell waits for this before exiting, so the restore
+        // copy is committed before the process is torn down.
+        pendingSave() {
+            return this._pendingSave;
         }
 
 

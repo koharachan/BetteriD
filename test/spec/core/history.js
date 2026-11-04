@@ -568,6 +568,20 @@ describe('iD.coreHistory', function () {
         });
     });
 
+    describe('#pendingSave', function() {
+        afterEach(async function() {
+            await clear();
+        });
+
+        it('settles after save writes the restore copy', async function() {
+            history.perform(actionAddNode('n-pending'));
+            await history.save().pendingSave();
+            expect(String(iD.prefs('has_saved_history'))).toBe('true');
+            var data = await asyncPrefs.get('saved_history');
+            expect(data.stack.length).toBeGreaterThan(1);
+        });
+    });
+
     describe('#replaceLocalStorageWithIndexedDB', function() {
         afterEach(async function() {
             await clear();
