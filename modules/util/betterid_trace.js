@@ -22,6 +22,13 @@ const DEFAULT_RED = Object.freeze({
     minDominance: 100   // red minus the larger of green / blue
 });
 
+const DEFAULT_GREEN = Object.freeze({
+    minGreen: 170,
+    maxRed: 110,
+    maxBlue: 120,
+    minDominance: 70    // green minus the larger of red / blue
+});
+
 
 /** 1 for every pixel that is "marker red", 0 otherwise. */
 export function redMask(imageData, options) {
@@ -34,6 +41,24 @@ export function redMask(imageData, options) {
         const b = data[i + 2];
         if (r >= red.minRed && g <= red.maxGreen && b <= red.maxBlue &&
             r - Math.max(g, b) >= red.minDominance) {
+            mask[p] = 1;
+        }
+    }
+    return mask;
+}
+
+
+/** 1 for every pixel that is "marker green", 0 otherwise. */
+export function greenMask(imageData, options) {
+    const { width, height, data } = imageData;
+    const green = Object.assign({}, DEFAULT_GREEN, options);
+    const mask = new Uint8Array(width * height);
+    for (let p = 0, i = 0; p < mask.length; p++, i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (g >= green.minGreen && r <= green.maxRed && b <= green.maxBlue &&
+            g - Math.max(r, b) >= green.minDominance) {
             mask[p] = 1;
         }
     }
@@ -149,25 +174,85 @@ export function enclosedRegions(strokes, width, height, options) {
  * @param {{strokeGrow?: number, minArea?: number, tolerance?: number, red?: object}} options
  * @returns {{points: number[][], area: number}[]}
  */
-export function traceOutlines(imageData, options) {
+function polygonsFromMask(mask, width, height, tolerance) {
+    return maskPolygons(mask, width, height, tolerance).filter(polygon => polygon.length >= 3);
+}
+
+
+/**
+ * Polygons for one marker colour. Closed strokes become the regions they
+ * enclose. A filled blob (no enclosed interior) is outlined directly.
+ */
+export function traceMarkedOutlines(imageData, mask, options) {
     const { width, height } = imageData;
     const settings = options || {};
-    // close the small gaps compression leaves in a thin stroke
-    const strokes = dilate(redMask(imageData, settings.red), width, height, settings.strokeGrow ?? 1);
-    const regions = enclosedRegions(strokes, width, height, settings);
     const tolerance = settings.tolerance ?? 1.5;
+    // close the small gaps compression leaves in a thin stroke
+    const strokes = dilate(mask, width, height, settings.strokeGrow ?? 1);
+    const regions = enclosedRegions(strokes, width, height, settings);
     const result = [];
 
     regions.forEach(region => {
         // the interior stops at the inner edge of the stroke; grow it back so
         // the outline sits on the stroke centre
         const grown = dilate(region.mask, width, height, settings.strokeGrow ?? 1);
-        const polygons = maskPolygons(grown, width, height, tolerance).filter(polygon => polygon.length >= 3);
+        const polygons = polygonsFromMask(grown, width, height, tolerance);
         if (!polygons.length) return;
         result.push({ points: polygons[0], area: region.area });
     });
 
+    // A painted fill has no enclosed hole. A thin stroke does, once it is closed,
+    // so a broken outline is left for the caller to grow instead of traced as a ribbon.
+    if (!result.length && maskLooksFilled(mask, width, height)) {
+        polygonsFromMask(mask, width, height, tolerance).forEach(points => {
+            let area = 0;
+            for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+                area += (points[j][0] + points[i][0]) * (points[j][1] - points[i][1]);
+            }
+            result.push({ points, area: Math.abs(area / 2) });
+        });
+    }
+
     return result;
+}
+
+
+export function traceOutlines(imageData, options) {
+    const settings = options || {};
+    return traceMarkedOutlines(imageData, redMask(imageData, settings.red), settings);
+}
+
+
+/** True when the marked pixels fill their box, rather than tracing a thin edge. */
+function maskLooksFilled(mask, width, height) {
+    let count = 0;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (!mask[y * width + x]) continue;
+            count++;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+        }
+    }
+    if (count < 12 || maxX < minX) return false;
+    const box = (maxX - minX + 1) * (maxY - minY + 1);
+    return count / box > 0.35;
+}
+
+
+/** Red strokes are buildings; green strokes are areas. */
+export function traceAnnotatedImage(imageData, options) {
+    const settings = options || {};
+    return {
+        buildings: traceOutlines(imageData, settings),
+        areas: traceMarkedOutlines(imageData, greenMask(imageData, settings.green), settings)
+    };
 }
 
 

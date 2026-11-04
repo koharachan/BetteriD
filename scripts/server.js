@@ -3,12 +3,14 @@
 import { createReadStream, existsSync } from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
+import path from 'node:path';
 import { glob } from 'node:fs/promises';
 import { styleText } from 'node:util';
 import { watch } from 'chokidar';
 import dotenv from 'dotenv';
 import serve from 'serve-handler';
 import { buildCSS } from './build_css.js';
+import { createMcpAdmin } from './mcp_admin.mjs';
 
 dotenv.config({ quiet: true });
 
@@ -173,7 +175,15 @@ async function handleSummarize(request, response) {
 }
 
 
+const mcpAdmin = createMcpAdmin({
+  prefix: '/mcp',
+  storePath: path.join(process.cwd(), 'data', 'local', 'mcp-servers.json'),
+  publicUrl: `http://127.0.0.1:${port}/mcp`
+});
+
 const server = http.createServer((request, response) => {
+  if (mcpAdmin.handle(request, response)) return;
+
   if (request.url === '/api/osm-ai/translate' && request.method === 'POST') {
     handleTranslate(request, response);
     return;
@@ -216,4 +226,5 @@ const server = http.createServer((request, response) => {
 server.listen(port, () => {
   /* eslint-disable no-console */
   console.log(styleText('yellow', `Listening on ${port}`));
+  console.log(styleText('yellow', `MCP settings at http://127.0.0.1:${port}/mcp`));
 });

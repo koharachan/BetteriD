@@ -21,6 +21,7 @@ import {
   setUserAiProvider,
   userAiProvider
 } from '../../core/betterid_ai';
+import { codexAccessToken, mcpAdminUrl, startCodexLogin } from '../../core/betterid_codex_auth';
 import {
   BETTERID_SHORTCUT_PRESET_PREF,
   BETTERID_SHORTCUT_PRESETS
@@ -448,6 +449,7 @@ export const uiSectionBetteridAI = makeSimpleSection(
           const preset = BETTERID_AI_PRESETS.find(p => p.id === this.value);
           if (!preset) return;
           setUserAiProvider({
+            protocol: preset.protocol || 'openai',
             baseUrl: preset.baseUrl,
             textModel: preset.textModel,
             visionModel: preset.visionModel,
@@ -468,6 +470,21 @@ export const uiSectionBetteridAI = makeSimpleSection(
           d3_select(this).call(t.append(`preferences.ai.custom.presets.${d.id}`));
         });
 
+      renderSelect(form, {
+        className: 'betterid-ai-protocol',
+        pref: BETTERID_AI_PREFS.protocol,
+        defaultValue: 'openai',
+        label: 'preferences.ai.custom.protocol',
+        description: 'preferences.ai.custom.protocol_description',
+        options: [
+          { value: 'openai', label: 'preferences.ai.custom.protocols.openai' },
+          { value: 'openai-responses', label: 'preferences.ai.custom.protocols.openai_responses' },
+          { value: 'anthropic', label: 'preferences.ai.custom.protocols.anthropic' },
+          { value: 'gemini', label: 'preferences.ai.custom.protocols.gemini' },
+          { value: 'codex', label: 'preferences.ai.custom.protocols.codex' }
+        ],
+        onChange: value => { setUserAiProvider({ protocol: value }); section.reRender(); }
+      });
       renderTextRow(form, {
         className: 'betterid-ai-base-url',
         pref: BETTERID_AI_PREFS.baseUrl,
@@ -520,6 +537,31 @@ export const uiSectionBetteridAI = makeSimpleSection(
         label: 'preferences.ai.custom.disable_thinking',
         description: 'preferences.ai.custom.disable_thinking_description'
       });
+      renderCheckbox(form, {
+        className: 'betterid-ai-stream',
+        pref: BETTERID_AI_PREFS.stream,
+        defaultValue: false,
+        label: 'preferences.ai.custom.stream',
+        description: 'preferences.ai.custom.stream_description'
+      });
+
+      const showCodex = (prefs(BETTERID_AI_PREFS.protocol) || 'openai') === 'codex';
+      let codex = form.selectAll('.betterid-ai-codex').data(showCodex ? [0] : []);
+      codex.exit().remove();
+      const codexEnter = codex.enter().append('div').attr('class', 'betterid-ai-codex');
+      codexEnter.append('button')
+        .attr('type', 'button')
+        .attr('class', 'action betterid-codex-browser')
+        .call(t.append('preferences.ai.custom.codex_sign_in'))
+        .on('click', event => signInCodex(event, 'browser'));
+      codexEnter.append('button')
+        .attr('type', 'button')
+        .attr('class', 'secondary-action betterid-codex-device')
+        .call(t.append('preferences.ai.custom.codex_device'))
+        .on('click', event => signInCodex(event, 'device'));
+      codexEnter.append('p').attr('class', 'betterid-ai-codex-status');
+      codexEnter.merge(codex).select('.betterid-ai-codex-status')
+        .text(codexAccessToken() ? t('preferences.ai.custom.codex_signed_in') : '');
 
       // a round trip, so a wrong URL or key shows up here and not later
       let test = form.selectAll('.betterid-ai-test').data([0]);
@@ -553,6 +595,16 @@ export const uiSectionBetteridAI = makeSimpleSection(
       test = testEnter.merge(test);
       test.select('button').property('disabled', !provider);
     }
+
+    const mcp = selection.selectAll('.betterid-ai-mcp').data([0]);
+    const mcpEnter = mcp.enter().append('p').attr('class', 'betterid-ai-mcp');
+    mcpEnter.merge(mcp).text('').call(t.addOrUpdate('preferences.ai.custom.mcp_link', {
+      url: link => link.append('a')
+        .attr('href', mcpAdminUrl())
+        .attr('target', '_blank')
+        .attr('rel', 'noopener noreferrer')
+        .text(mcpAdminUrl())
+    }));
 
     /* --- the deployment's providers ---------------------------------- */
 
@@ -622,6 +674,26 @@ export const uiSectionBetteridAI = makeSimpleSection(
           .attr('href', 'https://qm.qq.com/q/O4npt9MhK')
           .call(t.append('preferences.ai.qq_group'))
       }));
+
+    function signInCodex(event, mode) {
+      event.preventDefault();
+      const status = d3_select(event.currentTarget.parentNode).select('.betterid-ai-codex-status');
+      status.text(t('preferences.ai.custom.codex_waiting'));
+      startCodexLogin({
+        mode,
+        onCode: started => {
+          status.text(t('preferences.ai.custom.codex_code', {
+            code: started.userCode,
+            url: started.verificationUrl
+          }));
+        }
+      }).then(() => {
+        setUserAiProvider({ protocol: 'codex' });
+        section.reRender();
+      }).catch(error => {
+        status.text(t('preferences.ai.custom.codex_failed', { message: error.message }));
+      });
+    }
 
     function moveProvider(event, kind, provider, offset) {
       event.preventDefault();

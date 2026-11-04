@@ -3,6 +3,7 @@ import {
     select as d3_select
 } from 'd3-selection';
 
+import { loadInstalledPlugins } from '../core/betterid_plugins';
 import { prefs } from '../core/preferences';
 import { BETTERID_PREFS, betteridBool, getEditableZoom } from '../core/betterid_preferences';
 import { t, localizer } from '../core/localizer';
@@ -517,6 +518,8 @@ export function uiInit(context) {
             ui.hash.startWalkthrough = false;
             context.container().call(uiIntro(context));
         }
+
+        loadInstalledPlugins(context);
 
 
         function pan(d) {

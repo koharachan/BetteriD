@@ -98,7 +98,8 @@ Full notes: [0.1.4 changelog](CHANGELOG.md#betterid-014).
 - 根据用户描述、现有标签、几何类型和位置检索 OSM 标签建议，并展示依据与来源。
 - 生成简洁的 changeset comment；失败不会阻止正常提交。
 - 文本、搜索和视觉任务分别配置服务端提供商顺序，并在配额或上游错误时静默回退。
-- 在“偏好设置 → AI”中可启用自定义 OpenAI 兼容来源，填写自己的 API 地址、密钥、文本/视觉/生图模型；密钥只保存在本机浏览器中。
+- 在“偏好设置 → AI”中可启用自己的来源，填写 Base URL、模型名和 API 密钥。协议可选 OpenAI Chat Completions、OpenAI Responses 流式、Anthropic Messages、Google Gemini，以及 Codex（通过本机页面的浏览器或设备码登录）。密钥只保存在本机浏览器中。
+- AI 描边面板只保留方法和结果，长说明改到工具提示和撤销记录里。
 - AI 输出只作为候选建议，应用标签和上传变更前始终需要人工复核。
 
 ### 编辑体验
@@ -113,6 +114,7 @@ Full notes: [0.1.4 changelog](CHANGELOG.md#betterid-014).
 - 地图左侧工具面板：框选（矩形/椭圆）、快速选择（笔刷）、魔棒（容差 + 连通，按标签相似度扩展）和钢笔
   （单击角点、拖动出曲线，直线不产生多余节点，曲线按容差优化采样成 OSM 节点；`Alt` 转换点、`Ctrl` 直接选择、单击路径自动加点）。
 - AI 描边工具可把当前底图交给生图模型做纯红色建筑/水域描边，或让视觉模型直接返回多边形，再转换为可检查、可撤销的 OSM 面。
+- 也可导出当前选区（或整幅可见画面）的卫星影像裁切。在图上用红色画建筑、绿色画区域后导回，BetteriD 按导出时的坐标生成 OSM 面。步骤见 [docs/BETTERID_IMAGERY.md](docs/BETTERID_IMAGERY.md)。
 - 选择修饰键与 Photoshop 一致：`Shift` 加选、`Alt` 减选、`Shift+Alt` 交集。
 - 可开关的 Adobe 快捷键层：滚轮上下滚动、`Ctrl`+滚轮左右滚动、`Alt`+滚轮在指针处缩放、
   按住空格拖动平移、`Alt`+单击吸取指针处 hex 颜色并复制；`Ctrl+T` 自由变换、`Ctrl+J` 复制、
@@ -168,7 +170,11 @@ pnpm run desktop:dist:win
 pnpm run desktop:dist:linux
 ```
 
-桌面端配置文件在首次启动后位于系统用户数据目录，也可以在应用菜单中打开。自建 OAuth 客户端时，将回调地址注册为 `http://127.0.0.1:8080/land.html`；桌面壳会在导航离开前截获回调，不会启动本地 HTTP 服务。详细说明见 [docs/BETTERID_DESKTOP.md](docs/BETTERID_DESKTOP.md)。
+桌面端配置文件在首次启动后位于系统用户数据目录，也可以在应用菜单中打开。自建 OAuth 客户端时，将回调地址注册为 `http://127.0.0.1:8080/land.html`；桌面壳会在导航离开前截获 OSM 回调。Codex 登录和 MCP 管理使用另一个只绑定本机的页面（默认 `http://127.0.0.1:9179`，菜单 **BetteriD → Open MCP settings**）。`pnpm start` 则把同一页面挂在 `http://127.0.0.1:8080/mcp`。详细说明见 [docs/BETTERID_DESKTOP.md](docs/BETTERID_DESKTOP.md)。
+
+### 插件
+
+偏好设置里可以安装 [`data/plugins/marketplace.json`](data/plugins/marketplace.json) 中的插件，也可以粘贴自己的清单。要把插件放进这份市场清单，请提交拉取请求并加上名称、短说明、图标和元数据。格式见 [docs/BETTERID_PLUGINS.md](docs/BETTERID_PLUGINS.md)。
 
 ### 运行完整服务
 
@@ -192,6 +198,8 @@ cargo run
 ## 文档
 
 - [BetteriD Web Editor MCP](mcp/README.md)
+- [插件市场](docs/BETTERID_PLUGINS.md)
+- [影像裁切与标注导入](docs/BETTERID_IMAGERY.md)
 - [代理部署与 API](p/README.md)
 - [生产部署](docs/DEPLOYMENT.md)
 - [0.0.2 功能设计与实现说明](docs/superpowers/specs/2026-07-14-id-cn-ai-features-design.md)

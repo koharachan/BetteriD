@@ -110,4 +110,52 @@ describe('iD.operationDelete', function () {
             expect(fakeContext.graph().hasEntity('w')).toBeFalsy();
         });
     });
+
+    describe('ways that are still loading', function() {
+        function loadingContext(isLoaded, extent) {
+            return {
+                ...fakeContext,
+                connection: () => ({ isDataLoaded: () => isLoaded }),
+                inIntro: () => false,
+                map: () => ({ extent: () => extent || new iD.geoExtent([10, 10], [11, 11]) }),
+                loadTileAtLoc: () => {},
+                hasHiddenConnections: () => false,
+                enter: () => {},
+                perform: action => { graph = action(graph); }
+            };
+        }
+
+        it('deletes an incomplete way and keeps nodes whose tiles are not loaded', function() {
+            graph = new iD.coreGraph([
+                new iD.osmNode({ id: 'n1', loc: [0, 0] }),
+                new iD.osmWay({ id: 'w', nodes: ['n1', 'n-missing'] })
+            ]);
+            const context = loadingContext(false);
+            const operation = iD.operationDelete(context, ['w']);
+            expect(operation.disabled()).toBe(false);
+            operation();
+            expect(graph.hasEntity('w')).toBeFalsy();
+            expect(graph.hasEntity('n1')).toBeTruthy();
+        });
+
+        it('still blocks a fully loaded way that is mostly off-screen', function() {
+            graph = new iD.coreGraph([
+                new iD.osmNode({ id: 'n1', loc: [0, 0] }),
+                new iD.osmNode({ id: 'n2', loc: [1, 0] }),
+                new iD.osmWay({ id: 'w', nodes: ['n1', 'n2'] })
+            ]);
+            const operation = iD.operationDelete(loadingContext(true), ['w']);
+            expect(operation.disabled()).toBe('too_large');
+        });
+
+        it('still blocks a vertex whose tile is not downloaded', function() {
+            graph = new iD.coreGraph([
+                new iD.osmNode({ id: 'n1', loc: [0, 0] }),
+                new iD.osmNode({ id: 'n2', loc: [1, 0] }),
+                new iD.osmWay({ id: 'w', nodes: ['n1', 'n2'] })
+            ]);
+            const operation = iD.operationDelete(loadingContext(false, new iD.geoExtent([-1, -1], [2, 2])), ['n1']);
+            expect(operation.disabled()).toBe('not_downloaded');
+        });
+    });
 });

@@ -46,6 +46,7 @@
       (async function() {
         var container = document.getElementById('id-container');
         var desktop = await window.BETTERID_DESKTOP.config();
+        if (desktop.mcpAdminUrl) window.BETTERID_MCP_ADMIN_URL = desktop.mcpAdminUrl;
 
         // the same runtime config the BetteriD server injects on the website,
         // minus everything that needs a server

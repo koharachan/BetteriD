@@ -62,6 +62,25 @@ describe('iD.actionDeleteWay', function() {
         expect(graph.hasEntity(node.id)).toBeDefined();
     });
 
+    it('removes a way when a child node has not loaded', function() {
+        var node   = new iD.osmNode(),
+            way    = new iD.osmWay({nodes: [node.id, 'n-missing']}),
+            action = iD.actionDeleteWay(way.id),
+            graph  = new iD.coreGraph([node, way]).update(action);
+        expect(graph.hasEntity(way.id)).toBeUndefined();
+        expect(graph.hasEntity(node.id)).toBeUndefined();
+    });
+
+    it('keeps child nodes that still sit in an unloaded tile', function() {
+        var node   = new iD.osmNode(),
+            way    = new iD.osmWay({nodes: [node.id]}),
+            action = iD.actionDeleteWay(way.id, { preserveNodeIDs: [node.id] }),
+            graph  = new iD.coreGraph([node, way]).update(action);
+        expect(graph.hasEntity(way.id)).toBeUndefined();
+        expect(graph.hasEntity(node.id)).toBeDefined();
+        expect(graph.parentWays(graph.entity(node.id))).toHaveLength(0);
+    });
+
     it('deletes parent relations that become empty', function () {
         var way      = new iD.osmWay(),
             relation = new iD.osmRelation({members: [{ id: way.id }]}),

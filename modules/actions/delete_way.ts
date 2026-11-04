@@ -5,8 +5,19 @@ import { osmNodeGeometriesForTags } from '../osm/tags';
 import { actionDeleteRelation } from './delete_relation';
 
 
+export interface DeleteWayOptions {
+    /**
+     * Child nodes to detach from the way but leave in the graph.
+     * Used when the tile around a node has not loaded yet, so the node may
+     * still belong to a way the editor has not seen.
+     */
+    preserveNodeIDs?: Iterable<string>;
+}
+
+
 // https://github.com/openstreetmap/potlatch2/blob/master/net/systemeD/halcyon/connection/actions/DeleteWayAction.as
-export function actionDeleteWay(wayID: WayId): Action {
+export function actionDeleteWay(wayID: WayId, options?: DeleteWayOptions): Action {
+    const preserve = new Set(options && options.preserveNodeIDs ? options.preserveNodeIDs : []);
 
     function canDeleteNode(node: osmNode, graph: coreGraph) {
         // don't delete nodes still attached to ways or relations
@@ -26,7 +37,8 @@ export function actionDeleteWay(wayID: WayId): Action {
 
 
     const action: Action = function(graph) {
-        var way = graph.entity(wayID);
+        var way = graph.hasEntity(wayID);
+        if (!way) return graph;
 
         graph.parentRelations(way).forEach(function(parent) {
             parent = parent.removeMembersWithID(wayID);
@@ -39,9 +51,11 @@ export function actionDeleteWay(wayID: WayId): Action {
 
         (new Set(way.nodes)).forEach(function(nodeID) {
             graph = graph.replace(way.removeNode(nodeID));
+            if (preserve.has(nodeID)) return;
 
-            var node = graph.entity(nodeID);
-            if (canDeleteNode(node, graph)) {
+            // A way can be deleted before every child node has arrived.
+            var node = graph.hasEntity(nodeID);
+            if (node && canDeleteNode(node, graph)) {
                 graph = graph.remove(node);
             }
         });

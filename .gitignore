@@ -32,3 +32,4 @@ SERVERS.local.md
 /dist-dev/
 /dist-desktop/
 /desktop/node_modules/
+/data/local/
